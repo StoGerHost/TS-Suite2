@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TS Suite Angebot">
+<meta name="theme-color" content="#0a0a0c">
+<title>TS Suite Werkzeuge — Angebot</title>
+<style>
+  :root{
+    --bg:#0a0a0c;
+    --surface:#111318;
+    --surface-hover:#141821;
+    --surface-alt:#0d0f13;
+    --ink:#e9edf2;
+    --ink-80:rgba(233,237,242,.8);
+    --ink-70:rgba(233,237,242,.7);
+    --ink-60:rgba(233,237,242,.6);
+    --ink-50:rgba(233,237,242,.5);
+    --ink-45:rgba(233,237,242,.45);
+    --ink-40:rgba(233,237,242,.4);
+    --accent:#3a7bd5;
+    --accent-dark:#2f66b3;
+    --glow:#5eead4;
+    --danger:#e05a4e;
+    --line-20:rgba(58,123,213,.2);
+    --line-25:rgba(58,123,213,.25);
+    --line-30:rgba(58,123,213,.3);
+    --line-35:rgba(58,123,213,.35);
+    --font-display:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+    --font-mono:ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,Menlo,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-display);line-height:1.55;
+    -webkit-font-smoothing:antialiased;min-height:100vh;
+    padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));
+    padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);
+    background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+    background-size:34px 34px;}
+  input,button,select{font-family:inherit;}
+  button,input,label{touch-action:manipulation;}
+  a{color:inherit;}
+
+  .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
+    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    font:600 12px/1.4 var(--font-mono);letter-spacing:.03em;border-bottom:1px solid var(--line-35);flex-wrap:wrap;}
+  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    transition:color .15s ease;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
+  .ts-backbar__slash{color:var(--ink-40);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;}
+
+  #hdr{padding:26px 18px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line-20);}
+  #hdr .ico{width:38px;height:38px;border:1.5px solid var(--accent);display:flex;align-items:center;justify-content:center;
+    font-size:17px;flex-shrink:0;}
+  #hdr h1{font:700 19px var(--font-display);color:#fff;}
+  #hdr p{font:500 12px var(--font-mono);color:var(--ink-45);margin-top:3px;letter-spacing:.02em;}
+
+  .wrap{max-width:820px;margin:0 auto;padding:22px 18px;}
+  @media(max-width:480px){.wrap{padding:18px 14px;}}
+
+  .card{background:var(--surface);border:1px solid var(--line-30);padding:20px;margin-bottom:16px;}
+  .card h2{font:700 15px var(--font-display);color:var(--ink);margin-bottom:6px;}
+  .card .hint{font:400 12.5px/1.55 var(--font-display);color:var(--ink-50);margin-bottom:16px;}
+
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .row input,.row select{flex:1;min-width:120px;padding:11px 12px;border:1px solid var(--line-30);border-radius:2px;
+    background:var(--bg);color:var(--ink);font-size:16px;min-height:44px;outline:none;transition:border-color .15s;}
+  .row input::placeholder{color:var(--ink-40);}
+  .row input:focus,.row select:focus{border-color:var(--accent);}
+  select{-webkit-appearance:none;-moz-appearance:none;appearance:none;
+    background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%233a7bd5' stroke-width='2'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center/14px;
+    cursor:pointer;padding-right:30px;}
+
+  .btn{padding:11px 16px;border:1px solid transparent;border-radius:2px;background:var(--accent);color:var(--bg);
+    font:700 12.5px var(--font-mono);letter-spacing:.02em;cursor:pointer;white-space:nowrap;min-height:44px;
+    transition:filter .15s,border-color .15s,color .15s,background .15s;}
+  @media(hover:hover){
+    .btn:hover{filter:brightness(1.1);}
+    .btn.ghost:hover{border-color:var(--accent);color:var(--accent);}
+  }
+  .btn.ghost{background:transparent;color:var(--ink-70);border-color:var(--line-30);}
+  .btn.danger{background:var(--danger);color:#1a0d0b;}
+  .btn.small{padding:8px 12px;font-size:11.5px;min-height:40px;}
+  .btn:disabled{opacity:.5;cursor:default;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;padding:8px 6px;color:var(--ink-40);font:600 10.5px var(--font-mono);text-transform:uppercase;
+    letter-spacing:.05em;border-bottom:1px solid var(--line-25);}
+  td{padding:9px 6px;border-bottom:1px solid var(--line-20);vertical-align:middle;color:var(--ink-80);word-break:break-word;}
+  tr:last-child td{border-bottom:none;}
+  .mono{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-45);}
+  .empty{color:var(--ink-40);font-size:13px;padding:14px 4px;text-align:center;}
+
+  .pos-row input{width:100%;padding:9px 10px;border:1px solid var(--line-25);border-radius:2px;
+    background:var(--bg);color:var(--ink);font-size:15px;min-height:40px;}
+  .pos-row td.num{text-align:right;}
+  .pos-row td.num input{text-align:right;}
+
+  @media(max-width:640px){
+    .pos-row,.pos-row tbody{display:block;width:100%;}
+    .pos-row tr{display:block;border:1px solid var(--line-20);padding:12px;margin-bottom:10px;background:var(--surface-alt);}
+    .pos-row td{display:block;border-bottom:none;padding:3px 0;}
+    .pos-row td.num{text-align:left;}
+    .pos-row td.num input{text-align:left;}
+    .pos-row td:last-child{padding-top:8px;}
+  }
+
+  .search{margin-bottom:10px;position:relative;}
+  .search input{width:100%;padding:12px 14px;border:1px solid var(--line-30);border-radius:2px;
+    background:var(--bg);color:var(--ink);font-size:16px;min-height:44px;outline:none;}
+  .search input:focus{border-color:var(--accent);}
+  .search input::placeholder{color:var(--ink-40);}
+  .suggest{border:1px solid var(--line-30);border-top:none;background:var(--surface-alt);max-height:260px;overflow-y:auto;}
+  .suggest .opt{padding:10px 12px;border-bottom:1px solid var(--line-20);cursor:pointer;font-size:13px;}
+  .suggest .opt:last-child{border-bottom:none;}
+  .suggest .opt:hover,.suggest .opt:active{background:var(--surface-hover);}
+  .suggest .opt .t1{color:var(--ink);font-weight:600;}
+  .suggest .opt .t2{color:var(--ink-45);font-size:11.5px;font-family:var(--font-mono);margin-top:2px;}
+
+  .kunde-picked{border:1px solid var(--line-30);background:var(--surface-alt);padding:12px 14px;display:flex;
+    align-items:center;justify-content:space-between;gap:10px;}
+  .kunde-picked .name{font-weight:700;color:var(--ink);}
+  .kunde-picked .addr{font-size:12px;color:var(--ink-50);margin-top:2px;}
+
+  .summe{border-top:1px solid var(--line-25);margin-top:14px;padding-top:14px;}
+  .summe .zeile{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink-70);padding:3px 0;}
+  .summe .zeile.brutto{font-size:16px;font-weight:800;color:var(--ink);border-top:1px solid var(--line-25);
+    margin-top:8px;padding-top:10px;}
+
+  .status-msg{font:500 12.5px var(--font-mono);color:var(--ink-50);margin-top:10px;min-height:16px;}
+  .status-msg.err{color:var(--danger);font-weight:700;}
+  .status-msg.ok{color:var(--glow);font-weight:700;}
+
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--ink);
+    border:1px solid var(--accent);padding:11px 20px;border-radius:2px;font:600 12.5px var(--font-mono);
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99999;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  #admin-gate{position:fixed;inset:0;z-index:20000;background:rgba(0,0,0,.85);
+    display:flex;align-items:center;justify-content:center;padding:20px;}
+  #admin-gate-box{background:var(--surface);border:1px solid var(--line-30);border-radius:2px;
+    max-width:340px;width:100%;padding:28px 24px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.6);}
+  #admin-gate-box .gate-icon{font-size:32px;margin-bottom:10px;}
+  #admin-gate-box h2{font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--ink);margin-bottom:6px;}
+  #admin-gate-box p{font-size:12px;color:var(--ink-60);line-height:1.5;}
+</style>
+</head>
+<body>
+<script src="config.js"></script>
+<script src="ts-auth.js" data-gate data-title="Angebot"></script>
+
+<div id="admin-gate">
+  <div id="admin-gate-box">
+    <div class="gate-icon">🔒</div>
+    <h2 id="admin-gate-title">Prüfe Berechtigung …</h2>
+    <p id="admin-gate-text">Einen Moment.</p>
+  </div>
+</div>
+
+<div id="admin-content" style="display:none;">
+
+<div class="ts-backbar">
+  <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
+  <span class="ts-backbar__slash" aria-hidden="true">/</span>
+  <span class="ts-backbar__current">Angebot</span>
+</div>
+
+<div id="hdr">
+  <span class="ico" aria-hidden="true">&#128196;</span>
+  <div>
+    <h1>Angebots-Generator</h1>
+    <p>Kaufmännisches Angebot aus der Preisliste &middot; direkt im CRM abgelegt</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══════════ KUNDE ═══════════ -->
+  <div class="card">
+    <h2>Kunde</h2>
+    <p class="hint">Kunde suchen und auswählen — das Angebot wird direkt mit ihm verknüpft.</p>
+    <div class="search">
+      <input id="kunde-search" type="text" placeholder="Kunde suchen, z.B. Name oder Ort …" oninput="kundeSuchen()" autocomplete="off">
+      <div id="kunde-suggest" class="suggest" style="display:none"></div>
+    </div>
+    <div id="kunde-picked" style="display:none" class="kunde-picked">
+      <div>
+        <div class="name" id="kunde-picked-name"></div>
+        <div class="addr" id="kunde-picked-addr"></div>
+      </div>
+      <button class="btn ghost small" onclick="kundeZuruecksetzen()">Ändern</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ ANGEBOTSKOPF ═══════════ -->
+  <div class="card">
+    <h2>Angebotsdaten</h2>
+    <div class="row">
+      <input id="ag-bezeichnung" type="text" placeholder="Bezeichnung, z.B. Drehtürsystem Haupteingang" autocomplete="off">
+    </div>
+    <div class="row">
+      <input id="ag-gueltig-bis" type="date" placeholder="Gültig bis">
+      <input id="ag-rabatt" type="number" step="0.1" min="0" max="100" placeholder="Rabatt in %" value="0" oninput="summeNeuBerechnen()">
+    </div>
+  </div>
+
+  <!-- ═══════════ POSITIONEN ═══════════ -->
+  <div class="card">
+    <h2>Positionen</h2>
+    <p class="hint">Artikel aus der Preisliste suchen und hinzufügen, oder eine freie Position ohne Artikelnummer anlegen.</p>
+    <div class="search">
+      <input id="art-search" type="text" placeholder="Artikelnr. oder Bezeichnung suchen …" oninput="artikelSuchen()" autocomplete="off">
+      <div id="art-suggest" class="suggest" style="display:none"></div>
+    </div>
+    <div class="row" style="margin-bottom:16px">
+      <button class="btn ghost" onclick="freiePositionHinzufuegen()">+ Freie Position</button>
+    </div>
+
+    <div id="positionen-tabelle" style="overflow-x:auto;"></div>
+
+    <div class="summe">
+      <div class="zeile"><span>Zwischensumme (netto)</span><span id="sum-zwischen">0,00 €</span></div>
+      <div class="zeile"><span>Rabatt (<span id="sum-rabatt-pct">0</span> %)</span><span id="sum-rabatt">− 0,00 €</span></div>
+      <div class="zeile"><span>Netto nach Rabatt</span><span id="sum-netto">0,00 €</span></div>
+      <div class="zeile"><span>MwSt. (19 %)</span><span id="sum-mwst">0,00 €</span></div>
+      <div class="zeile brutto"><span>Gesamtsumme (brutto)</span><span id="sum-brutto">0,00 €</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ AKTIONEN ═══════════ -->
+  <div class="card">
+    <div class="row">
+      <button class="btn ghost" id="btn-speichern" onclick="angebotSpeichern()">Als Entwurf speichern</button>
+      <button class="btn" id="btn-pdf" onclick="angebotPdfErzeugen()">PDF erzeugen &amp; ablegen</button>
+    </div>
+    <p class="status-msg" id="ag-status"></p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+
+function toast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(function(){t.classList.remove('show');},2200);
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function eur(n){
+  return (Number(n)||0).toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+function supabaseHeaders(extra){
+  var t = (window.TSAuth && TSAuth.getToken()) || TENANT.supabaseKey;
+  return Object.assign({
+    'apikey': TENANT.supabaseKey,
+    'Authorization': 'Bearer ' + t,
+    'Content-Type': 'application/json'
+  }, extra || {});
+}
+function agStatus(txt, kind){
+  var el = document.getElementById('ag-status');
+  el.textContent = txt || '';
+  el.className = 'status-msg' + (kind ? ' ' + kind : '');
+}
+
+// ═══════════════════ STATE ═══════════════════
+var STATE = {
+  angebotId: null,
+  angebotsnummer: null,
+  kunde: null,       // {id, name, strasse, plz, ort}
+  positionen: []      // [{tempId, artikelnummer, bezeichnung, menge, einzelpreis}]
+};
+var MWST_SATZ = 0.19;
+var posCounter = 0;
+
+// ═══════════════════ KUNDE SUCHEN ═══════════════════
+var kundeSuchTimer = null;
+function kundeSuchen(){
+  var q = document.getElementById('kunde-search').value.trim();
+  clearTimeout(kundeSuchTimer);
+  var box = document.getElementById('kunde-suggest');
+  if(q.length < 2){ box.style.display = 'none'; box.innerHTML=''; return; }
+  kundeSuchTimer = setTimeout(function(){
+    fetch(TENANT.supabaseUrl + '/rest/v1/kunden?select=id,name,strasse,plz,ort&or=(name.ilike.*' + encodeURIComponent(q) + '*,ort.ilike.*' + encodeURIComponent(q) + '*)&limit=10', { headers: supabaseHeaders() })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        if(!rows.length){ box.innerHTML = '<div class="opt"><span class="t2">Keine Treffer</span></div>'; box.style.display='block'; return; }
+        box.innerHTML = rows.map(function(k){
+          var addr = [k.strasse, [k.plz,k.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+          return '<div class="opt" onclick=\'kundeWaehlen(' + JSON.stringify(k).replace(/'/g,"&#39;") + ')\'>' +
+            '<div class="t1">' + esc(k.name) + '</div><div class="t2">' + esc(addr||'—') + '</div></div>';
+        }).join('');
+        box.style.display = 'block';
+      })
+      .catch(function(){ box.style.display='none'; });
+  }, 250);
+}
+function kundeWaehlen(k){
+  STATE.kunde = k;
+  document.getElementById('kunde-search').value = '';
+  document.getElementById('kunde-suggest').style.display = 'none';
+  document.getElementById('kunde-suggest').innerHTML = '';
+  document.getElementById('kunde-picked-name').textContent = k.name;
+  document.getElementById('kunde-picked-addr').textContent = [k.strasse, [k.plz,k.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ') || '—';
+  document.getElementById('kunde-picked').style.display = 'flex';
+}
+function kundeZuruecksetzen(){
+  STATE.kunde = null;
+  document.getElementById('kunde-picked').style.display = 'none';
+}
+
+// ═══════════════════ ARTIKEL AUS PREISLISTE SUCHEN ═══════════════════
+var artSuchTimer = null;
+function artikelSuchen(){
+  var q = document.getElementById('art-search').value.trim();
+  clearTimeout(artSuchTimer);
+  var box = document.getElementById('art-suggest');
+  if(q.length < 2){ box.style.display = 'none'; box.innerHTML=''; return; }
+  artSuchTimer = setTimeout(function(){
+    fetch(TENANT.supabaseUrl + '/rest/v1/crm_preisliste?select=*&or=(bezeichnung.ilike.*' + encodeURIComponent(q) + '*,artikelnummer.ilike.*' + encodeURIComponent(q) + '*)&limit=15', { headers: supabaseHeaders() })
+      .then(function(r){ return r.json(); })
+      .then(function(rows){
+        if(!rows.length){ box.innerHTML = '<div class="opt"><span class="t2">Keine Treffer in der Preisliste</span></div>'; box.style.display='block'; return; }
+        box.innerHTML = rows.map(function(a){
+          return '<div class="opt" onclick=\'artikelHinzufuegen(' + JSON.stringify(a).replace(/'/g,"&#39;") + ')\'>' +
+            '<div class="t1">' + esc(a.bezeichnung) + ' &middot; ' + eur(a.preis) + '</div>' +
+            '<div class="t2">' + esc(a.artikelnummer || 'ohne Artikelnr.') + ' &middot; ' + esc(a.kategorie||'') + '</div></div>';
+        }).join('');
+        box.style.display = 'block';
+      })
+      .catch(function(){ box.style.display='none'; });
+  }, 250);
+}
+function artikelHinzufuegen(a){
+  STATE.positionen.push({
+    tempId: 'p' + (++posCounter),
+    artikelnummer: a.artikelnummer || '',
+    bezeichnung: a.bezeichnung || '',
+    menge: 1,
+    einzelpreis: Number(a.preis) || 0
+  });
+  document.getElementById('art-search').value = '';
+  document.getElementById('art-suggest').style.display = 'none';
+  document.getElementById('art-suggest').innerHTML = '';
+  renderPositionen();
+}
+function freiePositionHinzufuegen(){
+  STATE.positionen.push({ tempId: 'p' + (++posCounter), artikelnummer: '', bezeichnung: '', menge: 1, einzelpreis: 0 });
+  renderPositionen();
+}
+
+// ═══════════════════ POSITIONEN-TABELLE ═══════════════════
+function renderPositionen(){
+  var container = document.getElementById('positionen-tabelle');
+  if(!STATE.positionen.length){ container.innerHTML = '<p class="empty">Noch keine Positionen.</p>'; summeNeuBerechnen(); return; }
+
+  var html = '<table class="pos-row"><thead><tr><th>Artikelnr.</th><th>Bezeichnung</th><th>Menge</th><th>Einzelpreis</th><th>Gesamt</th><th></th></tr></thead><tbody>';
+  STATE.positionen.forEach(function(p){
+    var gesamt = (Number(p.menge)||0) * (Number(p.einzelpreis)||0);
+    html += '<tr data-temp-id="' + p.tempId + '">' +
+      '<td><input type="text" value="' + esc(p.artikelnummer) + '" oninput="posFeldAendern(\'' + p.tempId + '\',\'artikelnummer\',this.value)" placeholder="optional"></td>' +
+      '<td><input type="text" value="' + esc(p.bezeichnung) + '" oninput="posFeldAendern(\'' + p.tempId + '\',\'bezeichnung\',this.value)" placeholder="Bezeichnung"></td>' +
+      '<td class="num"><input type="number" step="1" min="0" value="' + esc(p.menge) + '" oninput="posFeldAendern(\'' + p.tempId + '\',\'menge\',this.value)"></td>' +
+      '<td class="num"><input type="number" step="0.01" min="0" value="' + esc(p.einzelpreis) + '" oninput="posFeldAendern(\'' + p.tempId + '\',\'einzelpreis\',this.value)"></td>' +
+      '<td class="num mono">' + eur(gesamt) + '</td>' +
+      '<td><button class="btn ghost small" onclick="posEntfernen(\'' + p.tempId + '\')">&times;</button></td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+  summeNeuBerechnen();
+}
+function posFeldAendern(tempId, feld, wert){
+  var p = STATE.positionen.find(function(x){ return x.tempId === tempId; });
+  if(!p) return;
+  p[feld] = (feld === 'menge' || feld === 'einzelpreis') ? (parseFloat(wert) || 0) : wert;
+  // Gesamt-Zelle und Summe live nachziehen, ohne die ganze Tabelle (inkl. Fokus) neu zu rendern
+  var tr = document.querySelector('tr[data-temp-id="' + tempId + '"]');
+  if(tr && (feld === 'menge' || feld === 'einzelpreis')){
+    tr.querySelector('td.mono').textContent = eur((Number(p.menge)||0) * (Number(p.einzelpreis)||0));
+  }
+  summeNeuBerechnen();
+}
+function posEntfernen(tempId){
+  STATE.positionen = STATE.positionen.filter(function(x){ return x.tempId !== tempId; });
+  renderPositionen();
+}
+
+// ═══════════════════ SUMME ═══════════════════
+function summeNeuBerechnen(){
+  var zwischen = STATE.positionen.reduce(function(sum,p){ return sum + (Number(p.menge)||0)*(Number(p.einzelpreis)||0); }, 0);
+  var rabattPct = parseFloat(document.getElementById('ag-rabatt').value) || 0;
+  var rabattBetrag = zwischen * rabattPct / 100;
+  var netto = zwischen - rabattBetrag;
+  var mwst = netto * MWST_SATZ;
+  var brutto = netto + mwst;
+
+  document.getElementById('sum-zwischen').textContent = eur(zwischen);
+  document.getElementById('sum-rabatt-pct').textContent = rabattPct;
+  document.getElementById('sum-rabatt').textContent = '\u2212 ' + eur(rabattBetrag);
+  document.getElementById('sum-netto').textContent = eur(netto);
+  document.getElementById('sum-mwst').textContent = eur(mwst);
+  document.getElementById('sum-brutto').textContent = eur(brutto);
+
+  return { zwischen: zwischen, rabattPct: rabattPct, rabattBetrag: rabattBetrag, netto: netto, mwst: mwst, brutto: brutto };
+}
+
+// ═══════════════════ ANGEBOTSNUMMER ═══════════════════
+function naechsteAngebotsnummer(){
+  var jahr = new Date().getFullYear();
+  return fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebote?select=angebotsnummer&angebotsnummer=like.AN-' + jahr + '-*&order=angebotsnummer.desc&limit=1', { headers: supabaseHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      var next = 1;
+      if(rows.length && rows[0].angebotsnummer){
+        var letzte = parseInt(rows[0].angebotsnummer.split('-')[2], 10);
+        if(!isNaN(letzte)) next = letzte + 1;
+      }
+      return 'AN-' + jahr + '-' + String(next).padStart(4, '0');
+    });
+}
+
+// ═══════════════════ SPEICHERN ═══════════════════
+function angebotValidieren(){
+  if(!STATE.kunde){ agStatus('Bitte zuerst einen Kunden auswählen.', 'err'); return false; }
+  if(!STATE.positionen.length){ agStatus('Bitte mindestens eine Position hinzufügen.', 'err'); return false; }
+  return true;
+}
+
+function angebotSpeichern(){
+  if(!angebotValidieren()) return;
+  var btn = document.getElementById('btn-speichern');
+  btn.disabled = true;
+  agStatus('Speichere …');
+
+  angebotSpeichernPromise()
+    .then(function(){
+      agStatus('Gespeichert als Entwurf' + (STATE.angebotsnummer ? ' — ' + STATE.angebotsnummer : '') + '.', 'ok');
+      toast('Angebot gespeichert');
+    })
+    .catch(function(err){
+      console.error('Speichern fehlgeschlagen:', err);
+      agStatus('Speichern fehlgeschlagen — bitte erneut versuchen.', 'err');
+    })
+    .finally(function(){ btn.disabled = false; });
+}
+
+// ═══════════════════ PDF ERZEUGEN & HOCHLADEN ═══════════════════
+function angebotPdfErzeugen(){
+  if(!angebotValidieren()) return;
+  var btn = document.getElementById('btn-pdf');
+  btn.disabled = true;
+  agStatus('Erzeuge PDF …');
+
+  var weiter = STATE.angebotId ? Promise.resolve() : angebotSpeichernPromise();
+
+  weiter
+    .then(function(){
+      var b = summeNeuBerechnen();
+      var doc = pdfBauen(b);
+      var blob = doc.output('blob');
+      var pfad = STATE.kunde.id + '/' + STATE.angebotsnummer + '.pdf';
+      return fetch(TENANT.supabaseUrl + '/storage/v1/object/' + TENANT.bucketAngebote + '/' + pfad, {
+        method: 'POST', headers: supabaseHeaders({ 'Content-Type': 'application/pdf', 'x-upsert': 'true' }),
+        body: blob
+      }).then(function(r){ if(!r.ok) throw new Error('Upload fehlgeschlagen (' + r.status + ')'); })
+        .then(function(){
+          var url = TENANT.supabaseUrl + '/storage/v1/object/public/' + TENANT.bucketAngebote + '/' + pfad;
+          return fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebote?id=eq.' + STATE.angebotId, {
+            method: 'PATCH', headers: Object.assign({}, supabaseHeaders(), {'Prefer':'return=minimal'}),
+            body: JSON.stringify({ datei_url: url, datei_name: STATE.angebotsnummer + '.pdf' })
+          });
+        })
+        .then(function(){ doc.save(STATE.angebotsnummer + '.pdf'); });
+    })
+    .then(function(){
+      agStatus('PDF erzeugt und im CRM abgelegt — ' + STATE.angebotsnummer + '.', 'ok');
+      toast('PDF erzeugt');
+    })
+    .catch(function(err){
+      console.error('PDF-Erzeugung fehlgeschlagen:', err);
+      agStatus('PDF-Erzeugung fehlgeschlagen — bitte erneut versuchen.', 'err');
+    })
+    .finally(function(){ btn.disabled = false; });
+}
+
+// Gleiche Logik wie angebotSpeichern(), aber als verkettbares Promise für angebotPdfErzeugen().
+function angebotSpeichernPromise(){
+  var bezeichnung = document.getElementById('ag-bezeichnung').value.trim() || ('Angebot ' + STATE.kunde.name);
+  var gueltigBis = document.getElementById('ag-gueltig-bis').value || null;
+  var rabatt = parseFloat(document.getElementById('ag-rabatt').value) || 0;
+
+  var kopf = STATE.angebotId
+    ? fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebote?id=eq.' + STATE.angebotId, {
+        method: 'PATCH', headers: Object.assign({}, supabaseHeaders(), {'Prefer':'return=minimal'}),
+        body: JSON.stringify({ kunde_id: STATE.kunde.id, bezeichnung: bezeichnung, gueltig_bis: gueltigBis, rabatt_prozent: rabatt })
+      }).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); })
+    : naechsteAngebotsnummer().then(function(nr){
+        STATE.angebotsnummer = nr;
+        return fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebote', {
+          method: 'POST', headers: Object.assign({}, supabaseHeaders(), {'Prefer':'return=representation'}),
+          body: JSON.stringify({ kunde_id: STATE.kunde.id, bezeichnung: bezeichnung, status: 'offen',
+            gueltig_bis: gueltigBis, rabatt_prozent: rabatt, angebotsnummer: nr, betrag: 0 })
+        }).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(rows){ STATE.angebotId = rows[0].id; });
+      });
+
+  return kopf.then(function(){
+    return fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebotspositionen?angebot_id=eq.' + STATE.angebotId, {
+      method: 'DELETE', headers: Object.assign({}, supabaseHeaders(), {'Prefer':'return=minimal'})
+    }).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); });
+  }).then(function(){
+    var body = STATE.positionen.map(function(p, i){
+      return { angebot_id: STATE.angebotId, artikelnummer: p.artikelnummer || null, bezeichnung: p.bezeichnung,
+        menge: Number(p.menge)||0, einzelpreis: Number(p.einzelpreis)||0, reihenfolge: i };
+    });
+    return fetch(TENANT.supabaseUrl + '/rest/v1/crm_angebotspositionen', {
+      method: 'POST', headers: Object.assign({}, supabaseHeaders(), {'Prefer':'return=minimal'}),
+      body: JSON.stringify(body)
+    });
+  }).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); });
+}
+
+function pdfBauen(summe){
+  var jsPDFCtor = window.jspdf.jsPDF;
+  var doc = new jsPDFCtor({ unit: 'mm', format: 'a4' });
+  var pageW = 210, margin = 16, usableW = pageW - margin*2;
+  var y = 18;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(TENANT.name || 'TS-Suite', pageW - margin, y, { align: 'right' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 6;
+  doc.text(TENANT.untertitel || '', pageW - margin, y, { align: 'right' });
+  y += 12;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(18);
+  doc.text('Angebot', margin, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.text(STATE.angebotsnummer || '', pageW - margin, y, { align: 'right' });
+  y += 10;
+
+  // Kunde-Adresse
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(STATE.kunde.name || '', margin, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  var adrZeile = [STATE.kunde.strasse, [STATE.kunde.plz, STATE.kunde.ort].filter(Boolean).join(' ')].filter(Boolean);
+  adrZeile.forEach(function(z){ y += 5; doc.text(z, margin, y); });
+
+  // Meta rechts: Datum, gültig bis
+  var yMeta = y - (adrZeile.length*5) - 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  doc.text('Datum: ' + new Date().toLocaleDateString('de-DE'), pageW - margin, yMeta, { align: 'right' });
+  var gueltigBis = document.getElementById('ag-gueltig-bis').value;
+  if(gueltigBis){
+    doc.text('Gültig bis: ' + new Date(gueltigBis).toLocaleDateString('de-DE'), pageW - margin, yMeta + 5, { align: 'right' });
+  }
+  y += 12;
+
+  var bezeichnung = document.getElementById('ag-bezeichnung').value.trim();
+  if(bezeichnung){
+    doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text(bezeichnung, margin, y);
+    y += 9;
+  }
+
+  // Positionstabelle
+  var colArt = 26, colMenge = 16, colPreis = 26, colGesamt = 28;
+  var colBez = usableW - colArt - colMenge - colPreis - colGesamt;
+  function drawHead(){
+    var h = 7;
+    doc.setFillColor(235,235,235);
+    doc.rect(margin, y, usableW, h, 'F');
+    doc.rect(margin, y, usableW, h);
+    var x = margin;
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.text('Artikelnr.', x+2, y+5); x += colArt; doc.line(x,y,x,y+h);
+    doc.text('Bezeichnung', x+2, y+5); x += colBez; doc.line(x,y,x,y+h);
+    doc.text('Menge', x+2, y+5); x += colMenge; doc.line(x,y,x,y+h);
+    doc.text('Einzelpreis', x+2, y+5); x += colPreis; doc.line(x,y,x,y+h);
+    doc.text('Gesamt', x+2, y+5);
+    y += h;
+  }
+  drawHead();
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  STATE.positionen.forEach(function(p){
+    var gesamt = (Number(p.menge)||0) * (Number(p.einzelpreis)||0);
+    var bezLines = doc.splitTextToSize(p.bezeichnung || '', colBez - 4);
+    var rowH = Math.max(7, bezLines.length * 4.2 + 3);
+    if(y + rowH > 270){ doc.addPage(); y = 18; drawHead(); doc.setFont('helvetica','normal'); doc.setFontSize(9); }
+    doc.rect(margin, y, usableW, rowH);
+    var x = margin;
+    doc.text(p.artikelnummer || '—', x+2, y+5); x += colArt; doc.line(x,y,x,y+rowH);
+    doc.text(bezLines, x+2, y+5); x += colBez; doc.line(x,y,x,y+rowH);
+    doc.text(String(p.menge), x+2, y+5); x += colMenge; doc.line(x,y,x,y+rowH);
+    doc.text(eur(p.einzelpreis), x+2, y+5); x += colPreis; doc.line(x,y,x,y+rowH);
+    doc.text(eur(gesamt), x+2, y+5);
+    y += rowH;
+  });
+  y += 10;
+
+  // Summenblock rechtsbündig
+  function summenzeile(label, wert, fett){
+    doc.setFont('helvetica', fett?'bold':'normal'); doc.setFontSize(fett?11:9.5);
+    doc.text(label, pageW - margin - 55, y);
+    doc.text(wert, pageW - margin, y, { align: 'right' });
+    y += fett ? 7 : 5.5;
+  }
+  if(y > 260){ doc.addPage(); y = 18; }
+  summenzeile('Zwischensumme (netto)', eur(summe.zwischen), false);
+  if(summe.rabattPct > 0) summenzeile('Rabatt (' + summe.rabattPct + ' %)', '\u2212 ' + eur(summe.rabattBetrag), false);
+  summenzeile('Netto nach Rabatt', eur(summe.netto), false);
+  summenzeile('MwSt. (19 %)', eur(summe.mwst), false);
+  y += 2;
+  doc.setLineWidth(0.3); doc.line(pageW - margin - 55, y-4, pageW - margin, y-4);
+  summenzeile('Gesamtsumme (brutto)', eur(summe.brutto), true);
+
+  return doc;
+}
+
+renderPositionen();
+
+// ═══════════════════ ROLLEN-GATE (wie admin.html) ═══════════════════
+(window.TSAuth && TSAuth.ready ? TSAuth.ready : Promise.resolve()).then(function(){
+  if(!window.TSAuth || !TSAuth.isUnlocked()) return;
+  document.getElementById('admin-gate').style.display = 'none';
+  document.getElementById('admin-content').style.display = 'block';
+});
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#kunde-search') && !e.target.closest('#kunde-suggest')){
+    document.getElementById('kunde-suggest').style.display = 'none';
+  }
+  if(!e.target.closest('#art-search') && !e.target.closest('#art-suggest')){
+    document.getElementById('art-suggest').style.display = 'none';
+  }
+});
+
+</script>
+</div><!-- /admin-content -->
+
+</body>
+</html>
