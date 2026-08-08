@@ -1530,8 +1530,8 @@ function onMACodesLoaded(){
   var msg=document.getElementById('code-gate-msg');
   if(msg && msg.textContent==='Lade Codes …') msg.textContent='';
 }
-loadMAcodes();
-renderArtikelStatus();
+try{ loadMAcodes(); }catch(e){ console.error('loadMAcodes() fehlgeschlagen:', e); }
+try{ renderArtikelStatus(); }catch(e){ console.error('renderArtikelStatus() fehlgeschlagen:', e); }
 
 // ─── Zentrale Artikelnummern laden (artikel.json) + Abdeckungs-Check ────────────
 var ARTIKEL_CACHE_KEY='ts_artikelnummern_cache';
@@ -1609,7 +1609,7 @@ window.artikelAbdeckung=function(){
   if(a.verdaechtig.length){ console.log('— Kein Nr.-Format ('+a.verdaechtig.length+'):'); console.table(a.verdaechtig.map(function(f){return {Key:f.key,Wert:f.nr,Komponente:f.ctx};})); }
   return a;
 };
-loadArtikel();
+try{ loadArtikel(); }catch(e){ console.error('loadArtikel() fehlgeschlagen:', e); }
 
 function logMaCode(code) {
   try {
@@ -2023,7 +2023,7 @@ function handleClick(ev){
     return;
   }
   var a=btn.dataset.action,f=btn.dataset.field,v=btn.dataset.value;
-  if(a==='prod'){S.produkt=v;S.showSummary=false;render();return;}
+  if(a==='prod'){S.produkt=v;S.showSummary=false;autosave();render();return;}
   if(a==='radio') set(f,v);
   if(a==='chk')   toggleArr(f,v);
 }
@@ -2047,7 +2047,7 @@ function handleGPS(){
             bs_strasse:(road+nr).trim(),
             bs_plzort:(plz+(city?' '+city:'')).trim(),
             gpsLoading:false,gpsError:''
-          });render();
+          });autosave();render();
         })
         .catch(function(){
           S=Object.assign({},S,{gpsLoading:false,gpsError:'Adresse konnte nicht ermittelt werden. Internetverbindung prüfen.'});render();
@@ -2178,8 +2178,8 @@ function FOTO_PDF(){
     +'<div style="border:1px solid var(--border);border-top:none;padding:10px;display:flex;flex-wrap:wrap;gap:8px">'+imgs+'</div></div>';
 }
 
-render();
-fotoInit();
+try{ render(); }catch(e){ console.error('render() fehlgeschlagen:', e); }
+try{ fotoInit(); }catch(e){ console.error('fotoInit() fehlgeschlagen:', e); }
 
 
 // ─── Mitarbeitercode-Gate beim Laden anzeigen ──────────────────────────────────

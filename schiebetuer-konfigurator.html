@@ -1871,7 +1871,7 @@ function handleClick(ev){
     return;
   }
   var a=btn.dataset.action,f=btn.dataset.field,v=btn.dataset.value;
-  if(a==='prod'){S.produkt=v;S.showSummary=false;render();return;}
+  if(a==='prod'){S.produkt=v;S.showSummary=false;autosave();render();return;}
   if(a==='radio') set(f,v);
   if(a==='chk')   toggleArr(f,v);
 }
@@ -1895,7 +1895,7 @@ function handleGPS(){
             bs_strasse:(road+nr).trim(),
             bs_plzort:(plz+(city?' '+city:'')).trim(),
             gpsLoading:false,gpsError:''
-          });render();
+          });autosave();render();
         })
         .catch(function(){
           S=Object.assign({},S,{gpsLoading:false,gpsError:'Adresse konnte nicht ermittelt werden. Internetverbindung prüfen.'});render();
