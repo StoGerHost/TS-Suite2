@@ -1321,6 +1321,7 @@ const AUTOSAVE_KEY = 'aufmass_autosave_v1';
 const AUTOSAVE_META_KEY = 'aufmass_autosave_meta';
 let autosaveTimer = null;
 let pendingRestore = null;
+let pendingRestoreDoorCount = 1;
 let doorPanels = [];
 let activeDoorIndex = 0;
 let deferredInstallPrompt = null;
@@ -3129,6 +3130,7 @@ function checkForAutosave() {
         : `💾 Nicht gespeicherte Eingaben gefunden – zum Wiederherstellen klicken`;
     }
     pendingRestore = raw;
+    pendingRestoreDoorCount = meta.doorCount || 1;
     banner.classList.add('visible', 'restore');
   } catch(e) {}
 }
@@ -3136,6 +3138,11 @@ function checkForAutosave() {
 function restoreAutosave() {
   if (!pendingRestore) return;
   try {
+    // Fehlende Türpanels nachbauen, sonst passen die gespeicherten Index-Keys
+    // (id + '_' + i) nicht mehr zu den aktuell im DOM vorhandenen Feldern.
+    while (doorPanels.length < pendingRestoreDoorCount) {
+      addNewDoor();
+    }
     const data = JSON.parse(pendingRestore);
     const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea');
     const checks = document.querySelectorAll('input[type="checkbox"], input[type="radio"]');
@@ -3147,6 +3154,9 @@ function restoreAutosave() {
       const key = (el.id || el.name || '') + '_chk_' + i;
       if (data[key] !== undefined) el.checked = data[key];
     });
+    if (typeof data['__activeDoorTab'] === 'number') {
+      switchDoor(Math.min(data['__activeDoorTab'], doorPanels.length - 1));
+    }
   } catch(e) {}
   dismissAutosave();
   updateFilenamePreview();
