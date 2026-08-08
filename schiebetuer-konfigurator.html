@@ -594,7 +594,7 @@ let S={
   showSummary:false,
   notizen:"",tueranzahl:"1",
 };
-function set(k,v){S=Object.assign({},S,{[k]:v});render();}
+function set(k,v){S=Object.assign({},S,{[k]:v});autosave();render();}
 function toggleArr(k,v){var a=S[k]||[];S=Object.assign({},S,{[k]:a.includes(v)?a.filter(function(x){return x!==v}):[...a,v]});autosave();render();}
 function isDK(){return S.produkt==="dk";}
 function isRC(){return S.produkt==="rc";}
@@ -1388,8 +1388,8 @@ function onMACodesLoaded(){
   var msg=document.getElementById('code-gate-msg');
   if(msg && msg.textContent==='Lade Codes …') msg.textContent='';
 }
-loadMAcodes();
-renderArtikelStatus();
+try{ loadMAcodes(); }catch(e){ console.error('loadMAcodes() fehlgeschlagen:', e); }
+try{ renderArtikelStatus(); }catch(e){ console.error('renderArtikelStatus() fehlgeschlagen:', e); }
 
 // ─── Zentrale Artikelnummern: Supabase (live) mit lokalem Cache für den
 // Offline-Fall beim Kunden vor Ort. Ersetzt das bisherige artikel.json +
@@ -1483,7 +1483,7 @@ window.artikelAbdeckung=function(){
   if(a.verdaechtig.length){ console.log('— Kein Nr.-Format ('+a.verdaechtig.length+'):'); console.table(a.verdaechtig.map(function(f){return {Key:f.key,Wert:f.nr,Komponente:f.ctx};})); }
   return a;
 };
-loadArtikel();
+try{ loadArtikel(); }catch(e){ console.error('loadArtikel() fehlgeschlagen:', e); }
 function logMaCode(code){
   try{
     var logs=JSON.parse(localStorage.getItem('stober_ma_logs'))||[];
@@ -2022,8 +2022,8 @@ function FOTO_PDF(){
     +'<div style="border:1px solid #D2DAE3;border-top:none;padding:10px;display:flex;flex-wrap:wrap;gap:8px">'+imgs+'</div></div>';
 }
 
-render();
-fotoInit();
+try{ render(); }catch(e){ console.error('render() fehlgeschlagen:', e); }
+try{ fotoInit(); }catch(e){ console.error('fotoInit() fehlgeschlagen:', e); }
 
 
 // ─── Admin: MA-Code Logs (Browser-Konsole) ─────────────────────────────────
