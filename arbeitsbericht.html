@@ -1,0 +1,3178 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Arbeitsbericht — Blueprint</title>
+<script src="config.js"></script>
+<script src="ts-auth.js" data-gate data-title="Arbeitsbericht"></script>
+<style>
+/* --- Einheitliche TS-Suite-Backbar (auf allen Seiten identisch) --- */
+.ts-backbar{position:sticky;top:0;z-index:9999;display:flex;align-items:center;gap:10px;
+  background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  font:600 12px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.03em;
+  border-bottom:1px solid rgba(120,140,160,.35);flex-wrap:wrap;}
+.ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:color .15s ease;white-space:nowrap;}
+@media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
+.ts-backbar__slash{color:rgba(233,237,242,.4);}
+.ts-backbar__current{color:#3a7bd5;font-weight:700;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Gemeinsame PDF-Layout-Funktion, auch von uebersicht.html genutzt ("PDF neu erzeugen") -->
+<script src="ts-pdf-arbeitsbericht.js"></script>
+<style>
+  :root{
+    --bg:#0e1318;
+    --panel:#161d24;
+    --panel-2:#1b232b;
+    --line:#28333d;
+    --blue:#4a90b8;
+    --blue-dim:#2e4a5a;
+    --amber:#e8934a;
+    --text:#e7edf2;
+    --muted:#8394a1;
+    --danger:#c9604f;
+    --ok:#5c9e7c;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--bg),var(--bg)),
+      repeating-linear-gradient(0deg, rgba(74,144,184,0.05) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, rgba(74,144,184,0.05) 0 1px, transparent 1px 28px);
+    color:var(--text);
+    font-family:"IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+    padding:0 0 80px 0;
+    min-height:100vh;
+  }
+  @font-face{font-family:'IBM Plex Sans';src:local('Arial');}
+  .mono{font-family:"IBM Plex Mono","Courier New",monospace;}
+
+  header{
+    padding:22px 18px 16px;
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:5;
+    background:rgba(14,19,24,0.92);
+    backdrop-filter:blur(6px);
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--blue); margin:0 0 6px;
+  }
+  h1{font-size:20px; margin:0; font-weight:600; letter-spacing:-.01em;}
+  .sub{color:var(--muted); font-size:13px; margin-top:4px;}
+
+  main{padding:18px; max-width:640px; margin:0 auto;}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:16px;
+    position:relative;
+    padding:18px 16px 20px;
+  }
+  .card::before, .card::after{
+    content:""; position:absolute; width:9px; height:9px;
+    border:1px solid var(--blue-dim); opacity:.7;
+  }
+  .card::before{top:-1px; left:-1px; border-right:none; border-bottom:none;}
+  .card::after{bottom:-1px; right:-1px; border-left:none; border-top:none;}
+
+  .card-title{
+    font-family:"IBM Plex Mono",monospace;
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--amber); margin:0 0 14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title .n{
+    color:var(--muted); font-size:11px;
+  }
+
+  label{
+    display:block; font-size:12px; color:var(--muted); margin:12px 0 5px;
+  }
+  label:first-of-type{margin-top:0;}
+
+  input[type=text], input[type=date], input[type=time], input[type=tel], input[type=email], input[type=number], textarea, select{
+    width:100%; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--text); padding:10px 11px; border-radius:var(--radius);
+    font-size:14.5px; font-family:inherit;
+  }
+  input:focus, textarea:focus, select:focus{
+    outline:none; border-color:var(--blue);
+  }
+  textarea{min-height:90px; resize:vertical;}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .pdf-drop{
+    border:1px dashed var(--line); border-radius:var(--radius);
+    padding:16px; text-align:center; cursor:pointer;
+    background:var(--panel-2); color:var(--muted); font-size:13px;
+  }
+  .pdf-drop:hover{border-color:var(--blue);}
+  .pdf-status{font-size:12px; margin-top:8px;}
+  .pdf-status.ok{color:var(--ok);}
+  .pdf-status.err{color:var(--danger);}
+
+  .zeit-row{
+    display:grid; grid-template-columns:1fr 1fr auto; gap:8px;
+    align-items:end; margin-bottom:10px;
+    padding-bottom:10px; border-bottom:1px solid var(--line);
+  }
+  .zeit-row:last-of-type{border-bottom:none;}
+  .icon-btn{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    width:38px; height:38px; border-radius:var(--radius); cursor:pointer; font-size:16px;
+  }
+  .icon-btn:hover{border-color:var(--danger); color:var(--danger);}
+
+  .add-btn{
+    background:transparent; border:1px solid var(--blue-dim); color:var(--blue);
+    padding:9px 14px; border-radius:var(--radius); cursor:pointer;
+    font-size:13px; font-family:"IBM Plex Mono",monospace; margin-top:4px;
+  }
+  .add-btn:hover{border-color:var(--blue); background:rgba(74,144,184,0.08);}
+
+  .zeit-total{
+    margin-top:10px; font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--amber);
+  }
+
+  .photo-actions{display:flex; gap:10px; margin-bottom:12px;}
+  .photo-actions label{
+    margin:0; flex:1; text-align:center; padding:11px 8px;
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--panel-2); color:var(--text); font-size:13px; cursor:pointer;
+  }
+  .photo-actions label:hover{border-color:var(--blue);}
+  .photo-actions input{display:none;}
+  .thumbs{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .thumb{position:relative; aspect-ratio:1; border-radius:var(--radius); overflow:hidden; border:1px solid var(--line);}
+  .thumb img{width:100%; height:100%; object-fit:cover; display:block;}
+  .thumb .rm{
+    position:absolute; top:3px; right:3px; background:rgba(14,19,24,0.85);
+    color:var(--danger); border:none; width:22px; height:22px; border-radius:50%;
+    cursor:pointer; font-size:13px; line-height:1;
+  }
+
+  canvas#sig{
+    width:100%; height:160px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:var(--radius); touch-action:none;
+    display:block;
+  }
+  .sig-actions{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+  .clear-link{background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; text-decoration:underline;}
+  .sig-name{margin-top:10px;}
+
+  .generate{
+    position:sticky; bottom:0; padding:14px 18px 22px;
+    background:linear-gradient(transparent, var(--bg) 30%);
+  }
+  .generate button{
+    width:100%; background:var(--amber); color:#1a1208; border:none;
+    padding:15px; font-size:14.5px; font-weight:600; border-radius:var(--radius);
+    cursor:pointer; font-family:"IBM Plex Mono",monospace; letter-spacing:.02em;
+  }
+  .generate button:hover{background:#f3a361;}
+  .generate button:disabled{background:var(--line); color:var(--muted); cursor:not-allowed;}
+  .gen-status{text-align:center; font-size:12px; color:var(--muted); margin-top:8px; min-height:16px;}
+  .gen-status.err{color:var(--danger);}
+  .db-status{display:inline-flex; align-items:center; gap:6px; font-size:10.5px; color:var(--muted); font-family:"IBM Plex Mono",monospace; cursor:pointer; white-space:nowrap;}
+  .db-dot{width:8px; height:8px; border-radius:50%; display:inline-block; background:var(--muted); flex-shrink:0;}
+  .db-dot.green{background:var(--ok); box-shadow:0 0 6px rgba(92,158,124,0.7);}
+  .db-dot.yellow{background:#e0c34a; box-shadow:0 0 6px rgba(224,195,74,0.7);}
+  .db-dot.red{background:var(--danger); box-shadow:0 0 6px rgba(201,96,79,0.7);}
+
+  /* --- Wartungs-Generator --- */
+  .wg-anlage{
+    border:1px solid var(--line); border-radius:var(--radius); padding:11px 10px;
+    background:var(--panel-2); cursor:pointer; user-select:none;
+  }
+  .wg-anlage .name{font-size:13.5px;font-weight:600;color:var(--text);}
+  .wg-anlage .norm{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);margin-top:3px;}
+  .wg-anlage.active{border-color:var(--blue); background:rgba(74,144,184,0.12);}
+
+  .wg-instance{
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--panel-2); margin-bottom:16px; overflow:hidden;
+  }
+  .wg-instance-header{
+    display:flex; align-items:center; gap:8px; padding:10px 10px;
+    border-bottom:1px solid var(--line); background:var(--panel);
+  }
+  .wg-instance-label{
+    flex:1; background:transparent; border:none; color:var(--amber);
+    font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:600;
+    padding:4px 2px; border-bottom:1px dashed var(--line);
+  }
+  .wg-instance-label:focus{outline:none; border-bottom-color:var(--blue);}
+  .wg-instance-norm{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);white-space:nowrap;}
+  .wg-instance-toggle, .wg-instance-remove{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    width:28px; height:28px; border-radius:var(--radius); cursor:pointer; font-size:14px; flex-shrink:0;
+  }
+  .wg-instance-remove:hover{border-color:var(--danger); color:var(--danger);}
+  .wg-instance-body{padding:12px 10px;}
+  .wg-instance-body.collapsed{display:none;}
+
+  .wg-einsatzart-row{
+    display:flex; width:100%; gap:6px; margin-top:8px; flex-basis:100%;
+  }
+  .wg-einsatzart-btn{
+    flex:1; padding:6px 0; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--panel-2); font-size:12px; font-weight:600; text-align:center; cursor:pointer;
+    color:var(--muted);
+  }
+  .wg-einsatzart-btn.sel{border-color:var(--blue); background:rgba(74,144,184,0.14); color:var(--text);}
+
+  .wg-general-block{
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:11px 10px; margin-bottom:14px; background:var(--panel);
+  }
+  .wg-general-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); margin-bottom:9px;
+  }
+  .wg-general-row{margin-bottom:9px;}
+  .wg-general-row:last-child{margin-bottom:0;}
+  .wg-general-label{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:5px;}
+  .wg-general-pair{display:flex;gap:6px;}
+  .wg-general-btn{
+    flex:1; padding:8px 0; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--panel-2); font-size:12px; font-weight:600; text-align:center; cursor:pointer;
+    color:var(--muted);
+  }
+  .wg-general-btn.pos.sel{border-color:var(--ok); color:var(--ok); background:rgba(92,158,124,0.12);}
+  .wg-general-btn.neg.sel{border-color:var(--danger); color:var(--danger); background:rgba(201,96,79,0.12);}
+
+  .wg-sub-title{
+    font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--muted);
+    margin:14px 0 8px;
+  }
+  .wg-stoerung-field{margin-bottom:12px;}
+  .wg-stoerung-field:last-child{margin-bottom:0;}
+
+  .wg-block-title{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin:20px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--line);
+  }
+  .wg-block-title .name{font-size:14px;font-weight:600;color:var(--amber);}
+  .wg-block-title .norm{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);}
+
+  .wg-point{
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:11px 12px; margin-bottom:8px; background:var(--panel);
+  }
+  .wg-point .txt{font-size:14px;color:var(--text);margin-bottom:4px;}
+  .wg-point .hint{font-size:11.5px;color:var(--muted);font-style:italic;margin-bottom:9px;line-height:1.35;}
+  .wg-toggle-row{display:flex;gap:6px;}
+  .wg-toggle-btn{
+    flex:1; padding:8px 0; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--panel-2); font-size:12.5px; font-weight:600; text-align:center; cursor:pointer;
+    color:var(--muted);
+  }
+  .wg-toggle-btn.ok.sel{border-color:var(--ok); color:var(--ok); background:rgba(92,158,124,0.12);}
+  .wg-toggle-btn.bad.sel{border-color:var(--danger); color:var(--danger); background:rgba(201,96,79,0.12);}
+  .wg-toggle-btn.na.sel{border-color:var(--muted); color:var(--text); background:rgba(131,148,161,0.14);}
+  .wg-note{margin-top:8px;display:none;}
+  .wg-note.show{display:block;}
+  .wg-note textarea{min-height:52px;}
+  .wg-section-title{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--amber);margin:16px 0 8px;padding-top:10px;border-top:1px dashed var(--line);}
+  .wg-section-title:first-child{margin-top:0;padding-top:0;border-top:none;}
+  .wg-value-row{display:flex;align-items:center;gap:8px;}
+  .wg-value-row input[type="text"]{flex:1;background:var(--bg2,var(--panel));border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13.5px;}
+  .wg-value-row .unit{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .wg-meta-block{background:rgba(74,144,184,0.06);border:1px solid var(--line);border-radius:10px;padding:10px 10px 4px;margin-bottom:14px;}
+  .wg-meta-title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .wg-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .wg-meta-grid input{background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:7px 9px;font-size:13px;}
+  .wg-meta-grid label{display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;}
+  .wg-fotoslots{display:flex;gap:8px;margin:6px 0 14px;}
+  .wg-fotoslot{position:relative;width:88px;height:88px;border-radius:10px;overflow:hidden;flex:0 0 auto;}
+  .wg-fotoslot.leer{border:2px dashed var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--muted);background:rgba(74,144,184,0.04);}
+  .wg-fotoslot.leer:active{background:rgba(74,144,184,0.1);}
+  .wg-fotoslot.leer .icon{font-size:20px;}
+  .wg-fotoslot.leer .lbl{font-size:9.5px;text-align:center;line-height:1.2;padding:0 4px;}
+  .wg-fotoslot.leer input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .wg-fotoslot.voll{border:2px solid var(--blue);}
+  .wg-fotoslot.voll img{width:100%;height:100%;object-fit:cover;display:block;}
+  .wg-fotoslot .rm{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;font-size:13px;line-height:1;cursor:pointer;}
+  .wg-betrieb-row{display:flex;gap:6px;margin-bottom:9px;}
+  .wg-maengel-field{margin-bottom:12px;}
+  .wg-maengel-field textarea{min-height:46px;}
+  .wg-vorjahr-row{margin-top:2px;}
+  .wg-vorjahr-btn{display:inline-block;font-size:11.5px;border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--muted);cursor:pointer;background:transparent;}
+  .wg-vorjahr-btn:hover{border-color:var(--blue); color:var(--text);}
+  .wg-vorjahr-panel{margin-top:8px;font-size:12.5px;line-height:1.5;padding:9px 10px;border-radius:8px;}
+  .wg-vorjahr-panel.found{background:rgba(201,96,79,0.08);border:1px solid rgba(201,96,79,0.3);}
+  .wg-vorjahr-panel.notfound,.wg-vorjahr-panel.loading,.wg-vorjahr-panel.error,.wg-vorjahr-panel.no-ident{color:var(--muted);font-style:italic;}
+  .wg-vorjahr-panel .vj-head{font-weight:700;color:var(--text);margin-bottom:3px;font-style:normal;}
+</style>
+</head>
+<body>
+<div class="ts-backbar">
+  <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
+  <span class="ts-backbar__slash" aria-hidden="true">/</span>
+  <span class="ts-backbar__current">Arbeitsbericht</span>
+</div>
+
+<header>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+    <div>
+      <p class="eyebrow">Blueprint · TS-Suite</p>
+      <h1>Arbeitsbericht</h1>
+      <div class="sub">Auftrag erfassen, abschließen, als PDF exportieren</div>
+      <div id="standortHinweis" style="display:none; margin-top:8px; font-size:11.5px; color:var(--amber); font-family:'IBM Plex Mono',monospace;">📍 GPS-Standort wird bei Berichtserstellung erfasst und übermittelt</div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+      <button id="adminBtn" title="Techniker-Verwaltung" style="background:transparent;border:1px solid var(--line);color:var(--muted);width:36px;height:36px;border-radius:var(--radius);cursor:pointer;font-size:15px;">⚙</button>
+      <span class="db-status" id="dbStatus" title="Zum Neu-Prüfen antippen">
+        <span class="db-dot" id="dbDot"></span>
+        <span id="dbLabel">prüfe ...</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<!-- Techniker-Auswahl (Ersteinrichtung) -->
+<div id="techModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.88);z-index:20;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px;max-width:400px;width:100%;">
+    <p class="card-title" style="margin-bottom:10px;">Wer bist du?</p>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px;">Dieses Gerät merkt sich deine Auswahl dauerhaft.</div>
+    <select id="techSelect" style="margin-bottom:14px;"></select>
+    <button class="add-btn" id="techConfirm" style="width:100%;text-align:center;">Bestätigen</button>
+  </div>
+</div>
+
+<!-- Admin: Techniker-Verwaltung -->
+<div id="adminModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.88);z-index:20;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px;max-width:420px;width:100%;max-height:85vh;overflow:auto;">
+    <p class="card-title" style="margin-bottom:14px;">Techniker-Verwaltung</p>
+    <div id="techList" style="margin-bottom:14px;"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <input type="text" id="newTechName" placeholder="Name neuer Techniker" style="flex:1;">
+      <button class="icon-btn" id="addTechBtn" style="width:44px;color:var(--ok);border-color:var(--ok);">+</button>
+    </div>
+    <div style="border-top:1px solid var(--line);padding:14px 0;">
+      <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-size:14px; cursor:pointer;">
+        <input type="checkbox" id="bilderSpeichernToggle" style="width:17px;height:17px;accent-color:var(--amber);">
+        Fotos &amp; Unterschrift zentral speichern
+      </label>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.4;">
+        Wenn aktiv, werden Fotos und Unterschrift zusätzlich zum lokalen PDF auch in die Datenbank hochgeladen (Supabase Storage) und sind dann in der Büroübersicht sichtbar. Verbraucht Speicherplatz — bei Bedarf ausschalten.
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--line);padding:14px 0;">
+      <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-size:14px; cursor:pointer;">
+        <input type="checkbox" id="standortToggle" style="width:17px;height:17px;accent-color:var(--amber);">
+        Standort beim Absenden mit übertragen
+      </label>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.4;">
+        Standardmäßig aktiv. Fragt beim Absenden eines Berichts den aktuellen GPS-Standort ab und speichert ihn mit. Der Browser fragt dafür explizit um Erlaubnis. Kann nur von Admins geändert werden — bei Nicht-Admins ist der Schalter gesperrt.
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--line);padding-top:14px;">
+      <button class="add-btn" id="switchTechBtn" style="width:100%;text-align:center;margin-bottom:8px;">Techniker dieses Geräts ändern</button>
+      <button class="clear-link" id="closeAdmin">schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Anlagen-Checkliste der Wartungsposition — nur sichtbar, wenn ein
+     "Vorgang" (Wartungsposition) mit hinterlegter Soll-Liste gewählt ist. -->
+<div class="card" id="checklistePanel" style="display:none;">
+  <p class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+    <span>Anlagen-Checkliste</span>
+    <span id="checklisteFortschritt" style="font-size:12px;color:var(--muted);font-weight:normal;"></span>
+  </p>
+  <div id="checklisteListe"></div>
+  <div style="margin-top:10px;">
+    <div class="clear-link" id="checklisteVerwaltenToggle" style="display:inline-block;cursor:pointer;">Anlagen verwalten</div>
+    <div id="checklisteVerwalten" style="display:none;margin-top:10px;">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="checklisteNeueIdent" placeholder="Ident-Nr." style="flex:1;">
+        <input type="text" id="checklisteNeueBezeichnung" placeholder="Bezeichnung (optional)" style="flex:2;">
+        <button type="button" class="icon-btn" id="checklisteHinzufuegenBtn" style="width:44px;color:var(--ok);border-color:var(--ok);">+</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:6px;">Einmal pro Wartungsposition gepflegt — gilt dann für alle künftigen Berichte zu diesem Vorgang.</div>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <div class="card">
+    <p class="card-title"><span class="n">01</span> Auftragsdaten</p>
+
+    <label>Angebots-PDF einlesen (optional — befüllt Felder unten)</label>
+    <div class="pdf-drop" id="pdfDrop">PDF auswählen oder hier ablegen</div>
+    <input type="file" id="pdfInput" accept="application/pdf" style="display:none">
+    <div class="pdf-status" id="pdfStatus"></div>
+
+    <button id="auftragBtn" style="background:none;border:1px solid var(--line);color:var(--blue);
+      font-size:12.5px;cursor:pointer;padding:8px 12px;border-radius:var(--radius);margin-top:8px;width:100%;">
+      📋 Auftrag aus CRM laden (.json)</button>
+    <input type="file" id="auftragInput" accept="application/json,.json" style="display:none">
+    <div class="pdf-status" id="auftragStatus"></div>
+
+    <label>Kunde</label>
+    <input type="text" id="fKunde" placeholder="z. B. Stadt Karlsruhe" list="kundenListe" autocomplete="off">
+    <datalist id="kundenListe"></datalist>
+
+    <label>Bauvorhaben</label>
+    <input type="text" id="fBauvorhaben" placeholder="z. B. Karlsburg BA3 BS-Sanierung">
+
+    <label>Zugehöriger Vorgang <span style="color:var(--muted);font-weight:normal;">(optional)</span></label>
+    <select id="fVorgang">
+      <option value="">– kein Vorgang / nicht zutreffend –</option>
+    </select>
+
+    <div id="lieferanschriftBlock" style="display:none;">
+      <label>Lieferanschrift <span style="color:var(--muted);font-weight:normal;">(abweichend von Kunde)</span></label>
+      <textarea id="fLieferanschrift" placeholder="Abweichende Lieferadresse" style="min-height:60px;"></textarea>
+    </div>
+    <button id="toggleLieferanschrift" style="background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;text-decoration:underline;margin-top:6px;padding:0;">+ abweichende Lieferanschrift</button>
+
+    <div class="row2" style="margin-top:14px;">
+      <div>
+        <label>Ansprechpartner vor Ort</label>
+        <input type="text" id="fAnsprechpartner" placeholder="Name">
+      </div>
+      <div>
+        <label>Telefonnummer</label>
+        <input type="tel" id="fTelefon" placeholder="0721 ...">
+      </div>
+    </div>
+    <label style="margin-top:10px;">E-Mail-Adresse</label>
+    <input type="email" id="fEmail" placeholder="name@firma.de">
+    <div class="pdf-status" id="emailStatus"></div>
+    <div class="pdf-status" id="kontaktStatus"></div>
+
+    <div class="row2">
+      <div>
+        <label>Angebots-/Auftragsnr.</label>
+        <input type="text" id="fAngebotsnr" placeholder="i-2026-XXXXX">
+      </div>
+      <div>
+        <label>Datum</label>
+        <input type="date" id="fDatum">
+      </div>
+    </div>
+
+    <label>Techniker</label>
+    <div style="display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 11px;">
+      <span id="fTechniker" class="mono" style="flex:1;color:var(--text);">–</span>
+      <button id="changeTechInline" style="background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;text-decoration:underline;">ändern</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="card-title"><span class="n">02</span> Zeiterfassung</p>
+    <div id="technikerZeitBlocks"></div>
+    <button class="add-btn" id="addTechnikerBlock">+ Weiterer Techniker auf der Baustelle</button>
+    <div class="zeit-total" id="zeitTotal">Gesamt: 0,0 Std.</div>
+  </div>
+
+  <div class="card">
+    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button type="button" class="add-btn" id="openWartungGen" style="flex:1;text-align:center;">+ Wartungs-Generator verwenden</button>
+    </div>
+    <textarea id="fTaetigkeit" placeholder="Was wurde gemacht? z. B. Montage, Reparatur, Störungsursache, durchgeführte Prüfungen ..." style="min-height:120px;"></textarea>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">Generator ergänzt den Text hier oben — du kannst danach noch frei weiterschreiben oder anpassen.</div>
+
+    <label style="margin-top:14px;">Status</label>
+    <div style="display:flex; gap:18px; margin-top:4px;">
+      <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-size:14px; cursor:pointer;">
+        <input type="radio" name="arbeitsstatus" id="statusBeendet" value="beendet" checked style="width:17px;height:17px;accent-color:var(--amber);">
+        Arbeiten beendet
+      </label>
+      <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-size:14px; cursor:pointer;">
+        <input type="radio" name="arbeitsstatus" id="statusFortgesetzt" value="fortgesetzt" style="width:17px;height:17px;accent-color:var(--amber);">
+        Wird fortgesetzt
+      </label>
+    </div>
+
+    <label style="margin-top:14px;">Interner Bericht <span style="color:var(--muted);font-weight:normal;">(nicht für den Kunden)</span></label>
+    <textarea id="fInternerBericht" placeholder="Nur für intern, z. B. Rückfragen an den Innendienst, Auffälligkeiten ..." style="min-height:70px;"></textarea>
+
+    <label style="margin-top:14px;">Hinweis</label>
+    <textarea id="fHinweis" placeholder="Zusätzlicher Hinweis, falls nötig ..." style="min-height:70px;"></textarea>
+  </div>
+
+  <div class="card">
+    <p class="card-title"><span class="n">04</span> Materialverbrauch</p>
+
+    <div id="materialSection" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--line);">
+        <input type="checkbox" id="selectAllMaterial" style="width:17px;height:17px;accent-color:var(--amber);">
+        <label for="selectAllMaterial" style="margin:0;color:var(--text);font-size:13px;cursor:pointer;">Alle auswählen</label>
+      </div>
+      <div id="materialChecklist"></div>
+    </div>
+
+    <label style="margin-top:14px;">Sonstiges / Kleinmaterial</label>
+    <textarea id="fMaterial" placeholder="Zusätzliches Material, das nicht im Angebot steht ..."></textarea>
+  </div>
+
+  <div class="card">
+    <p class="card-title"><span class="n">05</span> Fotos</p>
+    <div class="photo-actions">
+      <label>Kamera<input type="file" accept="image/*" capture="environment" id="photoCam"></label>
+      <label>Datei wählen<input type="file" accept="image/*" multiple id="photoFile"></label>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="pdf-status" id="medienStatus" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <p class="card-title"><span class="n">06</span> Kundenunterschrift</p>
+
+    <label style="display:flex; align-items:center; gap:8px; margin:0 0 14px; color:var(--text); font-size:14px; cursor:pointer;">
+      <input type="checkbox" id="keinAbnehmer" style="width:17px;height:17px;accent-color:var(--amber);">
+      Unterschriftsberechtigter nicht vor Ort
+    </label>
+
+    <div id="signatureSection">
+      <canvas id="sig" width="600" height="300"></canvas>
+      <div class="sig-actions">
+        <span style="font-size:12px;color:var(--muted);">Mit Finger oder Maus unterschreiben</span>
+        <button class="clear-link" id="clearSig">löschen</button>
+      </div>
+      <div class="sig-name">
+        <label>Name des Kunden (Druckschrift)</label>
+        <input type="text" id="fKundenname" placeholder="Name in Druckschrift">
+      </div>
+      <label style="margin-top:12px;">Funktion des Abnehmers</label>
+      <input type="text" id="fAbnehmerFunktion" placeholder="z. B. Hausmeister, Objektleiter">
+    </div>
+  </div>
+
+</main>
+
+<!-- Zusätzlichen Techniker für Zeiterfassung auswählen -->
+<div id="addTechTimeModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.88);z-index:20;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px;max-width:400px;width:100%;">
+    <p class="card-title" style="margin-bottom:10px;">Weiterer Techniker</p>
+    <select id="extraTechSelect" style="margin-bottom:14px;"></select>
+    <div style="display:flex;gap:8px;">
+      <button class="add-btn" id="extraTechConfirm" style="flex:1;text-align:center;">Hinzufügen</button>
+      <button class="clear-link" id="extraTechCancel">abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Wartungs-Generator: Prüfpunkte-Checkliste nach Norm, erzeugt Text für Tätigkeitsbeschreibung -->
+<div id="wartungModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.92);z-index:25;padding:0;">
+  <div style="background:var(--bg);height:100%;width:100%;overflow:auto;display:flex;flex-direction:column;">
+    <div style="position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:16px 18px;display:flex;justify-content:space-between;align-items:center;z-index:2;">
+      <p class="card-title" style="margin:0;">Wartungs-Generator</p>
+      <button type="button" class="clear-link" id="wgClose">schließen</button>
+    </div>
+
+    <div style="padding:16px 18px 120px;max-width:640px;margin:0 auto;width:100%;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;letter-spacing:.03em;">Anlage hinzufügen — auch mehrfach (z.B. mehrere Drehtüren)</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px;font-style:italic;">Bei Wartungen landen die Prüfpunkte nur im separaten Wartungsprotokoll-PDF — im Auftragstext steht dann nur der Kurzhinweis "Wartung gemäß Auftrag durchgeführt". Bei Störungen wird die volle Beschreibung in den Auftragstext übernommen.</div>
+      <div id="wgAnlagenGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;"></div>
+
+      <div id="wgInstancesWrap" style="display:none;">
+        <div id="wgInstances"></div>
+      </div>
+    </div>
+
+    <div style="position:sticky;bottom:0;background:linear-gradient(transparent, var(--bg) 35%);padding:14px 18px 20px;">
+      <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div id="wgStatus" style="flex:1;font-size:12px;color:var(--muted);min-width:160px;">Füge mindestens eine Anlage hinzu.</div>
+        <button type="button" class="clear-link" id="wgExportPdf" style="border:1px solid var(--line);border-radius:8px;padding:9px 14px;" disabled>Wartungsprotokolle als PDF</button>
+        <button type="button" class="add-btn" id="wgApply" style="text-align:center;" disabled>In Bericht übernehmen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="generate">
+  <button id="genBtn">Bericht als PDF erzeugen</button>
+  <div class="gen-status" id="genStatus"></div>
+</div>
+
+<script>
+/* ============================================================
+   SUPABASE-KONFIGURATION — kommt aus config.js (TENANT).
+   Bewusst ganz am Skriptanfang, NICHT weiter unten: der Import
+   aus URL-Parametern (Trello-Link/CRM-Übergabe) läuft schon beim
+   Laden der Seite und braucht SUPABASE_URL sofort, um die
+   passenden Wartungspositionen nachzuladen. Stand die Konstante
+   weiter unten im Skript, war sie an dieser Stelle noch nicht
+   initialisiert (TDZ) — das ließ das Wartungsposition-Dropdown
+   beim Öffnen über einen Trello-Link leer bleiben, ganz ohne
+   sichtbaren Fehler.
+   ============================================================ */
+const SUPABASE_URL = TENANT.supabaseUrl;
+const SUPABASE_ANON_KEY = TENANT.supabaseKey;
+const SUPABASE_CONFIGURED = !SUPABASE_URL.includes('DEIN-PROJEKT');
+
+function supabaseHeaders(extra){
+  const t = (window.TSAuth && TSAuth.getToken()) || SUPABASE_ANON_KEY;
+  return Object.assign({
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + t,
+    'Content-Type': 'application/json'
+  }, extra || {});
+}
+
+// Sicherheitsnetz: jeder unerwartete, sonst nicht abgefangene Fehler landet
+// sichtbar im Bericht-Status, statt nur in der (unsichtbaren) Konsole.
+window.addEventListener('error', function (e) {
+  const el = document.getElementById('genStatus');
+  if (el) el.textContent = 'Unerwarteter Skriptfehler: ' + (e.message || e);
+  console.error('Unerwarteter Fehler:', e.error || e.message);
+});
+window.addEventListener('unhandledrejection', function (e) {
+  const el = document.getElementById('genStatus');
+  if (el) el.textContent = 'Unerwarteter Fehler (Promise): ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+  console.error('Unhandled rejection:', e.reason);
+});
+
+/* pdf.js kommt vom CDN — ohne Netz darf sein Fehlen nicht die ganze Seite lahmlegen. */
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+/* Harmlose pdf.js-Konsolenmeldung zur Fake-Worker-Initialisierung ausblenden,
+   ohne andere Warnungen/Fehler zu unterdrücken. */
+(function(){
+  const originalWarn = console.warn;
+  console.warn = function(...args){
+    if(args.some(a => typeof a === 'string' && a.includes('fake worker'))) return;
+    originalWarn.apply(console, args);
+  };
+})();
+
+/* Setzt pdf.js Textfragmente anhand ihrer Y/X-Position zu echten Zeilen zusammen,
+   statt sie in roher Stream-Reihenfolge aneinanderzuhängen (die nicht der visuellen
+   Zeilenordnung entspricht, besonders bei mehrspaltigen Layouts). */
+function reconstructLines(content){
+  const lines = [];
+  content.items.forEach(item => {
+    if(!item.str || !item.str.trim()) return;
+    const y = item.transform[5];
+    const x = item.transform[4];
+    let line = lines.find(l => Math.abs(l.y - y) < 2.5);
+    if(!line){ line = {y, parts: []}; lines.push(line); }
+    line.parts.push({x, str: item.str});
+  });
+  lines.sort((a, b) => b.y - a.y);
+  return lines.map(line => {
+    line.parts.sort((a, b) => a.x - b.x);
+    let out = '';
+    let lastEndX = null;
+    line.parts.forEach(p => {
+      if(lastEndX !== null && p.x - lastEndX > 3 && !out.endsWith(' ') && !p.str.startsWith(' ')){
+        out += ' ';
+      }
+      out += p.str;
+      lastEndX = p.x + (p.str.length * 4); // grobe Schätzung der Textbreite
+    });
+    return out.replace(/\s+/g, ' ').trim();
+  }).join('\n');
+}
+
+/* ---------- PDF Datenextraktion ---------- */
+const pdfDrop = document.getElementById('pdfDrop');
+const pdfInput = document.getElementById('pdfInput');
+const pdfStatus = document.getElementById('pdfStatus');
+
+pdfDrop.addEventListener('click', () => pdfInput.click());
+pdfInput.addEventListener('change', e => { if(e.target.files[0]) handlePdf(e.target.files[0]); });
+pdfDrop.addEventListener('dragover', e => { e.preventDefault(); pdfDrop.style.borderColor='var(--blue)'; });
+pdfDrop.addEventListener('dragleave', () => { pdfDrop.style.borderColor='var(--line)'; });
+pdfDrop.addEventListener('drop', e => {
+  e.preventDefault(); pdfDrop.style.borderColor='var(--line)';
+  if(e.dataTransfer.files[0]) handlePdf(e.dataTransfer.files[0]);
+});
+
+/* ---------- Auftrag aus CRM (.json) ---------- */
+const auftragBtn = document.getElementById('auftragBtn');
+const auftragInput = document.getElementById('auftragInput');
+const auftragStatus = document.getElementById('auftragStatus');
+let importierteKundeId = null; // gilt als sicher, solange Kunde/Bauvorhaben nicht von Hand geändert werden
+
+auftragBtn.addEventListener('click', () => auftragInput.click());
+auftragInput.addEventListener('change', e => { if(e.target.files[0]) handleAuftragsdatei(e.target.files[0]); });
+
+function wendeAuftragAn(daten){
+  if(daten.kunde)        document.getElementById('fKunde').value = daten.kunde;
+  if(daten.bauvorhaben)  document.getElementById('fBauvorhaben').value = daten.bauvorhaben;
+  if(daten.ansprechpartner) document.getElementById('fAnsprechpartner').value = daten.ansprechpartner;
+  if(daten.telefon)      document.getElementById('fTelefon').value = daten.telefon;
+  if(daten.email)        document.getElementById('fEmail').value = daten.email;
+  if(daten.hinweis)      document.getElementById('fHinweis').value = daten.hinweis;
+  importierteKundeId = daten.kunde_id || null;
+  // Rückwärtskompatibel: alte Links/Auftragsdateien kennen nur
+  // wartungsposition_id, neue liefern vorgang_typ + vorgang_id.
+  const vorauswahlTyp = daten.vorgang_typ || (daten.wartungsposition_id ? 'wartungsposition' : null);
+  const vorauswahlId = daten.vorgang_id || daten.wartungsposition_id || null;
+  ladeVorgaengeFuerKunde(importierteKundeId, vorauswahlTyp, vorauswahlId);
+
+  auftragStatus.textContent = `Auftrag geladen: ${daten.bauvorhaben || '–'} · ${daten.kunde || 'ohne Kunde'}`;
+  auftragStatus.className = 'pdf-status ok';
+}
+async function handleAuftragsdatei(file){
+  auftragStatus.textContent = 'Lese Auftragsdatei ...';
+  auftragStatus.className = 'pdf-status';
+  try{
+    const text = await file.text();
+    const daten = JSON.parse(text);
+    if(daten.typ !== 'ts-auftrag'){
+      throw new Error('Keine gültige TS-Suite-Auftragsdatei.');
+    }
+    wendeAuftragAn(daten);
+  } catch(err){
+    console.error('Auftragsdatei-Import fehlgeschlagen:', err);
+    auftragStatus.textContent = 'Datei konnte nicht gelesen werden — ist es eine Auftragsdatei aus dem CRM?';
+    auftragStatus.className = 'pdf-status err';
+  }
+}
+/* Direkter Link aus dem CRM/von der Trello-Karte: Felder kommen als
+   URL-Parameter mit, z.B. ?kunde=...&bauvorhaben=...&kunde_id=... */
+(function ausUrlUebernehmen(){
+  const p = new URLSearchParams(location.search);
+  if(!p.has('bauvorhaben') && !p.has('kunde')) return;
+  wendeAuftragAn({
+    kunde: p.get('kunde') || null,
+    bauvorhaben: p.get('bauvorhaben') || null,
+    ansprechpartner: p.get('ansprechpartner') || null,
+    telefon: p.get('telefon') || null,
+    email: p.get('email') || null,
+    hinweis: p.get('hinweis') || null,
+    kunde_id: p.get('kunde_id') || null,
+    vorgang_typ: p.get('vorgang_typ') || null,
+    vorgang_id: p.get('vorgang_id') || null,
+    wartungsposition_id: p.get('wartungsposition_id') || null // Legacy-Fallback
+  });
+  history.replaceState(null, '', location.pathname); // URL wieder sauber, Werte bleiben im Formular
+})();
+/* Manuelle Korrektur nach dem Laden hebt die sichere Zuordnung wieder auf,
+   dann greift beim Speichern wieder der normale Namensabgleich. */
+function setzeVorgangAuswahlZurueck(){
+  document.getElementById('fVorgang').innerHTML =
+    '<option value="">– kein Vorgang / nicht zutreffend –</option>';
+}
+document.getElementById('fKunde').addEventListener('input', () => { importierteKundeId = null; setzeVorgangAuswahlZurueck(); });
+document.getElementById('fBauvorhaben').addEventListener('input', () => { importierteKundeId = null; setzeVorgangAuswahlZurueck(); });
+
+async function handlePdf(file){
+  pdfStatus.textContent = 'Lese PDF ...';
+  pdfStatus.className = 'pdf-status';
+
+  /* Alte Werte zurücksetzen, damit Reste von einem vorherigen Versuch nicht stehen bleiben */
+  ['fKunde','fBauvorhaben','fAngebotsnr','fLieferanschrift'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('lieferanschriftBlock').style.display = 'none';
+  document.getElementById('toggleLieferanschrift').textContent = '+ abweichende Lieferanschrift';
+
+  if(!window.pdfjsLib){
+    alert('PDF-Import benötigt einmalig eine Internetverbindung (PDF-Bibliothek konnte nicht geladen werden). Seite mit Netz neu laden und erneut versuchen.');
+    return;
+  }
+  try{
+    const buf = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({data: buf});
+    const doc = await loadingTask.promise;
+    const page = await doc.getPage(1);
+    const content = await page.getTextContent();
+    const text = reconstructLines(content);
+
+    if(!text || text.trim().length < 5){
+      pdfStatus.textContent = 'PDF enthält keinen auslesbaren Text (evtl. gescanntes Bild ohne Textebene). Bitte manuell eintragen.';
+      pdfStatus.className = 'pdf-status err';
+      return;
+    }
+
+    let kunde = null, bauvorhaben = null, angebotsnr = null, datum = null, summe = null, docType = null, lieferMatch = null;
+
+    if(/Auftragsbestätigung/.test(text)){
+      /* --- Typ: Auftragsbestätigung --- */
+      docType = 'Auftragsbestätigung';
+      const belegMatch = text.match(/Belegnummer:\s*(VA[NT]\d+)/) || text.match(/\bVA[NT]\d{5,9}\b/);
+      const referenzMatch = text.match(/Ihre Referenz\s*:\s*([^\n]+)/);
+      const datumMatch = text.match(/Auftragsdatum:\s*(\d{2}\.\d{2}\.\d{4})/);
+      const summeMatch = text.match(/Auftragssumme EUR:\s*([\d.,]+)/);
+      const kundeMatch = text.match(/\*VA[NT]\d+\*\s*\n([\s\S]*?)\nKundennummer:/);
+      lieferMatch = text.match(/Lieferanschrift:\s*([\s\S]*?)\nArtikelnr\./);
+
+      if(belegMatch) angebotsnr = belegMatch[1] || belegMatch[0];
+      if(referenzMatch) bauvorhaben = referenzMatch[1].trim();
+      if(datumMatch) datum = datumMatch[1];
+      if(summeMatch) summe = summeMatch[1];
+      if(kundeMatch){
+        kunde = kundeMatch[1].split('\n')
+          .map(l => l.replace(/(Belegnummer:.*|Auftragsdatum:.*|Voraussichtl\..*|Lieferdatum:.*)/g, '').trim())
+          .filter(Boolean).join(', ');
+      }
+      if(lieferMatch){
+        const lieferAdresse = lieferMatch[1].split('\n').map(l => l.trim()).filter(Boolean).join(', ');
+        document.getElementById('fLieferanschrift').value = lieferAdresse;
+        document.getElementById('lieferanschriftBlock').style.display = 'block';
+        document.getElementById('toggleLieferanschrift').textContent = '– Lieferanschrift ausblenden';
+      }
+    } else if(/Angebot\s+i-/.test(text)){
+      /* --- Typ: Angebot --- */
+      docType = 'Angebot';
+      const angebotsnrMatch = text.match(/Angebot\s+([a-zA-Z0-9\-]+)/);
+      const bauvorhabenMatch = text.match(/Bauvorhaben:?\s*\n?(.+)/);
+      const kundeMatch = matchLine(text, /^(Stadt .+|Firma .+|Gemeinde .+)$/m);
+
+      if(angebotsnrMatch) angebotsnr = angebotsnrMatch[1];
+      if(bauvorhabenMatch) bauvorhaben = cleanLine(bauvorhabenMatch[1]);
+      if(kundeMatch) kunde = cleanLine(kundeMatch).replace(/\s*Ansprechpartner\s*$/, '').trim();
+    }
+
+    /* Absicherung: offensichtlich falsch erkannte Werte (z.B. nur ein Datum) verwerfen */
+    const looksLikeDate = v => v && /^\d{2}\.\d{2}\.\d{4}$/.test(v.trim());
+    if(looksLikeDate(kunde)) kunde = null;
+    if(looksLikeDate(bauvorhaben)) bauvorhaben = null;
+
+    let filled = [];
+    if(angebotsnr){ document.getElementById('fAngebotsnr').value = angebotsnr.trim(); filled.push('Auftragsnr.'); }
+    if(bauvorhaben){ document.getElementById('fBauvorhaben').value = bauvorhaben; filled.push('Bauvorhaben/Referenz'); }
+    if(kunde){ document.getElementById('fKunde').value = kunde; filled.push('Kunde'); }
+    if(datum){
+      const [d,m,y] = datum.split('.');
+      document.getElementById('fDatum').value = `${y}-${m}-${d}`;
+      filled.push('Datum');
+    }
+
+    if(lieferMatch) filled.push('Lieferanschrift');
+
+    if(filled.length){
+      const typeLabel = docType ? `(${docType}) ` : '';
+      const summeInfo = summe ? ` · Auftragssumme: ${summe} €` : '';
+      pdfStatus.textContent = typeLabel + 'Übernommen: ' + filled.join(', ') + summeInfo + ' — bitte prüfen.';
+      pdfStatus.className = 'pdf-status ok';
+    } else {
+      pdfStatus.textContent = 'PDF gelesen, aber keine bekannten Felder gefunden (unbekanntes Format). Bitte manuell eintragen.';
+      pdfStatus.className = 'pdf-status err';
+    }
+
+    /* Artikel-/Materialliste extrahieren */
+    const items = extractMaterialListFromPdf(text, docType);
+    if(items.length) setMaterialItems(items);
+
+  } catch(err){
+    console.error('PDF-Parse-Fehler:', err);
+    const detail = (err && err.message) ? err.message : String(err);
+    pdfStatus.textContent = 'PDF konnte nicht gelesen werden (' + detail + '). Bitte erneut versuchen oder manuell eintragen.';
+    pdfStatus.className = 'pdf-status err';
+  }
+}
+
+/* ---------- Artikelliste aus PDF extrahieren ---------- */
+function extractMaterialListFromPdf(text, docType){
+  const items = [];
+
+  if(docType === 'Auftragsbestätigung'){
+    const re = /^(\d{1,3})\s+(?:\(\*\)\s*)?(\d{5,8})\s+(.+?)\s+[A-Z]?\s*(\d+,\d{3})\s*[A-Z]{2,4}\b/gm;
+    let m;
+    while((m = re.exec(text)) !== null){
+      const [, pos, artikelnr, beschreibung, menge] = m;
+      items.push(`Pos. ${pos}: ${menge.replace(',000','')}× ${beschreibung.trim()} (Art. ${artikelnr})`);
+    }
+  } else if(docType === 'Angebot'){
+    const blocks = text.split(/(?=Pos\.:\s*\d+)/g);
+    blocks.forEach(block => {
+      const posMatch = block.match(/Pos\.:\s*(\d+)\s*\n+([^\n]+)/);
+      const posLabel = posMatch ? `Pos. ${posMatch[1]}` : null;
+      if(posMatch) items.push(`${posLabel}: ${posMatch[2].trim()}`);
+
+      const compRe = /^([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9\- ]{1,40}) \(E11\)\s*:\s*([^\n]+)$/gm;
+      let cm;
+      while((cm = compRe.exec(block)) !== null){
+        const [, label, value] = cm;
+        const prefix = posLabel ? `${posLabel} – ` : '';
+        items.push(`${prefix}${label.trim()}: ${value.trim()}`);
+      }
+    });
+  }
+  /* Duplikate entfernen, Reihenfolge erhalten */
+  return [...new Set(items)];
+}
+
+/* ---------- Material-Checkliste ---------- */
+let materialItems = [];
+function setMaterialItems(items){
+  materialItems = items.map((label, i) => ({id: 'mat_' + i, label, menge: 1, checked: true}));
+  renderMaterialChecklist();
+}
+function renderMaterialChecklist(){
+  const section = document.getElementById('materialSection');
+  const listEl = document.getElementById('materialChecklist');
+  if(!materialItems.length){ section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  listEl.innerHTML = materialItems.map(item => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;">
+      <input type="checkbox" class="matCheck" data-id="${item.id}" ${item.checked ? 'checked' : ''}
+        style="width:17px;height:17px;margin-top:2px;accent-color:var(--amber);flex-shrink:0;">
+      <input type="number" class="matMenge" data-id="${item.id}" value="${item.menge}" min="0" step="any" inputmode="decimal"
+        style="width:58px;padding:4px 6px;font-size:13px;background:var(--bg,#0a0a0c);color:var(--text);border:1px solid rgba(120,140,160,.35);border-radius:2px;flex-shrink:0;"
+        aria-label="Menge">
+      <label style="margin:0;font-size:13.5px;color:var(--text);cursor:pointer;line-height:1.4;padding-top:4px;">${item.label}</label>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.matCheck').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const it = materialItems.find(x => x.id === cb.dataset.id);
+      if(it) it.checked = cb.checked;
+      updateSelectAllState();
+    });
+  });
+  listEl.querySelectorAll('.matMenge').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const it = materialItems.find(x => x.id === inp.dataset.id);
+      if(!it) return;
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      it.menge = (isFinite(v) && v >= 0) ? v : 1;
+      inp.value = it.menge;
+    });
+  });
+  updateSelectAllState();
+}
+function updateSelectAllState(){
+  const all = document.getElementById('selectAllMaterial');
+  all.checked = materialItems.length > 0 && materialItems.every(i => i.checked);
+}
+document.getElementById('selectAllMaterial').addEventListener('change', e => {
+  materialItems.forEach(i => i.checked = e.target.checked);
+  renderMaterialChecklist();
+});
+function matchAfter(text, re){ const m = text.match(re); return m ? m[1] : null; }
+function matchLine(text, re){ const m = text.match(re); return m ? m[1] : null; }
+function cleanLine(s){ return s.split('\n')[0].replace(/,+\s*$/,'').trim(); }
+
+/* ---------- Zeiterfassung: mehrere Techniker ---------- */
+const technikerZeitBlocks = document.getElementById('technikerZeitBlocks');
+const zeitTotal = document.getElementById('zeitTotal');
+let zeitBlocks = []; // [{id, name, primary, wegepauschale, rows:[{id, datum, stunden}]}]
+let zeitBlockSeq = 0;
+let zeitRowSeq = 0;
+
+function heutigesDatum(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function initZeitBlocks(primaryName){
+  zeitBlocks = [{ id: zeitBlockSeq++, name: primaryName, primary: true,
+    rows: [{id: zeitRowSeq++, datum: heutigesDatum(), stunden: '', wegepauschale: false}] }];
+  renderZeitBlocks();
+}
+
+function renderZeitBlocks(){
+  technikerZeitBlocks.innerHTML = zeitBlocks.map(block => `
+    <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span class="mono" style="font-size:12px;color:var(--amber);">${block.name}${block.primary ? ' (Gerät)' : ''}</span>
+        ${block.primary ? '' : `<button class="clear-link rmBlock" data-block="${block.id}">entfernen</button>`}
+      </div>
+      <div class="rowsFor" data-block="${block.id}">
+        ${block.rows.map(r => `
+          <div data-row="${r.id}" data-block="${block.id}" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line);">
+            <div class="zeit-row" style="border:none;padding:0;margin:0;">
+              <div><label>Datum</label><input type="date" class="zDatum" value="${r.datum}"></div>
+              <div><label>Stunden</label><input type="number" step="0.25" min="0" inputmode="decimal" class="zStunden" placeholder="0,50" value="${r.stunden}"></div>
+              <button class="icon-btn zRemove" data-row="${r.id}" data-block="${block.id}" title="entfernen">×</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+              <input type="checkbox" class="zWege" data-row="${r.id}" data-block="${block.id}" id="wege_${block.id}_${r.id}" ${r.wegepauschale ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--amber);">
+              <label for="wege_${block.id}_${r.id}" style="margin:0; color:var(--muted); font-size:13px; cursor:pointer;">Wegepauschale für diesen Tag</label>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="add-btn addRow" data-block="${block.id}" style="margin-top:4px;">+ Tag hinzufügen</button>
+    </div>
+  `).join('');
+
+  technikerZeitBlocks.querySelectorAll('.zDatum, .zStunden').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const row = e.target.closest('[data-row]');
+      const blockId = parseInt(row.dataset.block), rowId = parseInt(row.dataset.row);
+      const block = zeitBlocks.find(b => b.id === blockId);
+      const r = block.rows.find(x => x.id === rowId);
+      r.datum = row.querySelector('.zDatum').value;
+      r.stunden = row.querySelector('.zStunden').value;
+      updateTotal();
+    });
+  });
+  technikerZeitBlocks.querySelectorAll('.zWege').forEach(inp => {
+    inp.addEventListener('change', e => {
+      const blockId = parseInt(e.target.dataset.block), rowId = parseInt(e.target.dataset.row);
+      const block = zeitBlocks.find(b => b.id === blockId);
+      const r = block.rows.find(x => x.id === rowId);
+      r.wegepauschale = e.target.checked;
+    });
+  });
+  technikerZeitBlocks.querySelectorAll('.zRemove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const blockId = parseInt(btn.dataset.block), rowId = parseInt(btn.dataset.row);
+      const block = zeitBlocks.find(b => b.id === blockId);
+      block.rows = block.rows.filter(r => r.id !== rowId);
+      if(block.rows.length === 0) block.rows.push({id: zeitRowSeq++, datum: heutigesDatum(), stunden: '', wegepauschale: false});
+      renderZeitBlocks();
+      updateTotal();
+    });
+  });
+  technikerZeitBlocks.querySelectorAll('.addRow').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const block = zeitBlocks.find(b => b.id === parseInt(btn.dataset.block));
+      block.rows.push({id: zeitRowSeq++, datum: heutigesDatum(), stunden: '', wegepauschale: false});
+      renderZeitBlocks();
+    });
+  });
+  technikerZeitBlocks.querySelectorAll('.rmBlock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      zeitBlocks = zeitBlocks.filter(b => b.id !== parseInt(btn.dataset.block));
+      renderZeitBlocks();
+      updateTotal();
+    });
+  });
+  updateTotal();
+}
+
+function stundenOf(rows){
+  return rows.reduce((sum, r) => sum + (parseFloat((r.stunden||'').toString().replace(',','.')) || 0), 0);
+}
+function updateTotal(){
+  const total = zeitBlocks.reduce((sum, b) => sum + stundenOf(b.rows), 0);
+  zeitTotal.textContent = 'Gesamt: ' + total.toFixed(2).replace('.',',').replace(/,?0+$/,'').replace(/,$/,'') + ' Std.';
+}
+
+document.getElementById('addTechnikerBlock').addEventListener('click', () => {
+  const used = zeitBlocks.map(b => b.name);
+  const available = getTechListe().filter(t => !used.includes(t));
+  const sel = document.getElementById('extraTechSelect');
+  if(!available.length){
+    sel.innerHTML = '<option disabled>Alle Techniker bereits hinzugefügt</option>';
+  } else {
+    sel.innerHTML = available.map(t => `<option value="${t}">${t}</option>`).join('');
+  }
+  document.getElementById('addTechTimeModal').style.display = 'flex';
+});
+document.getElementById('extraTechCancel').addEventListener('click', () => {
+  document.getElementById('addTechTimeModal').style.display = 'none';
+});
+document.getElementById('extraTechConfirm').addEventListener('click', () => {
+  const sel = document.getElementById('extraTechSelect');
+  if(sel.value){
+    zeitBlocks.push({ id: zeitBlockSeq++, name: sel.value, primary: false,
+      rows: [{id: zeitRowSeq++, datum: heutigesDatum(), stunden: '', wegepauschale: false}] });
+    renderZeitBlocks();
+  }
+  document.getElementById('addTechTimeModal').style.display = 'none';
+});
+
+/* ---------- Fotos ---------- */
+const thumbs = document.getElementById('thumbs');
+let photos = [];
+
+function addPhotos(fileList){
+  Array.from(fileList).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const id = Date.now() + Math.random();
+      photos.push({id, dataUrl: e.target.result});
+      renderThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function renderThumbs(){
+  thumbs.innerHTML = '';
+  photos.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'thumb';
+    div.innerHTML = `<img src="${p.dataUrl}"><button class="rm">×</button>`;
+    div.querySelector('.rm').addEventListener('click', () => {
+      photos = photos.filter(x => x.id !== p.id);
+      renderThumbs();
+    });
+    thumbs.appendChild(div);
+  });
+}
+document.getElementById('photoCam').addEventListener('change', e => addPhotos(e.target.files));
+document.getElementById('photoFile').addEventListener('change', e => addPhotos(e.target.files));
+
+/* ---------- Unterschrift ---------- */
+const canvas = document.getElementById('sig');
+const ctx = canvas.getContext('2d');
+ctx.strokeStyle = '#e7edf2';
+ctx.lineWidth = 2.2;
+ctx.lineCap = 'round';
+let drawing = false, hasSig = false;
+
+function getPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {x:(clientX-rect.left)*scaleX, y:(clientY-rect.top)*scaleY};
+}
+function start(e){ drawing = true; hasSig = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
+function move(e){ if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
+function end(){ drawing = false; }
+
+canvas.addEventListener('mousedown', start);
+canvas.addEventListener('mousemove', move);
+window.addEventListener('mouseup', end);
+canvas.addEventListener('touchstart', start, {passive:false});
+canvas.addEventListener('touchmove', move, {passive:false});
+canvas.addEventListener('touchend', end);
+
+document.getElementById('clearSig').addEventListener('click', () => {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  hasSig = false;
+});
+
+/* ---------- Kein Abnehmer vor Ort ---------- */
+document.getElementById('keinAbnehmer').addEventListener('change', e => {
+  document.getElementById('signatureSection').style.display = e.target.checked ? 'none' : 'block';
+});
+
+/* ---------- PDF Bericht generieren ---------- */
+document.getElementById('genBtn').addEventListener('click', generateReport);
+
+async function generateReport(){
+  const genStatus = document.getElementById('genStatus');
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  genStatus.textContent = 'Bericht wird erstellt ...';
+
+  try{
+    // ─── PDF-Eingabestruktur zusammenstellen ────────────────────────────────
+    // Das eigentliche Layout kommt jetzt aus ts-pdf-arbeitsbericht.js, gemeinsam
+    // mit uebersicht.html genutzt (dort: "PDF neu erzeugen"), damit beide
+    // Ausgaben garantiert identisch bleiben statt unabhängig zu drften.
+    const status = document.querySelector('input[name="arbeitsstatus"]:checked').value;
+    const keinAbnehmer = document.getElementById('keinAbnehmer').checked;
+    const zeiterfassung = zeitBlocks.map(block => ({
+      techniker: block.name, primary: block.primary,
+      tage: block.rows.map(r => ({datum: r.datum, stunden: r.stunden, wegepauschale: r.wegepauschale}))
+    }));
+    const materialZeilen = [
+      ...materialItems.filter(i => i.checked).map(i => '• ' + (i.menge && i.menge !== 1 ? i.menge + '× ' : '') + i.label),
+      ...(val('fMaterial') ? val('fMaterial').split('\n').filter(Boolean) : [])
+    ];
+    const pdfEingabe = {
+      kunde: val('fKunde'),
+      bauvorhaben: val('fBauvorhaben'),
+      angebotsnr: val('fAngebotsnr'),
+      datumLabel: 'Datum',
+      datumWert: val('fDatum'),
+      techniker: val('fTechniker'),
+      lieferanschrift: val('fLieferanschrift'),
+      zeiterfassung,
+      taetigkeit: val('fTaetigkeit'),
+      status,
+      internerBericht: val('fInternerBericht'),
+      hinweis: val('fHinweis'),
+      materialZeilen,
+      keinAbnehmerVorOrt: keinAbnehmer,
+      unterschriftDataUrl: (!keinAbnehmer && hasSig) ? canvas.toDataURL('image/png') : null,
+      kundenname: val('fKundenname'),
+      abnehmerFunktion: val('fAbnehmerFunktion'),
+      fotoDataUrls: photos.map(p => ({dataUrl: p.dataUrl, format: 'JPEG'})),
+    };
+
+    // Vereinheitlichtes Dropdown liefert "wartung:<id>" oder "wv:<id>" —
+    // hier in die generischen Felder auflösen. wartungsposition_id bleibt
+    // als abgeleitetes Kompatibilitätsfeld erhalten (u.a. für bestehende
+    // Auswertungen), wird aber nicht mehr direkt aus dem Formular gelesen.
+    const vorgangWert = val('fVorgang') || '';
+    let vorgang_typ = null, vorgang_id = null;
+    if(vorgangWert.startsWith('wartung:')) { vorgang_typ = 'wartungsposition'; vorgang_id = vorgangWert.slice(8); }
+    else if(vorgangWert.startsWith('wv:')) { vorgang_typ = 'wiedervorlage'; vorgang_id = vorgangWert.slice(3); }
+    const reportData = {
+      angebotsnr: val('fAngebotsnr') || null,
+      bauvorhaben: val('fBauvorhaben') || null,
+      kunde: val('fKunde') || null,
+      techniker: val('fTechniker') || null,
+      vorgang_typ,
+      vorgang_id,
+      wartungsposition_id: vorgang_typ === 'wartungsposition' ? vorgang_id : null,
+      daten: {
+        lieferanschrift: val('fLieferanschrift') || null,
+        ansprechpartner: val('fAnsprechpartner') || null,
+        telefon: val('fTelefon') || null,
+        email: (val('fEmail') && EMAIL_REGEX.test(val('fEmail').trim())) ? val('fEmail').trim() : null,
+        zeiterfassung,
+        taetigkeit: val('fTaetigkeit') || null,
+        status,
+        interner_bericht: val('fInternerBericht') || null,
+        hinweis: val('fHinweis') || null,
+        material_checkliste: materialItems.filter(i => i.checked).map(i => ({bezeichnung: i.label, menge: i.menge || 1})),
+        material_freitext: val('fMaterial') || null,
+        kein_abnehmer_vor_ort: document.getElementById('keinAbnehmer').checked,
+        kundenname: val('fKundenname') || null,
+        abnehmer_funktion: val('fAbnehmerFunktion') || null,
+        anzahl_fotos: photos.length
+      }
+    };
+
+    /* Erst ALLE Netzwerk-Schritte (Bericht speichern + ggf. Trello-Rückmeldung),
+       DANACH das PDF lokal öffnen/speichern. Grund: doc.save() öffnet auf iOS
+       ein neues Tab/Fenster (besonders im Trello-In-App-Browser), wodurch die
+       Seite in den Hintergrund geschoben wird — laufende Netzwerk-Requests
+       werden dabei abgebrochen ("Load failed"). Deshalb müssen wirklich alle
+       Uploads/Aufrufe fertig sein, bevor doc.save() läuft. */
+    genStatus.textContent = 'Sende an Server ...';
+    if(standortIstAktiv()){
+      genStatus.textContent = 'Frage Standort ab ...';
+    }
+    const standort = await ermittleStandort();
+    if(standort){
+      reportData.daten.standort = standort; // bleibt für die Detailansicht in der Übersicht erhalten
+      reportData.standort_lat = standort.lat;
+      reportData.standort_lng = standort.lng;
+      reportData.standort_genauigkeit_m = standort.genauigkeit_m;
+      reportData.standort_erfasst_am = standort.erfasst_am;
+    }
+    genStatus.textContent = 'Sende an Server ...';
+    const medien = await ladeMedienHoch(val('fAngebotsnr'));
+    reportData.daten.foto_urls = medien.fotoUrls;
+    reportData.daten.unterschrift_url = medien.unterschriftUrl;
+    const sendResult = await sendeBerichtAnServer(reportData);
+
+    const filename = `Arbeitsbericht_${(val('fAngebotsnr')||'ohne-nr').replace(/[^a-zA-Z0-9\-]/g,'')}.pdf`;
+
+    if(sendResult.ok){
+      genStatus.textContent = 'Bericht an Server übertragen und lokal gespeichert: ' + filename;
+      if(medien.fehler && medien.fehler.length){
+        genStatus.textContent += ' — Achtung, Medien-Upload teilweise fehlgeschlagen: ' + medien.fehler.join('; ');
+        genStatus.className = 'gen-status err';
+      }
+      if(reportData.vorgang_typ && reportData.vorgang_id){
+        genStatus.textContent += ' · Sende Trello-Rückmeldung …';
+        const trelloResult = await meldeVorgangAnTrello({
+          vorgang_typ: reportData.vorgang_typ,
+          vorgang_id: reportData.vorgang_id,
+          techniker: reportData.techniker || '–',
+          datum: val('fDatum') || null,
+          notiz: reportData.daten.taetigkeit ? reportData.daten.taetigkeit.slice(0, 300) : null
+        });
+        const vorgangLabel = reportData.vorgang_typ === 'wartungsposition' ? 'Die Wartungsposition' : 'Der Vorgang';
+        // Egal welcher der drei möglichen Fälle eintritt, IMMER sichtbar machen —
+        // vorher verschwand ein Netzwerkfehler (trelloResult.reason) komplett
+        // lautlos, weil nur .trello und .warning geprüft wurden.
+        // Zusätzlich per alert(): die Textzeile allein wird zu leicht übersehen/
+        // überschrieben, bevor Zeit zum Lesen bleibt. alert() muss aktiv
+        // weggetippt werden, verschwindet also nicht von selbst.
+        if(trelloResult.trello){
+          genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · Trello-Rückmeldung gesendet.';
+          alert('✅ Trello-Rückmeldung gesendet.\n\n' + vorgangLabel + ' wurde aktualisiert und auf der Trello-Karte vermerkt.');
+        } else if(trelloResult.warning){
+          genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · gespeichert, Trello-Rückmeldung nicht möglich.';
+          console.warn(trelloResult.warning);
+          alert('⚠️ ' + vorgangLabel + ' wurde gespeichert, aber die Trello-Karte konnte nicht aktualisiert werden.\n\n' + trelloResult.warning);
+        } else {
+          genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · Trello-Rückmeldung fehlgeschlagen: ' + (trelloResult.reason || trelloResult.error || 'unbekannter Fehler');
+          console.error('Trello-Rückmeldung fehlgeschlagen:', trelloResult);
+          alert('❌ Trello-Rückmeldung fehlgeschlagen:\n\n' + (trelloResult.reason || trelloResult.error || 'unbekannter Fehler') + '\n\nDer Bericht selbst wurde trotzdem gespeichert.');
+        }
+      }
+      if(reportData.angebotsnr){
+        genStatus.textContent += ' · Suche Trello-Karte zu Angebotsnr. …';
+        const angebotResult = await meldeAngebotAnTrello({
+          angebotsnr: reportData.angebotsnr,
+          techniker: reportData.techniker || '–',
+          datum: val('fDatum') || null,
+          notiz: reportData.daten.taetigkeit ? reportData.daten.taetigkeit.slice(0, 300) : null
+        });
+        genStatus.textContent = genStatus.textContent.replace(' · Suche Trello-Karte zu Angebotsnr. …', '');
+        if(angebotResult.trello){
+          genStatus.textContent += ' · Trello-Karte "' + angebotResult.card_name + '" erledigt markiert.';
+          alert('✅ Trello-Karte gefunden und erledigt markiert:\n\n"' + angebotResult.card_name + '"');
+        } else if(angebotResult.ok){
+          // Kein Fehler, aber auch kein eindeutiger Treffer (0 oder mehrere Karten).
+          genStatus.textContent += ' · ' + (angebotResult.message || 'Keine eindeutige Trello-Karte gefunden.');
+          console.warn(angebotResult.message, angebotResult.karten);
+          alert('ℹ️ ' + (angebotResult.message || 'Keine eindeutige Trello-Karte gefunden.'));
+        } else {
+          genStatus.textContent += ' · Trello-Suche fehlgeschlagen: ' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler');
+          console.error('Trello-Angebot-Suche fehlgeschlagen:', angebotResult);
+          alert('❌ Trello-Suche nach Angebotsnummer fehlgeschlagen:\n\n' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler'));
+        }
+      }
+    } else if(sendResult.reason === 'not-configured'){
+      genStatus.textContent = 'Bericht lokal gespeichert: ' + filename + ' (Server noch nicht eingerichtet)';
+    } else {
+      genStatus.textContent = 'Bericht lokal gespeichert: ' + filename + ' — Server-Übertragung fehlgeschlagen (' + sendResult.reason + '), bitte später erneut versuchen.';
+    }
+
+    // PDF-Download bewusst GANZ AM ENDE, nach allen Netzwerk-Aufrufen:
+    // Der Download-Dialog (bzw. das Sichern/Teilen-Sheet, das doc.save()
+    // in erzeugeArbeitsberichtPdf() auslöst) unterbricht offenbar laufende
+    // fetch()-Anfragen, besonders im eingebetteten Trello-In-App-Browser
+    // ("Load failed"). Deshalb muss die Trello-Rückmeldung fertig sein,
+    // BEVOR der Download startet.
+    pdfEingabe.dateiname = filename;
+    erzeugeArbeitsberichtPdf(pdfEingabe);
+  } catch(err){
+    genStatus.textContent = 'Fehler beim Erstellen des Berichts.';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+function val(id){
+  const el = document.getElementById(id);
+  if(!el) return '';
+  return el.tagName === 'SPAN' ? el.textContent : el.value;
+}
+
+/* Datum vorbelegen */
+document.getElementById('fDatum').valueAsDate = new Date();
+
+/* SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_CONFIGURED / supabaseHeaders()
+   stehen jetzt ganz am Skriptanfang (siehe Kommentar dort) — hier bewusst
+   nicht mehr doppelt deklariert. */
+
+/* ---------- Kontakte: lokal gecachte Kopie + Sync ---------- */
+const LS_KONTAKTE = 'ts_kontakte_cache';
+const LS_KUNDEN = 'ts_kunden_cache';
+let kontakteMap = {}; // { bauvorhaben(lowercase): {ansprechpartner, telefon, kunde, kunde_id} }
+let kundenNameZuId = {}; // { normalisierter Kundenname: id } — für automatische Verknüpfung
+
+function normText(s){
+  return (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function ladeKontakteAusCache(){
+  try{ kontakteMap = JSON.parse(localStorage.getItem(LS_KONTAKTE) || '{}'); }catch(e){ kontakteMap = {}; }
+  try{ kundenNameZuId = JSON.parse(localStorage.getItem(LS_KUNDEN) || '{}'); }catch(e){ kundenNameZuId = {}; }
+}
+function speichereKontakteCache(){
+  localStorage.setItem(LS_KONTAKTE, JSON.stringify(kontakteMap));
+}
+
+async function syncKundenVonServer(){
+  if(!SUPABASE_CONFIGURED) return;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kunden?select=id,name`, { headers: supabaseHeaders() });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    kundenNameZuId = {};
+    const dl = document.getElementById('kundenListe');
+    dl.innerHTML = '';
+    rows.forEach(k => {
+      kundenNameZuId[normText(k.name)] = k.id;
+      const opt = document.createElement('option');
+      opt.value = k.name;
+      dl.appendChild(opt);
+    });
+    localStorage.setItem(LS_KUNDEN, JSON.stringify(kundenNameZuId));
+  } catch(err){
+    console.error('Kunden-Sync fehlgeschlagen:', err);
+  }
+}
+
+async function syncKontakteVonServer(){
+  const statusEl = document.getElementById('kontaktStatus');
+  if(!SUPABASE_CONFIGURED){
+    statusEl.textContent = 'Supabase noch nicht eingerichtet – Kontakte nur lokal auf diesem Gerät.';
+    statusEl.className = 'pdf-status';
+    return;
+  }
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kontakte?select=*`, { headers: supabaseHeaders() });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    rows.forEach(r => {
+      kontakteMap[r.bauvorhaben.toLowerCase()] = { id: r.id, bauvorhaben: r.bauvorhaben, ansprechpartner: r.ansprechpartner, telefon: r.telefon, email: r.email, kunde: r.kunde, kunde_id: r.kunde_id };
+    });
+    speichereKontakteCache();
+    statusEl.textContent = `Kontakte synchronisiert (${rows.length} Bauvorhaben bekannt).`;
+    statusEl.className = 'pdf-status ok';
+  } catch(err){
+    console.error('Kontakt-Sync fehlgeschlagen:', err);
+    statusEl.textContent = 'Kontakt-Sync fehlgeschlagen – nutze lokalen Stand.';
+    statusEl.className = 'pdf-status err';
+  }
+}
+
+/* Einfache Levenshtein-Distanz — für den Ähnlichkeits-Check unten,
+   läuft komplett lokal, kein Server nötig. */
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  let prev = Array.from({length: n + 1}, (_, i) => i);
+  for(let i = 1; i <= m; i++){
+    const curr = [i];
+    for(let j = 1; j <= n; j++){
+      curr[j] = a[i-1] === b[j-1] ? prev[j-1] : 1 + Math.min(prev[j-1], prev[j], curr[j-1]);
+    }
+    prev = curr;
+  }
+  return prev[n];
+}
+/* Findet ein bereits bekanntes Bauvorhaben, das dem eingegebenen Text
+   sehr ähnlich ist (Tippfehler, leicht andere Schreibweise) — Grundlage
+   für die Warnung, die verhindert, dass aus Versehen ein doppelter
+   Eintrag statt einer Umbenennung entsteht. */
+function findeAehnlichesBauvorhaben(text){
+  const norm = normText(text);
+  if(!norm) return null;
+  let bester = null, besterAbstand = Infinity;
+  for(const key in kontakteMap){
+    if(key === norm) continue;
+    const dist = levenshtein(norm, key);
+    const schwelle = Math.max(2, Math.floor(Math.max(norm.length, key.length) * 0.15));
+    if(dist <= schwelle && dist < besterAbstand){
+      besterAbstand = dist; bester = kontakteMap[key];
+    }
+  }
+  return bester;
+}
+
+async function upsertKontakt(){
+  let bauvorhaben = document.getElementById('fBauvorhaben').value.trim();
+  const ansprechpartner = document.getElementById('fAnsprechpartner').value.trim();
+  const telefon = document.getElementById('fTelefon').value.trim();
+  let email = document.getElementById('fEmail').value.trim();
+  if(email && !EMAIL_REGEX.test(email)) email = ''; // ungültige E-Mail nie speichern
+  let kunde = document.getElementById('fKunde').value.trim();
+  if(!bauvorhaben || (!ansprechpartner && !telefon && !email)) return;
+
+  // Upsert-Risiko absichern: bei einem neuen Bauvorhaben-Namen erst prüfen,
+  // ob nicht eigentlich ein fast identischer schon existiert (Tippfehler-Fall).
+  if(!kontakteMap[bauvorhaben.toLowerCase()]){
+    const aehnlich = findeAehnlichesBauvorhaben(bauvorhaben);
+    if(aehnlich){
+      const uebernehmen = confirm(
+        `Ähnliches Bauvorhaben schon vorhanden:\n"${aehnlich.bauvorhaben}"\n\n` +
+        `OK = dieses verwenden (empfohlen, sonst entsteht ein doppelter Eintrag)\n` +
+        `Abbrechen = "${bauvorhaben}" wirklich neu anlegen`
+      );
+      if(uebernehmen){
+        bauvorhaben = aehnlich.bauvorhaben;
+        document.getElementById('fBauvorhaben').value = bauvorhaben;
+        if(aehnlich.kunde && !kunde){
+          kunde = aehnlich.kunde;
+          document.getElementById('fKunde').value = kunde;
+        }
+      }
+    }
+  }
+
+  const kundeId = importierteKundeId || kundenNameZuId[normText(kunde)] || null;
+  const bestehend = kontakteMap[bauvorhaben.toLowerCase()];
+  kontakteMap[bauvorhaben.toLowerCase()] = { id: bestehend?.id, bauvorhaben, ansprechpartner, telefon, email, kunde, kunde_id: kundeId };
+  speichereKontakteCache();
+
+  if(!SUPABASE_CONFIGURED) return;
+  try{
+    const zeile = { bauvorhaben, kunde, ansprechpartner, telefon, email, updated_at: new Date().toISOString() };
+    if(kundeId) zeile.kunde_id = kundeId; // nur bei sicherem Treffer setzen — sonst bleibt eine
+                                           // bestehende Zuordnung in der DB unangetastet
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kontakte?on_conflict=bauvorhaben`, {
+      method: 'POST',
+      headers: supabaseHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
+      body: JSON.stringify([zeile])
+    });
+    if(res.ok){
+      const gespeichert = await res.json();
+      const kontaktId = gespeichert?.[0]?.id;
+      if(kontaktId){
+        kontakteMap[bauvorhaben.toLowerCase()].id = kontaktId;
+        speichereKontakteCache();
+        if(ansprechpartner) upsertAnsprechpartnerStrukturiert(kontaktId, ansprechpartner, telefon, email);
+      }
+    }
+  } catch(err){
+    console.error('Kontakt-Upload fehlgeschlagen:', err);
+  }
+}
+
+/* Ansprechpartner-Konsolidierung: legt denselben Ansprechpartner zusätzlich
+   strukturiert in crm_ansprechpartner an (oder aktualisiert ihn dort),
+   damit das CRM ihn kennt, ohne dass du ihn dort nochmal eintippen musst.
+   kontakte.ansprechpartner bleibt daneben bestehen — die Telefon-Suche auf
+   der Startseite braucht dieses Feld weiterhin. Läuft im Hintergrund,
+   ein Fehler hier verhindert nie das Speichern des Berichts. */
+async function upsertAnsprechpartnerStrukturiert(kontaktId, name, telefon, email){
+  try{
+    const suchRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_ansprechpartner?kontakt_id=eq.${kontaktId}&name=ilike.${encodeURIComponent(name)}&select=id`,
+      { headers: supabaseHeaders() }
+    );
+    const treffer = suchRes.ok ? await suchRes.json() : [];
+    if(treffer.length){
+      await fetch(`${SUPABASE_URL}/rest/v1/crm_ansprechpartner?id=eq.${treffer[0].id}`, {
+        method: 'PATCH',
+        headers: supabaseHeaders(),
+        body: JSON.stringify({ telefon: telefon || null, email: email || null })
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/crm_ansprechpartner`, {
+        method: 'POST',
+        headers: supabaseHeaders(),
+        body: JSON.stringify([{ kontakt_id: kontaktId, name, telefon: telefon || null, email: email || null }])
+      });
+    }
+  } catch(err){
+    console.error('Ansprechpartner-Konsolidierung fehlgeschlagen (unkritisch):', err);
+  }
+}
+
+function autofillKontaktFuerBauvorhaben(){
+  const bauvorhaben = document.getElementById('fBauvorhaben').value.trim().toLowerCase();
+  if(!bauvorhaben || !kontakteMap[bauvorhaben]) return;
+  const eintrag = kontakteMap[bauvorhaben];
+  const kundeField = document.getElementById('fKunde');
+  const apField = document.getElementById('fAnsprechpartner');
+  const telField = document.getElementById('fTelefon');
+  const emailField = document.getElementById('fEmail');
+  if(!kundeField.value && eintrag.kunde) kundeField.value = eintrag.kunde;
+  if(!apField.value && eintrag.ansprechpartner) apField.value = eintrag.ansprechpartner;
+  if(!telField.value && eintrag.telefon) telField.value = eintrag.telefon;
+  if(!emailField.value && eintrag.email) emailField.value = eintrag.email;
+  if(eintrag.ansprechpartner || eintrag.telefon || eintrag.email){
+    const statusEl = document.getElementById('kontaktStatus');
+    statusEl.textContent = 'Ansprechpartner aus früherem Bericht übernommen – bitte prüfen.';
+    statusEl.className = 'pdf-status ok';
+  }
+  if(eintrag.kunde_id){
+    importierteKundeId = eintrag.kunde_id;
+    ladeVorgaengeFuerKunde(eintrag.kunde_id);
+  }
+}
+
+/* Lädt sowohl offene Wartungspositionen als auch offene, an Trello
+   gesendete freie Wiedervorlagen (z.B. Reparaturen ohne Wartungsvertrag)
+   des Kunden in ein gemeinsames Dropdown. vorauswahlTyp/vorauswahlId
+   kommen z.B. aus dem Link einer Trello-Karte und werden vorbelegt,
+   sofern sie zu den geladenen Vorgängen des Kunden passen — der
+   Techniker sieht und bestätigt die Auswahl trotzdem im Formular,
+   bevor er speichert. Optionswert-Format: "wartung:<id>" bzw. "wv:<id>",
+   damit sich beim Speichern eindeutig zurückrechnen lässt, welche
+   Tabelle gemeint ist. */
+async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
+  const sel = document.getElementById('fVorgang');
+  sel.innerHTML = '<option value="">– kein Vorgang / nicht zutreffend –</option>';
+  if(!kundeId || !SUPABASE_CONFIGURED) return;
+
+  let wartungspositionen = [];
+  let wiedervorlagen = [];
+
+  try{
+    // Positionen hängen nicht direkt am Kunden, sondern über vertrag_id am
+    // Wartungsvertrag (crm_wartungsplan) — gleiches zweistufiges Vorgehen wie im CRM.
+    const vertragRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_wartungsplan?kunde_id=eq.${kundeId}&select=id`,
+      { headers: supabaseHeaders() }
+    );
+    if(!vertragRes.ok) throw new Error('HTTP ' + vertragRes.status);
+    const vertraege = await vertragRes.json();
+    if(vertraege.length){
+      const vertragIds = vertraege.map(v => v.id).join(',');
+      const posRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/crm_wartungspositionen?vertrag_id=in.(${vertragIds})&select=id,bezeichnung,intervall_monate,letzte_wartung&order=bezeichnung`,
+        { headers: supabaseHeaders() }
+      );
+      if(!posRes.ok) throw new Error('HTTP ' + posRes.status);
+      wartungspositionen = await posRes.json();
+    }
+  } catch(err){
+    console.error('Wartungspositionen konnten nicht geladen werden:', err);
+  }
+
+  try{
+    // Freie Wiedervorlagen können direkt kunde_id gesetzt haben, oder nur
+    // kontakt_id (verweist über kontakte.kunde_id auf den Kunden) — beide
+    // Fälle kommen in der Praxis vor, also beide abfragen und zusammenführen.
+    // Nur offene (nicht erledigte), an Trello gesendete Wiedervorlagen ohne
+    // Wartungsposition-Bezug sind hier relevant — die anderen laufen über
+    // den Wartungspositionen-Zweig oben.
+    const direktRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_wiedervorlagen?kunde_id=eq.${kundeId}&wartungsposition_id=is.null&erledigt=eq.false&trello_card_id=not.is.null&select=id,titel,faellig_am&order=faellig_am`,
+      { headers: supabaseHeaders() }
+    );
+    if(!direktRes.ok) throw new Error('HTTP ' + direktRes.status);
+    wiedervorlagen = await direktRes.json();
+
+    const kontakteRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/kontakte?kunde_id=eq.${kundeId}&select=id`,
+      { headers: supabaseHeaders() }
+    );
+    if(kontakteRes.ok){
+      const kontakte = await kontakteRes.json();
+      if(kontakte.length){
+        const kontaktIds = kontakte.map(k => k.id).join(',');
+        const ueberKontaktRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/crm_wiedervorlagen?kontakt_id=in.(${kontaktIds})&wartungsposition_id=is.null&erledigt=eq.false&trello_card_id=not.is.null&select=id,titel,faellig_am&order=faellig_am`,
+          { headers: supabaseHeaders() }
+        );
+        if(ueberKontaktRes.ok){
+          const ueberKontakt = await ueberKontaktRes.json();
+          const bekannteIds = new Set(wiedervorlagen.map(w => w.id));
+          ueberKontakt.forEach(w => { if(!bekannteIds.has(w.id)) wiedervorlagen.push(w); });
+        }
+      }
+    }
+  } catch(err){
+    console.error('Wiedervorlagen konnten nicht geladen werden:', err);
+  }
+
+  if(wartungspositionen.length){
+    const grp = document.createElement('optgroup');
+    grp.label = 'Wartungspositionen';
+    wartungspositionen.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = 'wartung:' + r.id;
+      const letzte = r.letzte_wartung ? ` · zuletzt ${r.letzte_wartung}` : '';
+      opt.textContent = `${r.bezeichnung || 'Wartungsposition'} · alle ${r.intervall_monate} Mon.${letzte}`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+  if(wiedervorlagen.length){
+    const grp = document.createElement('optgroup');
+    grp.label = 'Freie Wiedervorlagen';
+    wiedervorlagen.forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = 'wv:' + w.id;
+      const faellig = w.faellig_am ? ` · fällig ${w.faellig_am}` : '';
+      opt.textContent = `${w.titel || 'Wiedervorlage'}${faellig}`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+
+  if(vorauswahlTyp && vorauswahlId){
+    const wert = (vorauswahlTyp === 'wartungsposition' ? 'wartung:' : 'wv:') + vorauswahlId;
+    if([...sel.options].some(o => o.value === wert)) sel.value = wert;
+    if(vorauswahlTyp === 'wartungsposition' && typeof ladeChecklistePanel === 'function'){
+      ladeChecklistePanel(vorauswahlId);
+    }
+  }
+}
+
+document.getElementById('fBauvorhaben').addEventListener('blur', autofillKontaktFuerBauvorhaben);
+document.getElementById('fAnsprechpartner').addEventListener('blur', upsertKontakt);
+document.getElementById('fTelefon').addEventListener('blur', upsertKontakt);
+document.getElementById('fKunde').addEventListener('blur', () => {
+  const kunde = document.getElementById('fKunde').value.trim();
+  const kundeId = importierteKundeId || kundenNameZuId[normText(kunde)] || null;
+  ladeVorgaengeFuerKunde(kundeId);
+});
+
+/* ---------- E-Mail-Format-Validierung ---------- */
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function emailIstGueltig(){
+  const feld = document.getElementById('fEmail');
+  const statusEl = document.getElementById('emailStatus');
+  const wert = feld.value.trim();
+
+  if(!wert){
+    statusEl.textContent = '';
+    feld.style.borderColor = '';
+    return true; // Feld ist optional, leer ist ok
+  }
+  if(EMAIL_REGEX.test(wert)){
+    statusEl.textContent = '';
+    feld.style.borderColor = '';
+    return true;
+  }
+  statusEl.textContent = 'Sieht nicht wie eine gültige E-Mail-Adresse aus – wird nicht gespeichert.';
+  statusEl.className = 'pdf-status err';
+  feld.style.borderColor = 'var(--danger)';
+  return false;
+}
+
+document.getElementById('fEmail').addEventListener('blur', () => {
+  if(emailIstGueltig()) upsertKontakt();
+});
+document.getElementById('fEmail').addEventListener('input', () => {
+  // Fehleranzeige beim Weitertippen zurücksetzen, nicht bei jedem Tastendruck neu prüfen
+  document.getElementById('emailStatus').textContent = '';
+  document.getElementById('fEmail').style.borderColor = '';
+});
+
+/* Standort ist standardmäßig AN — nur ein explizites "0" (per Passwort ausgeschaltet) deaktiviert es */
+function standortIstAktiv(){
+  return localStorage.getItem('ts_standort_uebertragen') !== '0';
+}
+function aktualisiereStandortHinweis(){
+  document.getElementById('standortHinweis').style.display = standortIstAktiv() ? 'block' : 'none';
+}
+aktualisiereStandortHinweis();
+
+/* ---------- Standort (GPS) ---------- */
+function ermittleStandort(){
+  return new Promise(resolve => {
+    const aktiv = standortIstAktiv();
+    if(!aktiv || !navigator.geolocation){
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        genauigkeit_m: Math.round(pos.coords.accuracy),
+        erfasst_am: new Date().toISOString()
+      }),
+      err => {
+        console.error('Standort konnte nicht ermittelt werden:', err.message);
+        resolve(null); // Bericht trotzdem ganz normal weiter erzeugen
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  });
+}
+
+/* ---------- Bericht an Server senden ---------- */
+const STORAGE_BUCKET = TENANT.bucketBerichte;
+
+async function ladeBildHoch(pfad, dataUrl){
+  const blob = await (await fetch(dataUrl)).blob();
+  const contentType = blob.type || 'image/png';
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${STORAGE_BUCKET}/${pfad}`, {
+    method: 'POST',
+    headers: supabaseHeaders({ 'Content-Type': contentType, 'x-upsert': 'true' }),
+    body: blob
+  });
+  if(!res.ok) throw new Error('Upload fehlgeschlagen (' + res.status + ')');
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${pfad}`;
+}
+
+async function ladeMedienHoch(angebotsnr){
+  const bilderSpeichern = localStorage.getItem('ts_bilder_speichern') === '1';
+  if(!bilderSpeichern || !SUPABASE_CONFIGURED) return { fotoUrls: [], unterschriftUrl: null, fehler: [] };
+
+  const ordner = (angebotsnr || 'ohne-nr').replace(/[^a-zA-Z0-9\-]/g,'') + '_' + Date.now();
+  const fotoUrls = [];
+  const fehler = [];
+  for(let i = 0; i < photos.length; i++){
+    try{
+      const url = await ladeBildHoch(`${ordner}/foto_${i+1}.jpg`, photos[i].dataUrl);
+      fotoUrls.push(url);
+    } catch(err){
+      console.error('Foto-Upload fehlgeschlagen:', err);
+      fehler.push('Foto ' + (i+1) + ': ' + err.message);
+    }
+  }
+
+  let unterschriftUrl = null;
+  const keinAbnehmer = document.getElementById('keinAbnehmer').checked;
+  if(!keinAbnehmer && hasSig){
+    try{
+      unterschriftUrl = await ladeBildHoch(`${ordner}/unterschrift.png`, canvas.toDataURL('image/png'));
+    } catch(err){
+      console.error('Unterschrift-Upload fehlgeschlagen:', err);
+      fehler.push('Unterschrift: ' + err.message);
+    }
+  }
+
+  return { fotoUrls, unterschriftUrl, fehler };
+}
+
+async function sendeBerichtAnServer(reportData){
+  if(!SUPABASE_CONFIGURED) return { ok: false, reason: 'not-configured' };
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/berichte`, {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify([reportData])
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return { ok: true };
+  } catch(err){
+    console.error('Berichts-Upload fehlgeschlagen:', err);
+    return { ok: false, reason: err.message };
+  }
+}
+
+/* Best effort: Kommentar + "erledigt"-Häkchen (dueComplete) auf der
+   verknüpften Trello-Karte — für beide Vorgangstypen (Wartungsposition
+   oder freie Wiedervorlage), die Edge Function unterscheidet intern
+   über vorgang_typ. Der Arbeitsbericht ist zu diesem Zeitpunkt schon
+   sicher gespeichert — schlägt dieser Aufruf fehl, bleibt trotzdem
+   alles Wichtige erhalten. */
+async function meldeVorgangAnTrello(payload){
+  if(!SUPABASE_CONFIGURED) return { ok: false, reason: 'not-configured' };
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/trello-wartung-abschliessen`, {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const ergebnis = await res.json().catch(() => null);
+    return ergebnis || { ok: false, reason: 'invalid-response' };
+  } catch(err){
+    console.error('Trello-Rückmeldung fehlgeschlagen (unkritisch):', err);
+    return { ok: false, reason: err.message };
+  }
+}
+
+/* Best effort, Weg A ("Namens-Matching"): sucht per Angebots-/Auftragsnummer
+   eine passende offene Trello-Karte und markiert sie bei eindeutigem
+   Treffer als erledigt. Anders als bei der Wartung gibt es hier keine
+   feste Karten-ID — die Function sucht selbst im Board. */
+async function meldeAngebotAnTrello(payload){
+  if(!SUPABASE_CONFIGURED) return { ok: false, reason: 'not-configured' };
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/trello-angebot-abschliessen`, {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify(payload)
+    });
+    const ergebnis = await res.json().catch(() => null);
+    return ergebnis || { ok: false, reason: 'invalid-response' };
+  } catch(err){
+    console.error('Trello-Angebot-Suche fehlgeschlagen (unkritisch):', err);
+    return { ok: false, reason: err.message };
+  }
+}
+
+/* Beim Start: gecachte Kontakte laden, dann mit Server abgleichen */
+ladeKontakteAusCache();
+syncKontakteVonServer();
+syncKundenVonServer();
+
+/* ---------- DB-Status-Ampel ---------- */
+async function pruefeDbStatus(){
+  const dot = document.getElementById('dbDot');
+  const label = document.getElementById('dbLabel');
+  dot.className = 'db-dot';
+  label.textContent = 'prüfe ...';
+
+  if(!SUPABASE_CONFIGURED){
+    dot.classList.add('yellow');
+    label.textContent = 'nicht eingerichtet';
+    return;
+  }
+  try{
+    const start = Date.now();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/kontakte?select=bauvorhaben&limit=1`, { headers: supabaseHeaders() });
+    const dauer = Date.now() - start;
+    if(res.ok){
+      if(dauer > 3000){
+        dot.classList.add('yellow');
+        label.textContent = 'langsam (' + Math.round(dauer/1000) + 's)';
+      } else {
+        dot.classList.add('green');
+        label.textContent = 'verbunden';
+      }
+    } else {
+      dot.classList.add('yellow');
+      label.textContent = 'Fehler (' + res.status + ')';
+    }
+  } catch(err){
+    dot.classList.add('red');
+    label.textContent = 'nicht erreichbar';
+  }
+}
+document.getElementById('dbStatus').addEventListener('click', pruefeDbStatus);
+pruefeDbStatus();
+setInterval(pruefeDbStatus, 120000); // alle 2 Minuten erneut prüfen
+
+/* ---------- Lieferanschrift Toggle ---------- */
+document.getElementById('toggleLieferanschrift').addEventListener('click', () => {
+  const block = document.getElementById('lieferanschriftBlock');
+  const btn = document.getElementById('toggleLieferanschrift');
+  const show = block.style.display === 'none';
+  block.style.display = show ? 'block' : 'none';
+  btn.textContent = show ? '– Lieferanschrift ausblenden' : '+ abweichende Lieferanschrift';
+});
+
+/* ---------- Techniker-Verwaltung ---------- */
+const LS_LISTE = 'ts_techniker_liste';
+const LS_AKTUELL = 'ts_techniker_aktuell';
+const DEFAULT_TECHNIKER = TENANT.techniker.slice();
+
+function getTechListe(){
+  const raw = localStorage.getItem(LS_LISTE);
+  return raw ? JSON.parse(raw) : DEFAULT_TECHNIKER.slice();
+}
+function saveTechListe(list){ localStorage.setItem(LS_LISTE, JSON.stringify(list)); }
+function getAktuellerTech(){ return localStorage.getItem(LS_AKTUELL) || ''; }
+function setAktuellerTech(name){
+  localStorage.setItem(LS_AKTUELL, name);
+  document.getElementById('fTechniker').textContent = name;
+  const primary = zeitBlocks.find(b => b.primary);
+  if(primary){ primary.name = name; renderZeitBlocks(); }
+  else { initZeitBlocks(name); }
+}
+
+const techModal = document.getElementById('techModal');
+const adminModal = document.getElementById('adminModal');
+
+function openTechModal(){
+  const sel = document.getElementById('techSelect');
+  sel.innerHTML = getTechListe().map(t => `<option value="${t}">${t}</option>`).join('');
+  techModal.style.display = 'flex';
+}
+document.getElementById('techConfirm').addEventListener('click', () => {
+  const sel = document.getElementById('techSelect');
+  if(sel.value){ setAktuellerTech(sel.value); techModal.style.display = 'none'; }
+});
+document.getElementById('changeTechInline').addEventListener('click', openTechModal);
+document.getElementById('switchTechBtn').addEventListener('click', () => {
+  adminModal.style.display = 'none';
+  openTechModal();
+});
+
+/* Ersteinrichtung: Gerät kennt noch keinen Techniker */
+window.addEventListener('DOMContentLoaded', () => {
+  const current = getAktuellerTech();
+  if(current){
+    document.getElementById('fTechniker').textContent = current;
+    initZeitBlocks(current);
+  } else {
+    openTechModal();
+  }
+});
+
+/* ---------- Admin-Rolle (schützt sicherheitsrelevante Einstellungen) ---------- */
+let meineRolle = null; // null = noch nicht geprüft
+async function pruefeMeineRolle(){
+  if(meineRolle) return meineRolle;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/mitarbeiter?me=1`, { headers: supabaseHeaders() });
+    const ich = await res.json().catch(() => null);
+    meineRolle = (ich && ich.rolle) || 'unbekannt';
+  } catch(err){
+    console.error('Rollenprüfung fehlgeschlagen:', err);
+    meineRolle = 'unbekannt'; // im Zweifel gesperrt, nicht offen
+  }
+  return meineRolle;
+}
+function aktualisiereStandortSperre(){
+  const toggle = document.getElementById('standortToggle');
+  const gesperrt = meineRolle !== 'admin';
+  toggle.disabled = gesperrt;
+  toggle.closest('label').style.opacity = gesperrt ? '.5' : '1';
+  toggle.closest('label').style.cursor = gesperrt ? 'not-allowed' : 'pointer';
+}
+
+/* ---------- Admin-Panel ---------- */
+document.getElementById('adminBtn').addEventListener('click', () => {
+  renderTechList();
+  document.getElementById('bilderSpeichernToggle').checked = localStorage.getItem('ts_bilder_speichern') === '1';
+  document.getElementById('standortToggle').checked = standortIstAktiv();
+  adminModal.style.display = 'flex';
+  aktualisiereStandortSperre(); // sofort mit letztem bekannten Stand sperren, dann live nachschärfen
+  pruefeMeineRolle().then(aktualisiereStandortSperre);
+});
+/* GPS-Schalter: disabled-Attribut verhindert jede Bedienung durch Nicht-Admins
+   bereits auf DOM-Ebene — kein Umweg über preventDefault()/Code-Prompt mehr nötig. */
+document.getElementById('standortToggle').addEventListener('change', function(){
+  localStorage.setItem('ts_standort_uebertragen', this.checked ? '1' : '0');
+  aktualisiereStandortHinweis();
+});
+function aktualisiereMedienStatus(){
+  const an = localStorage.getItem('ts_bilder_speichern') === '1';
+  const el = document.getElementById('medienStatus');
+  el.textContent = an
+    ? 'Fotos & Unterschrift werden beim Absenden zentral gespeichert.'
+    : 'Fotos & Unterschrift bleiben nur im lokalen PDF (nicht in der Datenbank).';
+  el.className = 'pdf-status' + (an ? ' ok' : '');
+}
+document.getElementById('bilderSpeichernToggle').addEventListener('change', e => {
+  localStorage.setItem('ts_bilder_speichern', e.target.checked ? '1' : '0');
+  aktualisiereMedienStatus();
+});
+aktualisiereMedienStatus();
+document.getElementById('closeAdmin').addEventListener('click', () => adminModal.style.display = 'none');
+
+function renderTechList(){
+  const listEl = document.getElementById('techList');
+  const listArr = getTechListe();
+  listEl.innerHTML = listArr.map((name, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);">
+      <span>${name}</span>
+      <button class="icon-btn rmTech" data-i="${i}" style="width:30px;height:30px;font-size:14px;">×</button>
+    </div>
+  `).join('');
+  listEl.querySelectorAll('.rmTech').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i);
+      const arr = getTechListe();
+      arr.splice(i, 1);
+      saveTechListe(arr);
+      renderTechList();
+    });
+  });
+}
+document.getElementById('addTechBtn').addEventListener('click', () => {
+  const input = document.getElementById('newTechName');
+  const name = input.value.trim();
+  if(!name) return;
+  const arr = getTechListe();
+  if(!arr.includes(name)){ arr.push(name); saveTechListe(arr); }
+  input.value = '';
+  renderTechList();
+});
+
+/* ============================================================
+   Wartungs-Generator: Prüfpunkte-Checkliste nach Norm.
+   Erzeugt reinen Textbaustein, der in fTaetigkeit eingefügt wird.
+   ============================================================ */
+const WG_ANLAGEN = {
+  drehtuer: {
+    name: "Drehflügelantrieb",
+    protokollTitel: "Wartungsprotokoll Drehflügelantrieb nach DIN 18650 / EN 16005",
+    norm: "DIN 18650 / EN 16005",
+    points: [
+      { nr: "1.1", text: "Montagemaße", section: "Funktionsprüfung" },
+      { nr: "1.2", text: "Befestigungsschrauben" },
+      { nr: "1.3", text: "Leichtgängigkeit Tür" },
+      { nr: "1.4", text: "Dichtigkeit Antrieb" },
+      { nr: "1.5", text: "Sensorik" },
+      { nr: "1.6", text: "Türöffner" },
+      { nr: "1.7", text: "Bedienungselemente" },
+      { nr: "1.8", text: "Nebenschließkante" },
+      { nr: "1.9", text: "Rauch- bzw. Thermomelder" },
+      { nr: "1.10", text: "\"Tür schließen\" Taster" },
+      { nr: "1.11", text: "Motorschloß" },
+      { nr: "1.12", text: "Riegelkontakt" },
+      { nr: "1.13", text: "Öffnungszyklus", type: "value" },
+      { nr: "1.14", text: "Wartungsaufkleber" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ]
+  },
+  schiebetuer: {
+    name: "Schiebetür",
+    protokollTitel: "Wartungsprotokoll Schiebetüren nach DIN 18650",
+    norm: "DIN 18650",
+    points: [
+      { nr: "1.1", text: "Montagemaße Laufwerk", section: "Funktionsprüfung" },
+      { nr: "1.2", text: "Befestigungsschrauben" },
+      { nr: "1.3", text: "Leichtgängigkeit Tür" },
+      { nr: "1.4", text: "Zahnriemen" },
+      { nr: "1.5", text: "Türaufhängung" },
+      { nr: "1.6", text: "Bodenführung" },
+      { nr: "1.7", text: "Sicherheitseinrichtungen" },
+      { nr: "1.8", text: "Sicherheitsabstände" },
+      { nr: "1.9", text: "Bedienungselemente" },
+      { nr: "1.10", text: "Notöffnung" },
+      { nr: "1.11", text: "Wartungsaufkleber" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ]
+  },
+  feststellanlage: {
+    name: "Feststellanlage",
+    protokollTitel: "Wartungsprotokoll Feststellanlagen der Bauart 1",
+    norm: "DIN 14677-1,2",
+    points: [
+      { nr: "1.1", text: "Handauslösung", section: "Funktionsprüfung" },
+      { nr: "1.2", text: "Auslösung d. Brandmelder" },
+      { nr: "1.3", text: "Rückstellung d. Brandmelder" },
+      { nr: "1.4", text: "Umgebungseinflüsse" },
+      { nr: "1.5", text: "Nutzung i. Umfeld" },
+      { nr: "1.6", text: "baul. Änderungen" },
+      { nr: "1.7", text: "Schließen v. Rauchabschluss" },
+      { nr: "1.8", text: "Schließfolgeregelung" },
+      { nr: "2.1", text: "Bauaufsichtl. Zulassung", section: "Wartung" },
+      { nr: "2.2", text: "Reinigen" },
+      { nr: "2.3", text: "Vorbeug. Austausch" },
+      { nr: "2.4", text: "Auslösung d. Anlage" },
+      { nr: "2.5", text: "Entfernen von Brandmelder" },
+      { nr: "2.6", text: "Akku getauscht" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ]
+  },
+  brandschutztuer: {
+    name: "Brandschutztür",
+    protokollTitel: "Wartungsprotokoll Brandschutztür",
+    norm: "DIBt-Zulassung",
+    points: [
+      { nr: "1.1", text: "Zulassungsschild", section: "Funktionsprüfung" },
+      { nr: "1.2", text: "Einbausituation" },
+      { nr: "1.3", text: "Schloß und Drücker" },
+      { nr: "1.4", text: "Türschließer bzw. Federband" },
+      { nr: "1.5", text: "Beschädigung" },
+      { nr: "1.6", text: "Bodendichtung" },
+      { nr: "1.7", text: "Türöffner" },
+      { nr: "1.8", text: "Schließfolgeregelung" },
+      { nr: "1.9", text: "Glasscheiben" },
+      { nr: "1.10", text: "Panikfunktion" },
+      { nr: "1.11", text: "Mitnehmerklappe" },
+      { nr: "1.12", text: "Wartungsaufkleber" },
+      { nr: "1.13", text: "Zargendichtung/Promatect" },
+      { nr: "1.14", text: "Motorschloß" }
+    ]
+  },
+  rwa: {
+    name: "Rauchwärmeabzugsanlage",
+    protokollTitel: "Wartungsprotokoll Rauchwärmeabzugsanlage",
+    norm: "RWA",
+    points: [
+      { nr: "1.1", text: "Zulassungsschild vorhanden", section: "Funktionsprüfung" },
+      { nr: "1.2", text: "Sichtkontrolle Beschädigungen" },
+      { nr: "1.3", text: "Bewegliche Teile (Befestigung, Funktion)" },
+      { nr: "1.4", text: "Elektrische Anschlüsse (Befestigung)" },
+      { nr: "1.5", text: "Rauchmelder (Funktion)" },
+      { nr: "1.6", text: "Handauslösetaster (Funktion)" },
+      { nr: "1.7", text: "Lüftungstaster (Funktion)" },
+      { nr: "1.8", text: "Meldelinie (Funktion)" },
+      { nr: "1.9", text: "Akkuladespannung" },
+      { nr: "1.9.1", text: "Ist-Spannung", type: "value", unit: "Volt" },
+      { nr: "1.10", text: "Akkubetrieb" },
+      { nr: "1.10.1", text: "2x öffnen/ schließen" },
+      { nr: "1.81", text: "Wind u. Regen Melder" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ],
+    extraValue: { key: "akku15min", label: "Akkuspannung nach 15 min. Betrieb", unit: "Volt" }
+  },
+  eltvtr: {
+    name: "Verriegelungssystem Rettungswege (EltVTR)",
+    protokollTitel: "Wartungsprotokoll Verriegelungssystem von Türen in Rettungswegen (EltVTR)",
+    norm: "EltVTR",
+    points: [
+      { nr: "1.1", text: "Herstellerangaben/ Eignungsnachweis", section: "Systembezogene Prüfung der Rettungswegtechnik" },
+      { nr: "1.2", text: "Montagemaße" },
+      { nr: "1.3", text: "Kennzeichnung Notoffentaster" },
+      { nr: "1.4", text: "Entsichern d. Systems" },
+      { nr: "1.5", text: "LED-Anzeige beim Entsichern" },
+      { nr: "1.6", text: "Sichern des Systems" },
+      { nr: "1.7", text: "LED-Anzeige beim Sichern" },
+      { nr: "1.8", text: "Notoffentaste Türöffnung" },
+      { nr: "1.9", text: "Notoffentaste Alarm" },
+      { nr: "2.1", text: "Freischaltung Fluchttüren", section: "Prüfungen bei Anschluß an Brandmelde-/Gefahrenmeldeanlage" },
+      { nr: "2.2", text: "Türdrücker" },
+      { nr: "2.3", text: "Riegel" },
+      { nr: "4.1", text: "Akkuspannung", section: "Funktionsprüfung" },
+      { nr: "4.2", text: "Ist-Spannung", type: "value", unit: "Volt" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ],
+    extraValue: { key: "akku15min", label: "Akkuspannung nach 15 min. Betrieb", unit: "Volt" }
+  },
+  tor: {
+    name: "Schiebe-/Sektional-/Rolltor",
+    protokollTitel: "Wartungsprotokoll Schiebe-/ Sektional-/ Rolltor nach DIBT",
+    norm: "DIBt",
+    points: [
+      { nr: "1.1", text: "Kennzeichnungsschild", section: "Funktionsprüfung (Beschreibung siehe Rückseite)" },
+      { nr: "1.2", text: "Beschädigungen" },
+      { nr: "1.3", text: "Laufschiene, Laufrollen" },
+      { nr: "1.4", text: "Befestigungen" },
+      { nr: "1.5", text: "Schließgeschwindigkeit" },
+      { nr: "1.6", text: "Zugseil" },
+      { nr: "1.7", text: "Schloß und Drücker" },
+      { nr: "1.8", text: "Sicherheitseinrichtung" },
+      { nr: "1.9", text: "Bedienungselemente" },
+      { nr: "1.10", text: "Not-Aus" },
+      { nr: "1.11", text: "Handbetätigung, Schlupftür" },
+      { nr: "1.12", text: "Wartungsaufkleber" },
+      { nr: "5.0", text: "Prüfbuch vorhanden" }
+    ]
+  }
+};
+
+// Allgemeinzustand: gilt für jede Anlage, unabhängig von Wartung/Störung
+const WG_GENERAL_FIELDS = [
+  { key: 'eintreffen', label: 'Zustand bei Eintreffen', pos: 'In Funktion', neg: 'Ohne Funktion' },
+  { key: 'elektrisch', label: 'Elektrischer Zustand', pos: 'Elektrisch OK', neg: 'Elektrisch defekt' },
+  { key: 'mechanisch', label: 'Mechanischer Zustand', pos: 'Mechanisch OK', neg: 'Mechanisch defekt' },
+  { key: 'verlassen', label: 'Zustand bei Verlassen', pos: 'In Funktion', neg: 'Ohne Funktion' }
+];
+
+const wgState = {
+  instances: [], // {id, typeKey, label, mode:'wartung'|'stoerung', general:{}, results:{}, stoerung:{}, collapsed}
+  counters: {}   // typeKey -> laufende Nummer für Default-Label
+};
+let wgIdSeq = 1;
+
+const wgModal = document.getElementById('wartungModal');
+const wgGrid = document.getElementById('wgAnlagenGrid');
+const wgInstancesWrap = document.getElementById('wgInstancesWrap');
+const wgInstancesEl = document.getElementById('wgInstances');
+const wgStatusEl = document.getElementById('wgStatus');
+const wgApplyBtn = document.getElementById('wgApply');
+const wgExportPdfBtn = document.getElementById('wgExportPdf');
+
+Object.entries(WG_ANLAGEN).forEach(([key, a]) => {
+  const div = document.createElement('div');
+  div.className = 'wg-anlage';
+  div.dataset.key = key;
+  div.innerHTML = `<div class="name">+ ${a.name}</div><div class="norm">${a.norm}</div>`;
+  div.addEventListener('click', () => wgAddInstance(key));
+  wgGrid.appendChild(div);
+});
+
+function wgAddInstance(typeKey){
+  wgState.counters[typeKey] = (wgState.counters[typeKey] || 0) + 1;
+  const a = WG_ANLAGEN[typeKey];
+  const shortName = a.name.split(' (')[0].split(' —')[0];
+  wgState.instances.push({
+    id: wgIdSeq++,
+    typeKey,
+    label: `${shortName} ${wgState.counters[typeKey]}`,
+    mode: 'wartung',
+    general: {},
+    results: {},
+    stoerung: { gemeldet: '', ursache: '', massnahme: '' },
+    meta: {
+      identNr: '', standort: '', tuernummer: '',
+      kontrolleur: val('fTechniker') || '', datum: val('fDatum') || ''
+    },
+    maengel: '', hinweis: '',
+    betrieb: { elektrisch: null, mechanisch: null },
+    extraValue: '',
+    protokollFotos: [null, null, null],
+    vorjahr: null,
+    vorjahrStatus: 'idle',
+    collapsed: false
+  });
+  wgRenderInstances();
+}
+
+function wgRemoveInstance(id){
+  wgState.instances = wgState.instances.filter(i => i.id !== id);
+  wgRenderInstances();
+}
+
+function wgFormatDatumKurz(iso){
+  if(!iso) return '-';
+  const parts = String(iso).split('-');
+  if(parts.length !== 3) return iso;
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
+
+function wgVorjahrPanelHtml(inst){
+  const status = inst.vorjahrStatus;
+  if(status === 'loading') return `<div class="wg-vorjahr-panel loading">Suche letzte Wartung …</div>`;
+  if(status === 'no-ident') return `<div class="wg-vorjahr-panel no-ident">Bitte zuerst Ident-Nr. eintragen.</div>`;
+  if(status === 'notfound') return `<div class="wg-vorjahr-panel notfound">Keine frühere Wartung zu dieser Ident-Nr. gefunden.</div>`;
+  if(status === 'error') return `<div class="wg-vorjahr-panel error">Abruf fehlgeschlagen — bitte erneut versuchen.</div>`;
+  if(status === 'found' && inst.vorjahr){
+    const v = inst.vorjahr;
+    const mText = (v.maengel && v.maengel.trim()) ? v.maengel.trim() : 'Gerät war ohne Mängel.';
+    return `
+      <div class="wg-vorjahr-panel found">
+        <div class="vj-head">Letzte Wartung: ${wgFormatDatumKurz(v.datum)}${v.kontrolleur ? ' — ' + v.kontrolleur : ''}</div>
+        <div>Mängel damals: ${mText}</div>
+        ${v.hinweis && v.hinweis.trim() ? `<div>Hinweis: ${v.hinweis.trim()}</div>` : ''}
+      </div>
+    `;
+  }
+  return '';
+}
+
+function wgRenderInstances(){
+  wgInstancesEl.innerHTML = '';
+  if(wgState.instances.length === 0){
+    wgInstancesWrap.style.display = 'none';
+    wgUpdateStatus();
+    return;
+  }
+  wgInstancesWrap.style.display = 'block';
+
+  wgState.instances.forEach(inst => {
+    const a = WG_ANLAGEN[inst.typeKey];
+    const card = document.createElement('div');
+    card.className = 'wg-instance';
+    card.innerHTML = `
+      <div class="wg-instance-header">
+        <input type="text" class="wg-instance-label" data-inst="${inst.id}" value="${inst.label}">
+        <span class="wg-instance-norm">${a.norm}</span>
+        <button type="button" class="wg-instance-toggle" data-inst-toggle="${inst.id}">${inst.collapsed ? '▸' : '▾'}</button>
+        <button type="button" class="wg-instance-remove" data-inst-remove="${inst.id}">×</button>
+        <div class="wg-einsatzart-row">
+          <div class="wg-einsatzart-btn${inst.mode === 'wartung' ? ' sel' : ''}" data-inst-mode="${inst.id}" data-mode="wartung">Wartung</div>
+          <div class="wg-einsatzart-btn${inst.mode === 'stoerung' ? ' sel' : ''}" data-inst-mode="${inst.id}" data-mode="stoerung">Störung</div>
+        </div>
+      </div>
+      <div class="wg-instance-body${inst.collapsed ? ' collapsed' : ''}" data-inst-body="${inst.id}"></div>
+    `;
+    wgInstancesEl.appendChild(card);
+
+    const body = card.querySelector(`[data-inst-body="${inst.id}"]`);
+
+    if(inst.mode === 'wartung'){
+      const metaBlock = document.createElement('div');
+      metaBlock.className = 'wg-meta-block';
+      metaBlock.innerHTML = `
+        <div class="wg-meta-title">Protokoll-Angaben</div>
+        <div class="wg-meta-grid">
+          <div><label>Ident-Nr.</label><input type="text" data-inst-meta="${inst.id}|identNr" value="${inst.meta.identNr}"></div>
+          <div><label>Türnummer</label><input type="text" data-inst-meta="${inst.id}|tuernummer" value="${inst.meta.tuernummer}"></div>
+          <div><label>Standort</label><input type="text" data-inst-meta="${inst.id}|standort" value="${inst.meta.standort}"></div>
+          <div><label>Kontrolleur</label><input type="text" data-inst-meta="${inst.id}|kontrolleur" value="${inst.meta.kontrolleur}"></div>
+        </div>
+        <div class="wg-vorjahr-row">
+          <div class="wg-vorjahr-btn" data-vorjahr-load="${inst.id}">Letzte Wartung laden</div>
+          ${wgVorjahrPanelHtml(inst)}
+        </div>
+      `;
+      body.appendChild(metaBlock);
+    }
+
+    // Allgemeinzustand — nur bei Störung. Bei Wartung ist das über die
+    // Prüfpunkte + "Anlage elektrisch/mechanisch in Betrieb?" bereits abgedeckt.
+    if(inst.mode !== 'wartung'){
+      const genBlock = document.createElement('div');
+      genBlock.className = 'wg-general-block';
+      genBlock.innerHTML = `<div class="wg-general-title">Allgemeinzustand</div>` + WG_GENERAL_FIELDS.map(f => `
+        <div class="wg-general-row">
+          <div class="wg-general-label">${f.label}</div>
+          <div class="wg-general-pair">
+            <div class="wg-general-btn pos${inst.general[f.key] === 'pos' ? ' sel' : ''}" data-inst="${inst.id}" data-field="${f.key}" data-val="pos">${f.pos}</div>
+            <div class="wg-general-btn neg${inst.general[f.key] === 'neg' ? ' sel' : ''}" data-inst="${inst.id}" data-field="${f.key}" data-val="neg">${f.neg}</div>
+          </div>
+        </div>
+      `).join('');
+      body.appendChild(genBlock);
+    }
+
+    if(inst.mode === 'wartung'){
+      const h = document.createElement('div');
+      h.className = 'wg-sub-title';
+      h.textContent = 'Prüfpunkte (iO / niO / NV)';
+      body.appendChild(h);
+
+      a.points.forEach((point, idx) => {
+        if(point.section){
+          const sec = document.createElement('div');
+          sec.className = 'wg-section-title';
+          sec.textContent = point.section;
+          body.appendChild(sec);
+        }
+        if(!inst.results[idx]) inst.results[idx] = { status: null, note: '', value: '' };
+        const r = inst.results[idx];
+        const hintHtml = point.hint ? `<div class="hint">${point.hint}</div>` : '';
+        const el = document.createElement('div');
+        el.className = 'wg-point';
+
+        if(point.type === 'value'){
+          el.innerHTML = `
+            <div class="txt">${point.nr} ${point.text}</div>
+            <div class="wg-value-row">
+              <input type="text" data-inst-value="${inst.id}|${idx}" value="${r.value || ''}" placeholder="Messwert eintragen">
+              ${point.unit ? `<span class="unit">${point.unit}</span>` : ''}
+            </div>
+          `;
+        } else {
+          const noteVisible = (r.status === 'bad' || r.status === 'na');
+          el.innerHTML = `
+            <div class="txt">${point.nr} ${point.text}</div>
+            ${hintHtml}
+            <div class="wg-toggle-row">
+              <div class="wg-toggle-btn ok${r.status === 'ok' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="ok">iO</div>
+              <div class="wg-toggle-btn bad${r.status === 'bad' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="bad">niO</div>
+              <div class="wg-toggle-btn na${r.status === 'na' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="na">NV</div>
+            </div>
+            <div class="wg-note${noteVisible ? ' show' : ''}" data-inst-note="${inst.id}|${idx}">
+              <textarea placeholder="${r.status === 'na' ? 'Begründung (optional), z.B. nicht verbaut...' : 'Kurz beschreiben, was festgestellt wurde...'}">${r.note || ''}</textarea>
+            </div>
+          `;
+        }
+        body.appendChild(el);
+      });
+
+      if(a.extraValue){
+        const ev = document.createElement('div');
+        ev.className = 'wg-point';
+        ev.innerHTML = `
+          <div class="txt">${a.extraValue.label}</div>
+          <div class="wg-value-row">
+            <input type="text" data-inst-extraval="${inst.id}" value="${inst.extraValue || ''}" placeholder="Messwert eintragen">
+            ${a.extraValue.unit ? `<span class="unit">${a.extraValue.unit}</span>` : ''}
+          </div>
+        `;
+        body.appendChild(ev);
+      }
+
+      const maengelBlock = document.createElement('div');
+      maengelBlock.className = 'wg-maengel-field';
+      maengelBlock.innerHTML = `
+        <div class="wg-general-label" style="margin-top:14px;">Abzustellende Mängel</div>
+        <textarea data-inst-maengel="${inst.id}" placeholder="z.B. Gerät ist ohne Mängel">${inst.maengel || ''}</textarea>
+        <div class="wg-general-label" style="margin-top:10px;">Hinweis (optional)</div>
+        <textarea data-inst-hinweis="${inst.id}" placeholder="Zusätzlicher Hinweis, falls relevant">${inst.hinweis || ''}</textarea>
+      `;
+      body.appendChild(maengelBlock);
+
+      const betriebBlock = document.createElement('div');
+      betriebBlock.className = 'wg-general-block';
+      betriebBlock.innerHTML = `
+        <div class="wg-general-row">
+          <div class="wg-general-label">Anlage elektrisch in Betrieb?</div>
+          <div class="wg-general-pair">
+            <div class="wg-general-btn pos${inst.betrieb.elektrisch === 'ja' ? ' sel' : ''}" data-inst-betrieb="${inst.id}" data-field="elektrisch" data-val="ja">Ja</div>
+            <div class="wg-general-btn neg${inst.betrieb.elektrisch === 'nein' ? ' sel' : ''}" data-inst-betrieb="${inst.id}" data-field="elektrisch" data-val="nein">Nein</div>
+          </div>
+        </div>
+        <div class="wg-general-row">
+          <div class="wg-general-label">Anlage mechanisch in Betrieb?</div>
+          <div class="wg-general-pair">
+            <div class="wg-general-btn pos${inst.betrieb.mechanisch === 'ja' ? ' sel' : ''}" data-inst-betrieb="${inst.id}" data-field="mechanisch" data-val="ja">Ja</div>
+            <div class="wg-general-btn neg${inst.betrieb.mechanisch === 'nein' ? ' sel' : ''}" data-inst-betrieb="${inst.id}" data-field="mechanisch" data-val="nein">Nein</div>
+          </div>
+        </div>
+      `;
+      body.appendChild(betriebBlock);
+
+      const photoTitle = document.createElement('div');
+      photoTitle.className = 'wg-sub-title';
+      photoTitle.textContent = 'Fotos für dieses Protokoll (live aufnehmen)';
+      body.appendChild(photoTitle);
+
+      const photoSlots = document.createElement('div');
+      photoSlots.className = 'wg-fotoslots';
+      photoSlots.innerHTML = [0, 1, 2].map(idx => {
+        const foto = inst.protokollFotos[idx];
+        if(foto){
+          return `
+            <div class="wg-fotoslot voll">
+              <img src="${foto}">
+              <button type="button" class="rm" data-inst-foto-loeschen="${inst.id}" data-slot="${idx}">×</button>
+            </div>
+          `;
+        }
+        return `
+          <label class="wg-fotoslot leer">
+            <span class="icon">📷</span>
+            <span class="lbl">Foto ${idx + 1}</span>
+            <input type="file" accept="image/*" capture="environment" data-inst-foto-aufnehmen="${inst.id}" data-slot="${idx}">
+          </label>
+        `;
+      }).join('');
+      body.appendChild(photoSlots);
+    } else {
+      const h = document.createElement('div');
+      h.className = 'wg-sub-title';
+      h.textContent = 'Störungsdetails';
+      body.appendChild(h);
+
+      const stBlock = document.createElement('div');
+      stBlock.className = 'wg-stoerung-block';
+      stBlock.innerHTML = `
+        <div class="wg-stoerung-field">
+          <div class="wg-general-label">Gemeldeter Fehler / Symptom</div>
+          <textarea data-inst-stoerung="${inst.id}|gemeldet" placeholder="Was wurde gemeldet bzw. beim Eintreffen festgestellt?">${inst.stoerung.gemeldet || ''}</textarea>
+        </div>
+        <div class="wg-stoerung-field">
+          <div class="wg-general-label">Festgestellte Ursache</div>
+          <textarea data-inst-stoerung="${inst.id}|ursache" placeholder="z.B. defekter Sensor, gerissener Riemen, Kurzschluss ...">${inst.stoerung.ursache || ''}</textarea>
+        </div>
+        <div class="wg-stoerung-field">
+          <div class="wg-general-label">Durchgeführte Maßnahme</div>
+          <textarea data-inst-stoerung="${inst.id}|massnahme" placeholder="z.B. Bauteil getauscht, provisorisch instand gesetzt, Ersatzteil bestellt ...">${inst.stoerung.massnahme || ''}</textarea>
+        </div>
+      `;
+      body.appendChild(stBlock);
+    }
+  });
+
+  // Label-Änderung (z.B. Türnummer)
+  wgInstancesEl.querySelectorAll('.wg-instance-label').forEach(input => {
+    input.addEventListener('input', e => {
+      const inst = wgState.instances.find(i => i.id == e.target.dataset.inst);
+      if(inst) inst.label = e.target.value;
+    });
+  });
+
+  // Ein-/Ausklappen
+  wgInstancesEl.querySelectorAll('[data-inst-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = wgState.instances.find(i => i.id == btn.dataset.instToggle);
+      inst.collapsed = !inst.collapsed;
+      wgRenderInstances();
+    });
+  });
+
+  // Entfernen
+  wgInstancesEl.querySelectorAll('[data-inst-remove]').forEach(btn => {
+    btn.addEventListener('click', () => wgRemoveInstance(parseInt(btn.dataset.instRemove)));
+  });
+
+  // Einsatzart wechseln (Wartung/Störung)
+  wgInstancesEl.querySelectorAll('[data-inst-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = wgState.instances.find(i => i.id == btn.dataset.instMode);
+      inst.mode = btn.dataset.mode;
+      wgRenderInstances();
+    });
+  });
+
+  // Allgemeinzustand-Buttons
+  wgInstancesEl.querySelectorAll('.wg-general-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = wgState.instances.find(i => i.id == btn.dataset.inst);
+      const field = btn.dataset.field;
+      inst.general[field] = btn.dataset.val;
+
+      const row = btn.closest('.wg-general-row');
+      row.querySelectorAll('.wg-general-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      wgUpdateStatus();
+    });
+  });
+
+  // OK / Nicht OK / Entfällt (Wartung)
+  wgInstancesEl.querySelectorAll('.wg-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const instId = btn.dataset.inst;
+      const idx = btn.dataset.idx;
+      const val = btn.dataset.val;
+      const inst = wgState.instances.find(i => i.id == instId);
+      inst.results[idx].status = val;
+
+      const parent = btn.closest('.wg-point');
+      parent.querySelectorAll('.wg-toggle-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+
+      const note = parent.querySelector('.wg-note');
+      const ta = note.querySelector('textarea');
+      if(val === 'bad'){
+        note.classList.add('show');
+        ta.placeholder = 'Kurz beschreiben, was festgestellt wurde...';
+      } else if(val === 'na'){
+        note.classList.add('show');
+        ta.placeholder = 'Begründung (optional), z.B. nicht verbaut...';
+      } else {
+        note.classList.remove('show');
+        inst.results[idx].note = '';
+        ta.value = '';
+      }
+      wgUpdateStatus();
+    });
+  });
+
+  wgInstancesEl.querySelectorAll('.wg-note textarea').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const [instId, idx] = e.target.closest('.wg-note').dataset.instNote.split('|');
+      const inst = wgState.instances.find(i => i.id == instId);
+      inst.results[idx].note = e.target.value;
+    });
+  });
+
+  // Vorjahres-Protokoll laden
+  wgInstancesEl.querySelectorAll('[data-vorjahr-load]').forEach(btn => {
+    btn.addEventListener('click', () => wgLadeVorjahr(parseInt(btn.dataset.vorjahrLoad)));
+  });
+
+  // Protokoll-Meta-Felder (Ident-Nr., Standort, Türnummer, Kontrolleur)
+  wgInstancesEl.querySelectorAll('[data-inst-meta]').forEach(input => {
+    input.addEventListener('input', e => {
+      const [instId, field] = e.target.dataset.instMeta.split('|');
+      const inst = wgState.instances.find(i => i.id == instId);
+      if(inst) inst.meta[field] = e.target.value;
+    });
+  });
+
+  // Wert-Felder je Prüfpunkt (z.B. Ist-Spannung, Öffnungszyklus)
+  wgInstancesEl.querySelectorAll('[data-inst-value]').forEach(input => {
+    input.addEventListener('input', e => {
+      const [instId, idx] = e.target.dataset.instValue.split('|');
+      const inst = wgState.instances.find(i => i.id == instId);
+      if(inst){ if(!inst.results[idx]) inst.results[idx] = { status:null, note:'', value:'' }; inst.results[idx].value = e.target.value; }
+      wgUpdateStatus();
+    });
+  });
+
+  // Extra-Wertfeld je Anlagentyp (z.B. Akkuspannung nach 15 min.)
+  wgInstancesEl.querySelectorAll('[data-inst-extraval]').forEach(input => {
+    input.addEventListener('input', e => {
+      const inst = wgState.instances.find(i => i.id == e.target.dataset.instExtraval);
+      if(inst) inst.extraValue = e.target.value;
+    });
+  });
+
+  // Abzustellende Mängel / Hinweis
+  wgInstancesEl.querySelectorAll('[data-inst-maengel]').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const inst = wgState.instances.find(i => i.id == e.target.dataset.instMaengel);
+      if(inst) inst.maengel = e.target.value;
+    });
+  });
+  wgInstancesEl.querySelectorAll('[data-inst-hinweis]').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const inst = wgState.instances.find(i => i.id == e.target.dataset.instHinweis);
+      if(inst) inst.hinweis = e.target.value;
+    });
+  });
+
+  // Anlage elektrisch/mechanisch in Betrieb?
+  wgInstancesEl.querySelectorAll('[data-inst-betrieb]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = wgState.instances.find(i => i.id == btn.dataset.instBetrieb);
+      const field = btn.dataset.field;
+      inst.betrieb[field] = btn.dataset.val;
+      const row = btn.closest('.wg-general-row');
+      row.querySelectorAll('.wg-general-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+    });
+  });
+
+  // Foto-Aufnahme je Protokoll-Slot (live, direkt von der Kamera)
+  wgInstancesEl.querySelectorAll('[data-inst-foto-aufnehmen]').forEach(input => {
+    input.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if(!file) return;
+      const inst = wgState.instances.find(i => i.id == e.target.dataset.instFotoAufnehmen);
+      const slot = parseInt(e.target.dataset.slot);
+      const reader = new FileReader();
+      reader.onload = ev => {
+        inst.protokollFotos[slot] = ev.target.result;
+        wgRenderInstances();
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Foto aus einem Slot wieder entfernen
+  wgInstancesEl.querySelectorAll('[data-inst-foto-loeschen]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = wgState.instances.find(i => i.id == btn.dataset.instFotoLoeschen);
+      const slot = parseInt(btn.dataset.slot);
+      inst.protokollFotos[slot] = null;
+      wgRenderInstances();
+    });
+  });
+
+  // Störungsfelder
+  wgInstancesEl.querySelectorAll('[data-inst-stoerung]').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const [instId, field] = e.target.dataset.instStoerung.split('|');
+      const inst = wgState.instances.find(i => i.id == instId);
+      inst.stoerung[field] = e.target.value;
+      wgUpdateStatus();
+    });
+  });
+
+  wgUpdateStatus();
+  if(typeof aktualisiereChecklisteAbgleich === 'function') aktualisiereChecklisteAbgleich();
+}
+
+function wgUpdateStatus(){
+  if(wgState.instances.length === 0){
+    wgStatusEl.textContent = 'Füge mindestens eine Anlage hinzu.';
+    wgApplyBtn.disabled = true;
+    wgExportPdfBtn.disabled = true;
+    return;
+  }
+  let total = 0;
+  let answered = 0;
+  wgState.instances.forEach(inst => {
+    if(inst.mode !== 'wartung'){
+      total += WG_GENERAL_FIELDS.length;
+      answered += WG_GENERAL_FIELDS.filter(f => inst.general[f.key]).length;
+    }
+
+    if(inst.mode === 'wartung'){
+      const pts = WG_ANLAGEN[inst.typeKey].points;
+      total += pts.length;
+      pts.forEach((p, idx) => {
+        const r = inst.results[idx];
+        if(!r) return;
+        if(p.type === 'value'){ if(r.value && r.value.trim()) answered++; }
+        else if(r.status !== null) answered++;
+      });
+    } else {
+      total += 3;
+      answered += ['gemeldet','ursache','massnahme'].filter(k => inst.stoerung[k]?.trim()).length;
+    }
+  });
+  wgStatusEl.textContent = `${wgState.instances.length} Anlage(n) — ${answered}/${total} Angaben erfasst`;
+  wgApplyBtn.disabled = answered === 0;
+  wgExportPdfBtn.disabled = !wgState.instances.some(i => i.mode === 'wartung');
+}
+
+function wgGenerateText(){
+  let lines = [];
+  wgState.instances.forEach(inst => {
+    const a = WG_ANLAGEN[inst.typeKey];
+
+    if(inst.mode === 'wartung'){
+      // Bewusst kein Prüfpunkt-Detail im Auftragstext — das steht ausschließlich
+      // im separaten Wartungsprotokoll-PDF. Im Bericht nur der Kurzhinweis.
+      lines.push(`${inst.label || a.name}: Wartung gemäß Auftrag durchgeführt. Zustand der Anlage ist im Wartungsprotokoll dokumentiert.`);
+      lines.push('');
+      return;
+    }
+
+    // Störung: volle Beschreibung, das ist die eigentliche Tätigkeitsdokumentation.
+    lines.push(`${inst.label || a.name} — Störung:`);
+
+    WG_GENERAL_FIELDS.forEach(f => {
+      const v = inst.general[f.key];
+      if(!v) return;
+      lines.push(`${f.label}: ${v === 'pos' ? f.pos : f.neg}`);
+    });
+
+    if(inst.stoerung.gemeldet?.trim()) lines.push(`Gemeldeter Fehler / Symptom: ${inst.stoerung.gemeldet.trim()}`);
+    if(inst.stoerung.ursache?.trim()) lines.push(`Festgestellte Ursache: ${inst.stoerung.ursache.trim()}`);
+    if(inst.stoerung.massnahme?.trim()) lines.push(`Durchgeführte Maßnahme: ${inst.stoerung.massnahme.trim()}`);
+    lines.push('');
+  });
+  return lines.join('\n').trim();
+}
+
+document.getElementById('openWartungGen').addEventListener('click', () => {
+  wgModal.style.display = 'block';
+});
+document.getElementById('wgClose').addEventListener('click', () => {
+  wgModal.style.display = 'none';
+});
+wgApplyBtn.addEventListener('click', () => {
+  const text = wgGenerateText();
+  const feld = document.getElementById('fTaetigkeit');
+  feld.value = feld.value.trim() ? feld.value.trim() + '\n\n' + text : text;
+  wgModal.style.display = 'none';
+});
+
+/* ============================================================
+   Separater PDF-Export: Wartungsprotokolle im Look der bisherigen
+   Papierformulare (Kopf, Fotos, iO/niO/NV-Tabelle, Mängel/Hinweis,
+   Ja/Nein-Block). Läuft unabhängig vom Arbeitsbericht-PDF-Export.
+   Hinweis: Im Original sind die Prüfpunkte zweispaltig gespiegelt
+   (links + rechts nebeneinander); hier bewusst einspaltig, damit
+   der Tabellenaufbau ohne PDF-Tabellen-Plugin robust bleibt.
+   ============================================================ */
+function wgFormatDatum(iso){
+  if(!iso) return '-';
+  const parts = iso.split('-');
+  if(parts.length !== 3) return iso;
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
+
+async function wgLadeVorjahr(instId){
+  const inst = wgState.instances.find(i => i.id == instId);
+  if(!inst) return;
+  const identNr = (inst.meta.identNr || '').trim();
+  if(!identNr){ inst.vorjahrStatus = 'no-ident'; wgRenderInstances(); return; }
+  if(!SUPABASE_CONFIGURED){ inst.vorjahrStatus = 'error'; wgRenderInstances(); return; }
+
+  inst.vorjahrStatus = 'loading';
+  wgRenderInstances();
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/wartungsprotokolle?ident_nr=eq.${encodeURIComponent(identNr)}&select=*&order=erstellt_am.desc&limit=1`,
+      { headers: supabaseHeaders() }
+    );
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if(rows.length){
+      inst.vorjahr = rows[0];
+      inst.vorjahrStatus = 'found';
+    } else {
+      inst.vorjahr = null;
+      inst.vorjahrStatus = 'notfound';
+    }
+  } catch(err){
+    console.error('Vorjahres-Protokoll laden fehlgeschlagen:', err);
+    inst.vorjahrStatus = 'error';
+  }
+  wgRenderInstances();
+}
+
+/* Speichert jedes Wartungsprotokoll mit Ident-Nr. in der Datenbank —
+   Grundlage für "Letzte Wartung laden" bei künftigen Terminen. Läuft
+   still im Hintergrund beim PDF-Export; ein Fehlschlag hier darf das
+   bereits erzeugte PDF nicht entwerten, daher nur Best-Effort. */
+async function wgSpeicherProtokolleInDb(wartungInstances){
+  if(!SUPABASE_CONFIGURED) return;
+  const rows = wartungInstances
+    .filter(inst => (inst.meta.identNr || '').trim())
+    .map(inst => {
+      const a = WG_ANLAGEN[inst.typeKey];
+      const ergebnisse = a.points.map((p, idx) => {
+        const r = inst.results[idx] || {};
+        return { nr: p.nr, text: p.text, status: r.status || null, note: r.note || '', value: r.value || '' };
+      });
+      return {
+        ident_nr: inst.meta.identNr.trim(),
+        typ_key: inst.typeKey,
+        typ_name: a.name,
+        standort: inst.meta.standort || null,
+        tuernummer: inst.meta.tuernummer || null,
+        kunde: val('fKunde') || null,
+        bauvorhaben: val('fBauvorhaben') || null,
+        kontrolleur: inst.meta.kontrolleur || null,
+        datum: inst.meta.datum || null,
+        ergebnisse,
+        maengel: inst.maengel || null,
+        hinweis: inst.hinweis || null,
+        betrieb_elektrisch: inst.betrieb.elektrisch,
+        betrieb_mechanisch: inst.betrieb.mechanisch,
+        extra_value: inst.extraValue || null,
+        erstellt_von: val('fTechniker') || null
+      };
+    });
+  if(!rows.length) return;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/wartungsprotokolle`, {
+      method: 'POST',
+      headers: supabaseHeaders(),
+      body: JSON.stringify(rows)
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+  } catch(err){
+    console.error('Wartungsprotokolle speichern fehlgeschlagen:', err);
+  }
+}
+
+function wgExportProtokollePdf(){
+  const wartungInstances = wgState.instances.filter(i => i.mode === 'wartung');
+  if(!wartungInstances.length){
+    wgStatusEl.textContent = 'Keine Anlage im Modus "Wartung" — Protokolle gelten nur für Wartungen, nicht für Störungen.';
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const pageW = 210, margin = 16;
+  const usableW = pageW - margin * 2;
+  const statusW = 14;
+  const textW = usableW - statusW * 3;
+
+  let skipped = 0;
+
+  wartungInstances.forEach((inst, instIdx) => {
+    const a = WG_ANLAGEN[inst.typeKey];
+    if(!a){ skipped++; return; }
+    if(instIdx > 0) doc.addPage();
+    let y = 18;
+
+    // Kopf: Firmenname
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+    doc.text(TENANT.name || 'TS-Suite', pageW - margin, y, { align: 'right' });
+    y += 9;
+
+    // Titel-Box
+    doc.setDrawColor(0); doc.setLineWidth(0.3);
+    doc.rect(margin, y, usableW, 9);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+    doc.text(a.protokollTitel || ('Wartungsprotokoll ' + a.name), pageW / 2, y + 6.2, { align: 'center' });
+    y += 9;
+
+    // Meta-Grid: Ident-Nr. / Standort / Türnummer / durchgeführt am / Kontrolleur
+    const metaCols = [
+      ['Ident-Nr.', inst.meta.identNr || '-'],
+      ['Standort', inst.meta.standort || '-'],
+      ['Türnummer', inst.meta.tuernummer || '-'],
+      ['durchgeführt am', wgFormatDatum(inst.meta.datum)],
+      ['Kontrolleur', inst.meta.kontrolleur || '-']
+    ];
+    const colW = usableW / metaCols.length;
+    const metaH = 14;
+    doc.rect(margin, y, usableW, metaH);
+    metaCols.forEach((c, i) => {
+      const cx = margin + i * colW;
+      if(i > 0) doc.line(cx, y, cx, y + metaH);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5);
+      doc.text(c[0], cx + 2, y + 5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5);
+      doc.text(doc.splitTextToSize(c[1], colW - 4), cx + 2, y + 10);
+    });
+    y += metaH + 6;
+
+    // Fotos (bis zu 3, live vor Ort mit der Kamera aufgenommen)
+    const instPhotos = (inst.protokollFotos || []).filter(Boolean);
+    if(instPhotos.length){
+      const imgW = 55, imgH = 42;
+      let x = margin;
+      instPhotos.slice(0, 3).forEach(dataUrl => {
+        try{ doc.addImage(dataUrl, 'JPEG', x, y, imgW, imgH); }catch(e){}
+        x += imgW + 6;
+      });
+      y += imgH + 8;
+    }
+
+    if(y > 250){ doc.addPage(); y = 18; }
+
+    // Prüfpunkte-Tabelle
+    function drawTableHead(){
+      const h = 7;
+      doc.setFillColor(235, 235, 235);
+      doc.rect(margin, y, usableW, h, 'F');
+      doc.rect(margin, y, usableW, h);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Prüfpunkt', margin + 2, y + 5);
+      doc.line(margin + textW, y, margin + textW, y + h);
+      doc.text('iO', margin + textW + statusW * 0.5, y + 5, { align: 'center' });
+      doc.line(margin + textW + statusW, y, margin + textW + statusW, y + h);
+      doc.text('niO', margin + textW + statusW * 1.5, y + 5, { align: 'center' });
+      doc.line(margin + textW + statusW * 2, y, margin + textW + statusW * 2, y + h);
+      doc.text('NV', margin + textW + statusW * 2.5, y + 5, { align: 'center' });
+      y += h;
+    }
+    drawTableHead();
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+
+    a.points.forEach((point, idx) => {
+      const r = inst.results[idx] || { status: null, note: '', value: '' };
+
+      if(point.section){
+        if(y > 265){ doc.addPage(); y = 18; drawTableHead(); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); }
+        doc.setFillColor(245, 245, 245);
+        doc.rect(margin, y, usableW, 6, 'F');
+        doc.rect(margin, y, usableW, 6);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+        doc.text(point.section, margin + 2, y + 4.2);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        y += 6;
+      }
+
+      const label = `${point.nr} ${point.text}`;
+      const textLines = doc.splitTextToSize(label, textW - 4);
+      const noteTxt = (r.note && (r.status === 'bad' || r.status === 'na')) ? r.note.trim() : '';
+      const noteLines = noteTxt ? doc.splitTextToSize('→ ' + noteTxt, textW - 4) : [];
+      const rowH = Math.max(7, (textLines.length + noteLines.length) * 4.2 + 3);
+
+      if(y + rowH > 280){ doc.addPage(); y = 18; drawTableHead(); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); }
+
+      doc.rect(margin, y, usableW, rowH);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(textLines, margin + 2, y + 4.5);
+      if(noteLines.length){
+        doc.setFont('helvetica', 'italic'); doc.setFontSize(8);
+        doc.text(noteLines, margin + 2, y + 4.5 + textLines.length * 4.2);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      }
+
+      if(point.type === 'value'){
+        const valTxt = (r.value && r.value.trim()) ? r.value.trim() + (point.unit ? ' ' + point.unit : '') : '–';
+        doc.text(valTxt, margin + usableW - 2, y + rowH / 2 + 1.5, { align: 'right' });
+      } else {
+        doc.line(margin + textW, y, margin + textW, y + rowH);
+        doc.line(margin + textW + statusW, y, margin + textW + statusW, y + rowH);
+        doc.line(margin + textW + statusW * 2, y, margin + textW + statusW * 2, y + rowH);
+        const markY = y + rowH / 2 + 1.5;
+        if(r.status === 'ok') doc.text('X', margin + textW + statusW * 0.5, markY, { align: 'center' });
+        if(r.status === 'bad') doc.text('X', margin + textW + statusW * 1.5, markY, { align: 'center' });
+        if(r.status === 'na') doc.text('X', margin + textW + statusW * 2.5, markY, { align: 'center' });
+      }
+      y += rowH;
+    });
+
+    if(a.extraValue){
+      if(y > 273){ doc.addPage(); y = 18; }
+      const h = 7;
+      doc.rect(margin, y, usableW, h);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(a.extraValue.label, margin + 2, y + 4.8);
+      const v = inst.extraValue && inst.extraValue.trim() ? inst.extraValue.trim() + (a.extraValue.unit ? ' ' + a.extraValue.unit : '') : '–';
+      doc.text(v, margin + usableW - 2, y + 4.8, { align: 'right' });
+      y += h + 2;
+    }
+
+    // Abzustellende Mängel
+    y += 2;
+    if(y > 260){ doc.addPage(); y = 18; }
+    const maengelTxt = (inst.maengel && inst.maengel.trim()) ? inst.maengel.trim() : 'Gerät ist ohne Mängel';
+    const mLines = doc.splitTextToSize(maengelTxt, usableW - 46);
+    const mH = Math.max(8, mLines.length * 4.2 + 3);
+    doc.rect(margin, y, usableW, mH);
+    doc.line(margin + 42, y, margin + 42, y + mH);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+    doc.text('Abzustellende Mängel', margin + 2, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(mLines, margin + 45, y + 4.5);
+    y += mH + 2;
+
+    // Hinweis (nur wenn ausgefüllt)
+    if(inst.hinweis && inst.hinweis.trim()){
+      if(y > 265){ doc.addPage(); y = 18; }
+      const hLines = doc.splitTextToSize(inst.hinweis.trim(), usableW - 46);
+      const hH = Math.max(8, hLines.length * 4.2 + 3);
+      doc.rect(margin, y, usableW, hH);
+      doc.line(margin + 42, y, margin + 42, y + hH);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+      doc.text('Hinweis', margin + 2, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(hLines, margin + 45, y + 4.5);
+      y += hH + 2;
+    }
+
+    // Ja/Nein: Anlage elektrisch/mechanisch in Betrieb?
+    y += 2;
+    if(y > 268){ doc.addPage(); y = 18; }
+    const jnRows = [
+      ['Anlage elektrisch in Betrieb?', inst.betrieb.elektrisch === 'ja' ? 'Ja' : (inst.betrieb.elektrisch === 'nein' ? 'Nein' : '–')],
+      ['Anlage mechanisch in Betrieb?', inst.betrieb.mechanisch === 'ja' ? 'Ja' : (inst.betrieb.mechanisch === 'nein' ? 'Nein' : '–')]
+    ];
+    const jnH = 7;
+    jnRows.forEach(row => {
+      doc.rect(margin, y, usableW, jnH);
+      doc.line(margin + usableW - 30, y, margin + usableW - 30, y + jnH);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      doc.text(row[0], margin + 2, y + 4.8);
+      doc.text(row[1], margin + usableW - 15, y + 4.8, { align: 'center' });
+      y += jnH;
+    });
+  });
+
+  const dateiname = 'Wartungsprotokolle_' + (val('fBauvorhaben') || 'Bericht').replace(/[^\w\-]+/g, '_') + '.pdf';
+  doc.save(dateiname);
+
+  wgSpeicherProtokolleInDb(wartungInstances);
+
+  wgStatusEl.textContent = skipped
+    ? `PDF erzeugt (${wartungInstances.length - skipped} Protokoll(e)). Störungs-Einträge wurden nicht mit exportiert.`
+    : `PDF mit ${wartungInstances.length} Protokoll(en) erzeugt.`;
+}
+
+wgExportPdfBtn.addEventListener('click', wgExportProtokollePdf);
+
+/* ============================================================
+   Anlagen-Checkliste je Wartungsposition. Die Soll-Liste (welche
+   Ident-Nrn zu dieser Wartungsposition gehören) liegt fest in
+   crm_wartungsposition_anlagen. Der Ist-Abgleich läuft rein im
+   Browser gegen die aktuell im Wartungs-Generator erfassten
+   Ident-Nrn dieser Sitzung — kein Datenbank-Roundtrip nötig, und
+   reagiert live, während der Techniker Anlagen einträgt.
+   ============================================================ */
+let checklisteAktuellePosId = null;
+let checklisteAnlagen = [];
+
+async function ladeChecklistePanel(posId){
+  checklisteAktuellePosId = posId;
+  const panel = document.getElementById('checklistePanel');
+  if(!posId || !SUPABASE_CONFIGURED){ panel.style.display = 'none'; return; }
+
+  try{
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_wartungsposition_anlagen?wartungsposition_id=eq.${posId}&select=*&order=ident_nr`,
+      { headers: supabaseHeaders() }
+    );
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    checklisteAnlagen = await res.json();
+  } catch(err){
+    console.error('Checkliste laden fehlgeschlagen:', err);
+    checklisteAnlagen = [];
+  }
+
+  panel.style.display = 'block';
+  renderChecklisteListe();
+}
+
+function gesammelteWgIdentNrs(){
+  if(typeof wgState === 'undefined' || !wgState.instances) return new Set();
+  return new Set(
+    wgState.instances
+      .filter(i => i.mode === 'wartung' && i.meta && i.meta.identNr)
+      .map(i => i.meta.identNr.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function renderChecklisteListe(){
+  const listeEl = document.getElementById('checklisteListe');
+  const fortschrittEl = document.getElementById('checklisteFortschritt');
+
+  if(!checklisteAnlagen.length){
+    listeEl.innerHTML = `<div style="font-size:12.5px;color:var(--muted);font-style:italic;">Noch keine Anlagen für diese Wartungsposition hinterlegt — unten unter "Anlagen verwalten" eintragen.</div>`;
+    fortschrittEl.textContent = '';
+    return;
+  }
+
+  const erledigt = gesammelteWgIdentNrs();
+  let anzahlErledigt = 0;
+
+  listeEl.innerHTML = checklisteAnlagen.map(a => {
+    const ok = erledigt.has((a.ident_nr || '').trim().toLowerCase());
+    if(ok) anzahlErledigt++;
+    return `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;">
+        <span style="width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;
+          font-size:12px;font-weight:700;
+          background:${ok ? 'var(--ok)' : 'transparent'};
+          border:1px solid ${ok ? 'var(--ok)' : 'var(--line)'};
+          color:${ok ? 'var(--bg)' : 'var(--muted)'};">${ok ? '✓' : ''}</span>
+        <span style="flex:1;color:${ok ? 'var(--text)' : 'var(--muted)'};">
+          <span class="mono">${a.ident_nr}</span>${a.bezeichnung ? ' — ' + a.bezeichnung : ''}
+        </span>
+        <span class="clear-link" data-checkliste-entfernen="${a.id}" style="font-size:11px;">entfernen</span>
+      </div>
+    `;
+  }).join('');
+
+  fortschrittEl.textContent = `${anzahlErledigt} / ${checklisteAnlagen.length} erledigt`;
+
+  listeEl.querySelectorAll('[data-checkliste-entfernen]').forEach(el => {
+    el.addEventListener('click', () => checklisteEintragEntfernen(el.dataset.checklisteEntfernen));
+  });
+}
+
+// Wird nach jedem Render des Wartungs-Generators aufgerufen (siehe
+// Ende von wgRenderInstances) — hält den grünen Haken live aktuell,
+// während der Techniker Ident-Nrn einträgt.
+function aktualisiereChecklisteAbgleich(){
+  if(!checklisteAktuellePosId || !checklisteAnlagen.length) return;
+  renderChecklisteListe();
+}
+
+async function checklisteEintragHinzufuegen(){
+  const identEl = document.getElementById('checklisteNeueIdent');
+  const bezEl = document.getElementById('checklisteNeueBezeichnung');
+  const identNr = identEl.value.trim();
+  if(!identNr){ identEl.focus(); return; }
+  if(!checklisteAktuellePosId) return;
+
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/crm_wartungsposition_anlagen`, {
+      method: 'POST',
+      headers: supabaseHeaders({ 'Prefer': 'return=representation' }),
+      body: JSON.stringify([{
+        wartungsposition_id: checklisteAktuellePosId,
+        ident_nr: identNr,
+        bezeichnung: bezEl.value.trim() || null
+      }])
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    identEl.value = ''; bezEl.value = '';
+    await ladeChecklistePanel(checklisteAktuellePosId);
+  } catch(err){
+    alert('Konnte nicht hinzugefügt werden (evtl. Ident-Nr. schon in der Liste): ' + (err.message || err));
+  }
+}
+
+async function checklisteEintragEntfernen(id){
+  if(!confirm('Diese Anlage aus der Checkliste der Wartungsposition entfernen?')) return;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/crm_wartungsposition_anlagen?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: supabaseHeaders()
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    await ladeChecklistePanel(checklisteAktuellePosId);
+  } catch(err){
+    alert('Entfernen fehlgeschlagen: ' + (err.message || err));
+  }
+}
+
+document.getElementById('checklisteVerwaltenToggle').addEventListener('click', () => {
+  const el = document.getElementById('checklisteVerwalten');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('checklisteHinzufuegenBtn').addEventListener('click', checklisteEintragHinzufuegen);
+
+document.getElementById('fVorgang').addEventListener('change', (e) => {
+  const wert = e.target.value;
+  if(wert.startsWith('wartung:')){
+    ladeChecklistePanel(wert.slice(8));
+  } else {
+    checklisteAktuellePosId = null;
+    checklisteAnlagen = [];
+    document.getElementById('checklistePanel').style.display = 'none';
+  }
+});
+
+</script>
+</body>
+</html>

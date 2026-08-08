@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="robots" content="noindex, nofollow">
+<title>Impressum — TS-Suite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0c; --surface:#111318; --surface-hover:#141821; --surface-alt:#0d0f13;
+    --ink:#e9edf2; --ink-80:rgba(233,237,242,.8); --ink-70:rgba(233,237,242,.7); --ink-60:rgba(233,237,242,.6);
+    --ink-50:rgba(233,237,242,.5); --ink-45:rgba(233,237,242,.45); --ink-40:rgba(233,237,242,.4);
+    --accent:#3a7bd5; --accent-dark:#2f66b3; --glow:#5eead4; --warn:#f2b705;
+    --line-20:rgba(58,123,213,.2); --line-25:rgba(58,123,213,.25); --line-30:rgba(58,123,213,.3); --line-35:rgba(58,123,213,.35);
+    --font-display:'Inter',system-ui,sans-serif; --font-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+    --maxw:1280px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-display); line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+    background-size:34px 34px;}
+  a{color:var(--accent); text-decoration:none;}
+  h1,h2,h3{margin:0; font-family:var(--font-display); font-weight:700;}
+  ::selection{background:var(--accent); color:var(--bg);}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 48px;}
+  @media(max-width:640px){.wrap{padding:0 20px;}}
+
+  header.nav{position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between;
+    padding:16px 48px; border-bottom:1px solid var(--line-25); background:rgba(10,10,12,.85); backdrop-filter:blur(8px);}
+  @media(max-width:640px){header.nav{padding:14px 20px;}}
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand__mark{width:40px; height:40px; border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-family:var(--font-mono); font-weight:700; color:var(--accent); font-size:15px;}
+  .brand__name{font:700 16px/1.2 var(--font-display); letter-spacing:.01em;}
+  .brand__sub{font:500 10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; color:var(--ink-45);}
+  .nav__links{display:flex; align-items:center; gap:32px; font:600 11px var(--font-mono); letter-spacing:.08em; text-transform:uppercase;}
+  .nav__links a{color:var(--ink-70); transition:color .15s;}
+  .nav__links a:hover{color:var(--accent);}
+  @media(max-width:640px){.nav__links{gap:18px;}}
+
+  main{padding:56px 0 90px;}
+  .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:600; display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .eyebrow::before{content:''; width:20px; height:1px; background:var(--accent); display:inline-block;}
+  .content{max-width:720px;}
+  h1{font-size:32px; margin-bottom:8px;}
+  h2{font-size:17px; margin:38px 0 10px; border-bottom:1px solid var(--line-20); padding-bottom:8px;}
+  p{color:var(--ink-70); font-size:15px; margin:0 0 10px;}
+
+  .todo-banner{background:rgba(242,183,5,.08); border:1px solid rgba(242,183,5,.35); border-radius:2px; padding:16px 18px; margin:28px 0 8px;}
+  .todo-banner p{color:var(--ink); font-size:14px; margin:0;}
+  .fill{color:var(--warn); font-family:var(--font-mono); font-weight:600; background:rgba(242,183,5,.1); padding:1px 6px; border-radius:2px;}
+
+  footer{border-top:1px solid var(--line-20); padding:26px 0; font-size:12px; color:var(--ink-45); text-align:center;}
+  footer .legal{margin-top:8px; display:flex; gap:16px; justify-content:center; flex-wrap:wrap;}
+  footer .legal a{color:var(--ink-45); text-decoration:none; transition:color .15s;}
+  footer .legal a:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <a href="index.html" class="brand" style="cursor:pointer;">
+    <div class="brand__mark">T</div>
+    <div>
+      <div class="brand__name">TS-Suite</div>
+      <div class="brand__sub">Tür &amp; Zutrittskontrolle</div>
+    </div>
+  </a>
+  <nav class="nav__links">
+    <a href="index.html">Zur Startseite</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <div class="content">
+    <div class="eyebrow">Rechtliches</div>
+    <h1>Impressum</h1>
+
+    <h2>Angaben gemäß § 5 DDG</h2>
+    <p>
+      Marko Gerdau<br>
+      Hauptstraße 13<br>
+      76344 Eggenstein-Leopoldshafen
+    </p>
+
+    <h2>Kontakt</h2>
+    <p>
+      E-Mail: kontakt@ts-suite.de
+    </p>
+
+    <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
+    <p>Marko Gerdau, Anschrift wie oben.</p>
+
+    <h2>Streitschlichtung</h2>
+    <p>
+      Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
+      <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener">https://ec.europa.eu/consumers/odr/</a>.
+      Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
+      Verbraucherschlichtungsstelle teilzunehmen.
+    </p>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    TS-Suite — Wartungsdokumentation für Türsystem-Techniker
+    <div class="legal">
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
