@@ -421,11 +421,11 @@
     <input type="file" id="auftragInput" accept="application/json,.json" style="display:none">
     <div class="pdf-status" id="auftragStatus"></div>
 
-    <label>Kunde</label>
+    <label>Kunde *</label>
     <input type="text" id="fKunde" placeholder="z. B. Stadt Karlsruhe" list="kundenListe" autocomplete="off">
     <datalist id="kundenListe"></datalist>
 
-    <label>Bauvorhaben</label>
+    <label>Bauvorhaben *</label>
     <input type="text" id="fBauvorhaben" placeholder="z. B. Karlsburg BA3 BS-Sanierung">
 
     <label>Zugehöriger Vorgang <span style="color:var(--muted);font-weight:normal;">(optional)</span></label>
@@ -460,7 +460,7 @@
         <input type="text" id="fAngebotsnr" placeholder="i-2026-XXXXX">
       </div>
       <div>
-        <label>Datum</label>
+        <label>Datum *</label>
         <input type="date" id="fDatum">
       </div>
     </div>
@@ -480,7 +480,7 @@
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung</p>
+    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung *</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="add-btn" id="openWartungGen" style="flex:1;text-align:center;">+ Wartungs-Generator verwenden</button>
     </div>
@@ -597,6 +597,7 @@
 </div>
 
 <div class="generate">
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">* Pflichtfeld</div>
   <button id="genBtn">Bericht als PDF erzeugen</button>
   <div class="gen-status" id="genStatus"></div>
 </div>
@@ -1150,9 +1151,47 @@ document.getElementById('keinAbnehmer').addEventListener('change', e => {
 /* ---------- PDF Bericht generieren ---------- */
 document.getElementById('genBtn').addEventListener('click', generateReport);
 
+// ─── Pflichtfelder: ohne diese ist ein Arbeitsbericht wertlos bzw. nicht
+// zuordenbar. Wird vor JEDEM Speichern/PDF-Erzeugen geprüft — vorher konnte
+// ein komplett leeres Formular abgeschickt werden und landete trotzdem in
+// der Datenbank. ───────────────────────────────────────────────────────────
+const PFLICHTFELDER = [
+  {id:'fKunde', label:'Kunde'},
+  {id:'fBauvorhaben', label:'Bauvorhaben'},
+  {id:'fDatum', label:'Datum'},
+  {id:'fTaetigkeit', label:'Tätigkeitsbeschreibung'}
+];
+function pruefePflichtfelder(){
+  const fehlend = [];
+  PFLICHTFELDER.forEach(f => {
+    const el = document.getElementById(f.id);
+    const leer = !el || !el.value || !el.value.trim();
+    if(el) el.style.borderColor = leer ? 'var(--danger)' : '';
+    if(leer) fehlend.push(f);
+  });
+  return fehlend;
+}
+// Rand-Hervorhebung entfernen, sobald der Nutzer zu tippen anfängt
+PFLICHTFELDER.forEach(f => {
+  const el = document.getElementById(f.id);
+  if(el) el.addEventListener('input', () => { el.style.borderColor = ''; });
+});
+
 async function generateReport(){
   const genStatus = document.getElementById('genStatus');
   const btn = document.getElementById('genBtn');
+
+  const fehlend = pruefePflichtfelder();
+  if(fehlend.length){
+    genStatus.textContent = 'Bitte ausfüllen: ' + fehlend.map(f => f.label).join(', ');
+    genStatus.className = 'gen-status err';
+    const erstesFeld = document.getElementById(fehlend[0].id);
+    erstesFeld.focus();
+    erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  genStatus.className = 'gen-status';
+
   btn.disabled = true;
   genStatus.textContent = 'Bericht wird erstellt ...';
 

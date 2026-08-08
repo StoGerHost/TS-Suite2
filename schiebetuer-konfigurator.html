@@ -614,8 +614,20 @@ function getEmp(){
   if(isDK()){
     var b=parseInt(S.oeffnungsbreite),g=parseInt(S.fluegelgewicht);
     var m=getDKModell(); if(!m||(!b&&!g)) return null;
-    var maxG=m.value.startsWith("es400")?250:125;
-    var maxB=3000;
+    // Grenzen kommen jetzt direkt aus den Modell-Fakten (DK_MODELLE), nicht mehr aus einer
+    // groben "startsWith es400"-Prüfung — die ignorierte bisher, dass Teleskop-Modelle (T)
+    // eigene, engere Gewichtsgrenzen UND eine weitere Breitengrenze haben (4000 statt 3000 mm),
+    // und dass ES 400 PRO/FST je nach Flügelanzahl 250 kg (1-flügelig) oder 200 kg (2-flügelig) erlaubt.
+    var istTeleskop = m.value==='es250t'||m.value==='es250tfst'||m.value==='es400t'||m.value==='es400tfst';
+    var maxG, maxB;
+    if(istTeleskop){
+      maxG = (m.value==='es400t'||m.value==='es400tfst') ? 100 : 65;
+      maxB = 4000;
+    } else {
+      var istEs400 = m.value==='es400pro'||m.value==='es400fst';
+      maxG = istEs400 ? (S.fluegelanzahl==='1'?250:200) : 125;
+      maxB = 3000;
+    }
     if(g>maxG||b>maxB) return {warn:true,reason:"Werte überschreiten Modell-Maximum ("+maxG+" kg / "+maxB+" mm)"};
     if(g&&b) return {warn:false,reason:"Werte im zulässigen Bereich für "+m.name};
   } else if(isRC()||isGI()){

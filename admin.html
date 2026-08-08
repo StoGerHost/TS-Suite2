@@ -253,6 +253,18 @@
       </div>
     </div>
 
+    <div class="card">
+      <h2>Änderungshistorie</h2>
+      <p class="hint">Wer hat wann Rolle, Kürzel, Name oder Aktiv-Status eines Mitarbeiters geändert.
+        Wird ausschließlich serverseitig von der Edge Function geschrieben, ist also auch für Admins
+        über die App nicht manipulierbar.</p>
+      <table id="tbl-audit"><thead><tr><th>Wann</th><th>Betrifft</th><th>Feld</th><th>Von → Zu</th><th>Geändert von</th></tr></thead><tbody></tbody></table>
+      <p class="empty" id="audit-empty" style="display:none">Noch keine Einträge oder Laden fehlgeschlagen.</p>
+      <div class="export-row">
+        <button class="btn ghost" onclick="ladeAuditLog()">↻ Neu laden</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- ═══════════ TAB: ARTIKELNUMMERN ═══════════ -->
@@ -348,6 +360,39 @@ function ladeMitarbeiter(){
       toast('Mitarbeiterliste konnte nicht geladen werden — Function deployed?');
     });
 }
+
+// ─── Änderungshistorie (mitarbeiter_audit_log) — reines Lesen, geschrieben wird
+// ausschließlich serverseitig von der Edge Function "mitarbeiter" ───
+var AUDIT_FELD_LABEL = {rolle:'Rolle', kuerzel:'Kürzel', name:'Name', aktiv:'Aktiv'};
+function fmtAuditWert(feld, wert){
+  if(wert === null || wert === undefined || wert === '') return '—';
+  if(feld === 'aktiv') return wert === 'true' ? 'aktiv' : 'deaktiviert';
+  return wert;
+}
+function ladeAuditLog(){
+  fetch(TENANT.supabaseUrl + '/rest/v1/mitarbeiter_audit_log?select=*&order=geaendert_am.desc&limit=100', { headers: maHeaders() })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(zeilen){
+      var tb = document.querySelector('#tbl-audit tbody'); tb.innerHTML = '';
+      document.getElementById('audit-empty').style.display = zeilen.length ? 'none' : 'block';
+      zeilen.forEach(function(z){
+        var d = new Date(z.geaendert_am);
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td class="mono" style="white-space:nowrap">' + d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) + '</td>' +
+          '<td>' + esc(z.ziel_email || z.ziel_user_id) + '</td>' +
+          '<td>' + esc(AUDIT_FELD_LABEL[z.feld] || z.feld) + '</td>' +
+          '<td class="mono">' + esc(fmtAuditWert(z.feld, z.alter_wert)) + ' → ' + esc(fmtAuditWert(z.feld, z.neuer_wert)) + '</td>' +
+          '<td>' + esc(z.geaendert_von || '—') + '</td>';
+        tb.appendChild(tr);
+      });
+    })
+    .catch(function(err){
+      console.error('Audit-Log konnte nicht geladen werden:', err);
+      document.querySelector('#tbl-audit tbody').innerHTML = '';
+      document.getElementById('audit-empty').style.display = 'block';
+    });
+}
+ladeAuditLog();
 function renderMitarbeiter(){
   var tb = document.querySelector('#tbl-ma tbody'); tb.innerHTML = '';
   document.getElementById('ma-empty').style.display = MA_LISTE.length ? 'none' : 'block';
