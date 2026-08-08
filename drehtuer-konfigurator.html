@@ -15,6 +15,7 @@
 <!-- Nur als API eingebunden (kein data-gate) — die Seite bleibt frei nutzbar,
      Login wird erst beim Klick auf "Artikelnummern verwalten" verlangt. -->
 <script src="ts-auth.js"></script>
+<script src="ts-warnung.js"></script>
 <style>
   :root{
     --bg:#0a0a0c;--panel:#111318;--primary:#e9edf2;--accent:#3a7bd5;
@@ -861,6 +862,9 @@ let S={
   showSummary:false,
   notizen:"",tueranzahl:"1",
 };
+// Felder, bei deren Änderung sich ein Eignungs-Grenzwert (getEmpD()/getEmpG())
+// ändern kann. Bewusst nur diese, nicht bei jeder Feldänderung.
+var EMP_TRIGGER_FUNKTION={tuerbreite:getEmpD, tuergewicht:getEmpD, g_tuergewicht:getEmpG};
 function set(k,v){
   var patch={};patch[k]=v;
   if(k==='fluegelanzahl') patch.schliessfolge=(v==='2')?'ja':'';
@@ -868,6 +872,10 @@ function set(k,v){
   // Flügelanzahl wird deshalb automatisch mitgesetzt, sobald ED 250 PA gewählt wird.
   if(k==='modell'&&v==='ed250pa'){ patch.fluegelanzahl='2'; patch.schliessfolge='ja'; }
   S=Object.assign({},S,patch);autosave();render();
+  if(EMP_TRIGGER_FUNKTION[k]){
+    var emp=EMP_TRIGGER_FUNKTION[k]();
+    if(emp&&emp.warn&&window.zeigeWarnung) zeigeWarnung(emp.reason,{titel:'Grenzwert überschritten'});
+  }
 }
 function handleAufgenommenCode(code){
   code=code.trim();
@@ -1680,12 +1688,7 @@ function checkStartCode(){
   if(handleAufgenommenCode(val)){
     msg.textContent='✓ Code akzeptiert – '+S.aufgenommenDurch;
     msg.className='ok';
-    var code=S.aufgenommenCode, durch=S.aufgenommenDurch;
-    resolveDraftOnEntry();
-    // eigenen frisch eingegebenen Code/Namen nicht vom evtl. geladenen Entwurf überschreiben lassen
-    S.aufgenommenCode=code; S.aufgenommenDurch=durch;
-    autosave();
-    render();
+    autoload();
     setTimeout(function(){ document.getElementById('code-gate').classList.remove('visible'); },700);
   } else {
     msg.textContent='✗ Ungültiger Code.';
@@ -1695,8 +1698,7 @@ function checkStartCode(){
   }
 }
 function skipStartCode(){
-  resolveDraftOnEntry();
-  render();
+  autoload();
   document.getElementById('code-gate').classList.remove('visible');
 }
 
@@ -1956,7 +1958,6 @@ function autosave(){
   try{
     var toSave=Object.assign({},S);
     delete toSave.gpsLoading; delete toSave.gpsError; delete toSave.showSummary;
-    toSave._savedAt=new Date().toISOString();
     localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(toSave));
   }catch(e){}
 }
@@ -1965,33 +1966,6 @@ function autoload(){
     var saved=localStorage.getItem(AUTOSAVE_KEY);
     if(saved){ var p=JSON.parse(saved); _migrateTuerart(p); _migrateEd250pa(p); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
-}
-function hasDraft(){
-  try{ return !!localStorage.getItem(AUTOSAVE_KEY); }catch(e){ return false; }
-}
-function formatSavedAt(){
-  try{
-    var saved=JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
-    if(saved && saved._savedAt){
-      var d=new Date(saved._savedAt);
-      return d.toLocaleDateString('de-DE')+' '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    }
-  }catch(e){}
-  return '';
-}
-// Fragt bei vorhandenem Entwurf, ob fortgesetzt oder neu begonnen werden soll.
-// Gibt true zurück, wenn geladen wurde (S wurde bereits neu belegt).
-function resolveDraftOnEntry(){
-  if(!hasDraft()) return false;
-  var when=formatSavedAt();
-  var msg='Es gibt einen gespeicherten Entwurf'+(when?' vom '+when:'')+'.\n\nOK = fortsetzen\nAbbrechen = neu beginnen';
-  if(confirm(msg)){
-    autoload();
-    return true;
-  } else {
-    localStorage.removeItem(AUTOSAVE_KEY);
-    return false;
-  }
 }
 function resetKonfig(){
   if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
@@ -2105,7 +2079,6 @@ document.getElementById('content').addEventListener('change',function(ev){
 document.getElementById('proj-data').addEventListener('change',function(ev){
   if(ev.target.classList.contains('ma-lookup-input')){
     handleAufgenommenCode(ev.target.value);
-    autosave();
     return;
   }
   if(ev.target.classList.contains('txt-input')||ev.target.classList.contains('num-input')){

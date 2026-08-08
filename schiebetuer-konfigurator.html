@@ -15,6 +15,7 @@
 <!-- Nur als API eingebunden (kein data-gate) — die Seite bleibt frei nutzbar,
      Login wird erst beim Klick auf "Artikelnummern verwalten" verlangt. -->
 <script src="ts-auth.js"></script>
+<script src="ts-warnung.js"></script>
 <style>
   :root{
     --bg:#0a0a0c;--panel:#111318;--primary:#e9edf2;--accent:#3a7bd5;
@@ -594,7 +595,17 @@ let S={
   showSummary:false,
   notizen:"",tueranzahl:"1",
 };
-function set(k,v){S=Object.assign({},S,{[k]:v});autosave();render();}
+// Felder, bei deren Änderung sich ein Eignungs-Grenzwert (getEmp()) ändern kann.
+// Bewusst nur diese wenigen, nicht bei jeder Feldänderung — sonst poppt die
+// Warnung bei jedem Klick auf, der mit Gewicht/Breite nichts zu tun hat.
+var EMP_TRIGGER_FELDER=['oeffnungsbreite','fluegelgewicht','gz_fluegelgewicht'];
+function set(k,v){
+  S=Object.assign({},S,{[k]:v});autosave();render();
+  if(EMP_TRIGGER_FELDER.indexOf(k)>-1){
+    var emp=getEmp();
+    if(emp&&emp.warn&&window.zeigeWarnung) zeigeWarnung(emp.reason,{titel:'Grenzwert überschritten'});
+  }
+}
 function toggleArr(k,v){var a=S[k]||[];S=Object.assign({},S,{[k]:a.includes(v)?a.filter(function(x){return x!==v}):[...a,v]});autosave();render();}
 function isDK(){return S.produkt==="dk";}
 function isRC(){return S.produkt==="rc";}

@@ -23,6 +23,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- Gemeinsame PDF-Layout-Funktion, auch von uebersicht.html genutzt ("PDF neu erzeugen") -->
 <script src="ts-pdf-arbeitsbericht.js"></script>
+<script src="ts-warnung.js"></script>
 <style>
   :root{
     --bg:#0e1318;
@@ -473,7 +474,7 @@
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">02</span> Zeiterfassung</p>
+    <p class="card-title"><span class="n">02</span> Zeiterfassung *</p>
     <div id="technikerZeitBlocks"></div>
     <button class="add-btn" id="addTechnikerBlock">+ Weiterer Techniker auf der Baustelle</button>
     <div class="zeit-total" id="zeitTotal">Gesamt: 0,0 Std.</div>
@@ -1182,12 +1183,37 @@ async function generateReport(){
   const btn = document.getElementById('genBtn');
 
   const fehlend = pruefePflichtfelder();
-  if(fehlend.length){
-    genStatus.textContent = 'Bitte ausfüllen: ' + fehlend.map(f => f.label).join(', ');
+  // Fund 8 aus dem Prüfbericht: Bericht konnte bisher ohne Kundenunterschrift
+  // UND ohne "Kein Abnehmer vor Ort" stillschweigend gespeichert werden.
+  const keinAbnehmerJetzt = document.getElementById('keinAbnehmer').checked;
+  const unterschriftFehlt = !keinAbnehmerJetzt && !hasSig;
+  // Arbeitszeit ist ebenfalls Pflicht: mindestens eine Zeiterfassungs-Zeile mit
+  // Datum UND Stunden > 0, sonst lässt sich ein Bericht ohne jede erfasste Zeit abschicken.
+  const arbeitszeitFehlt = !zeitBlocks.some(block =>
+    (block.rows || []).some(r => r.datum && (parseFloat((r.stunden || '').toString().replace(',', '.')) > 0))
+  );
+
+  if(fehlend.length || unterschriftFehlt || arbeitszeitFehlt){
+    const teile = fehlend.map(f => f.label);
+    if(arbeitszeitFehlt) teile.push('Arbeitszeit (mindestens ein Datum mit Stunden erfassen)');
+    if(unterschriftFehlt) teile.push('Unterschrift (oder „Kein Abnehmer vor Ort" ankreuzen)');
+    genStatus.textContent = 'Bitte ausfüllen: ' + teile.join(', ');
     genStatus.className = 'gen-status err';
-    const erstesFeld = document.getElementById(fehlend[0].id);
-    erstesFeld.focus();
-    erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    // Schwebende Meldung zusätzlich zum Text oben im Formular — der reine Text
+    // wurde beim Ausfüllen weiter unten im Formular leicht übersehen.
+    if(window.zeigeWarnung){
+      zeigeWarnung('Bitte ergänzen, bevor der Bericht erstellt wird:\n\n• ' + teile.join('\n• '), {titel:'Formular unvollständig'});
+    }
+    if(fehlend.length){
+      const erstesFeld = document.getElementById(fehlend[0].id);
+      erstesFeld.focus();
+      erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    } else if(arbeitszeitFehlt){
+      const zeitSektion = document.getElementById('technikerZeitBlocks');
+      if(zeitSektion) zeitSektion.scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      document.getElementById('keinAbnehmer').scrollIntoView({behavior:'smooth', block:'center'});
+    }
     return;
   }
   genStatus.className = 'gen-status';
