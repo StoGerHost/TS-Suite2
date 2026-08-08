@@ -477,6 +477,9 @@ function mappingLaden(event) {
 // --- Import ausführen ---
 async function importStarten() {
   sammleMapping();
+  const gesamtVorab = parsedRows.length;
+  if(!confirm('Jetzt ' + gesamtVorab + ' Zeile(n) in die echten Kundendaten importieren? Bestehende Kunden (gleiche Kundennummer) werden aktualisiert, neue angelegt. Das lässt sich nicht automatisch rückgängig machen.')) return;
+
   const btn = document.getElementById('import-starten-btn');
   btn.disabled = true;
   document.getElementById('import-status').style.display = 'block';

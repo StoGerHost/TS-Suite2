@@ -836,7 +836,7 @@ function attachSystemeHandlers(){
     btn.addEventListener('click', async ()=>{
       if(!confirm('System wirklich löschen?')) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
-      await saveSysteme(); renderSysteme(); fillSystemSelect();
+      await saveSysteme(); renderSysteme();
     });
   });
   list.querySelectorAll('[data-action="add-bauteil"]').forEach(btn=>{
@@ -849,6 +849,8 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-bauteil"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const sys = findSys(btn.dataset.sys);
+      const b = sys?.bauteile.find(x=>x.id===btn.dataset.bauteil);
+      if(!confirm('Bauteil "' + (b?.name||'') + '" wirklich entfernen? Alle zugehörigen Klemmen gehen dabei mit verloren.')) return;
       sys.bauteile = sys.bauteile.filter(b=>b.id!==btn.dataset.bauteil);
       await saveSysteme(); renderSysteme();
     });
@@ -863,6 +865,7 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-klemme"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const b = findBauteil(btn.dataset.sys, btn.dataset.bauteil);
+      if(!confirm('Klemme wirklich entfernen?')) return;
       b.klemmen = b.klemmen.filter(k=>k.id!==btn.dataset.klemme);
       await saveSysteme(); renderSysteme();
     });

@@ -525,6 +525,9 @@ async function importStarten() {
   const kundeName = kundeSel.options[kundeSel.selectedIndex]?.textContent || '';
   if (!kundeId) { alert('Bitte einen Kunden auswählen.'); return; }
 
+  const gesamtVorab = parsedRecords.filter(r => r.uebernehmen && r.ident_nr.trim()).length;
+  if(!confirm('Jetzt ' + gesamtVorab + ' Wartungsprotokoll(e) für „' + kundeName + '" anlegen? Das lässt sich nicht automatisch rückgängig machen.')) return;
+
   const btn = document.getElementById('import-starten-btn');
   btn.disabled = true;
   document.getElementById('import-status').style.display = 'block';

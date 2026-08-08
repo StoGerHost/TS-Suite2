@@ -607,7 +607,7 @@ function attachSystemeHandlers(){
     btn.addEventListener('click', async ()=>{
       if(!confirm('System wirklich löschen?')) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
-      await saveSysteme(); renderSysteme(); fillSystemSelect();
+      await saveSysteme(); renderSysteme();
     });
   });
   list.querySelectorAll('[data-action="add-bauteil"]').forEach(btn=>{
@@ -620,6 +620,8 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-bauteil"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const sys = findSys(btn.dataset.sys);
+      const b = sys?.bauteile.find(x=>x.id===btn.dataset.bauteil);
+      if(!confirm('Bauteil "' + (b?.name||'') + '" wirklich entfernen? Alle zugehörigen Klemmen gehen dabei mit verloren.')) return;
       sys.bauteile = sys.bauteile.filter(b=>b.id!==btn.dataset.bauteil);
       await saveSysteme(); renderSysteme();
     });
@@ -634,6 +636,7 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-klemme"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const b = findBauteil(btn.dataset.sys, btn.dataset.bauteil);
+      if(!confirm('Klemme wirklich entfernen?')) return;
       b.klemmen = b.klemmen.filter(k=>k.id!==btn.dataset.klemme);
       await saveSysteme(); renderSysteme();
     });
@@ -655,7 +658,24 @@ function attachSystemeHandlers(){
         const b = findBauteil(sysId, bId);
         const row = inp.closest('tr');
         const k = b.klemmen.find(k=>k.id===row.dataset.klemme);
-        k[inp.dataset.field] = inp.value;
+        const feld = inp.dataset.field;
+        const neuerWert = inp.value.trim();
+
+        if(feld==='nr'){
+          if(!neuerWert){
+            alert('Klemmennummer darf nicht leer sein.');
+            inp.value = k.nr; // vorherigen Wert wiederherstellen
+            return;
+          }
+          const doppelt = b.klemmen.some(other => other.id!==k.id && other.nr.trim()===neuerWert);
+          if(doppelt){
+            alert('Klemmennummer "' + neuerWert + '" wird in diesem Bauteil bereits verwendet — Nummern müssen je Bauteil eindeutig sein.');
+            inp.value = k.nr; // vorherigen Wert wiederherstellen
+            return;
+          }
+        }
+
+        k[feld] = feld==='nr' ? neuerWert : inp.value;
         await saveSysteme();
       });
     });
@@ -690,6 +710,24 @@ document.getElementById('btn-import-trigger').addEventListener('click', ()=>{
   document.getElementById('file-import').click();
 });
 
+// Prüft, ob ein importiertes Objekt die erwartete Form hat (Hersteller/Modell als
+// Text, Bauteile als Array mit Name+Klemmen, jede Klemme mit Nr.+Bezeichnung) —
+// vorher wurde jedes Objekt aus der Import-Datei ungeprüft übernommen, ein falsch
+// geformtes Objekt hätte spätere Funktionen (z.B. sys.bauteile.forEach) zum
+// Absturz gebracht.
+function systemStrukturGueltig(sys){
+  if(!sys || typeof sys!=='object' || Array.isArray(sys)) return false;
+  if(typeof sys.hersteller!=='string' || !sys.hersteller.trim()) return false;
+  if(typeof sys.modell!=='string' || !sys.modell.trim()) return false;
+  if(!Array.isArray(sys.bauteile)) return false;
+  return sys.bauteile.every(b =>
+    b && typeof b==='object' &&
+    typeof b.name==='string' &&
+    Array.isArray(b.klemmen) &&
+    b.klemmen.every(k => k && typeof k==='object' && typeof k.nr==='string' && typeof k.bezeichnung==='string')
+  );
+}
+
 document.getElementById('file-import').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -698,15 +736,21 @@ document.getElementById('file-import').addEventListener('change', async (e)=>{
     const text = await file.text();
     const imported = JSON.parse(text);
     if(!Array.isArray(imported)) throw new Error('Kein gültiges Bibliotheks-Format.');
-    let added = 0, skipped = 0;
+    let added = 0, skipped = 0, ungueltig = 0;
     imported.forEach(sys=>{
+      if(!systemStrukturGueltig(sys)){ ungueltig++; return; }
+      // Frische IDs vergeben, damit importierte Objekte nie mit bestehenden
+      // System-/Bauteil-/Klemmen-IDs kollidieren.
+      sys.id = uid();
+      sys.bauteile.forEach(b=>{ b.id = uid(); b.klemmen.forEach(k=>{ k.id = uid(); }); });
       const exists = systeme.some(s => s.hersteller === sys.hersteller && s.modell === sys.modell);
       if(exists){ skipped++; }
       else { systeme.push(sys); added++; }
     });
     await saveSysteme();
     renderSysteme();
-    ioStatus.textContent = `Import: ${added} System(e) hinzugefügt, ${skipped} bereits vorhanden (übersprungen, um Duplikate zu vermeiden).`;
+    ioStatus.textContent = `Import: ${added} System(e) hinzugefügt, ${skipped} bereits vorhanden (übersprungen)` +
+      (ungueltig ? `, ${ungueltig} übersprungen (ungültiges Format).` : '.');
     ioStatus.classList.add('ok');
   }catch(err){
     ioStatus.textContent = 'Import fehlgeschlagen: ' + err.message;

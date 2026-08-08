@@ -496,6 +496,7 @@ const LM_DK={
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   oeffnungsgeschw:{standard:"Standard",erhoehen:"Erhöht",reduziert:"Reduziert (leise)"},
   notfunktion:{akku:"Akku-Backup",nein:"Keine"},
+  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 const LM_GZ={
   fluegelanzahl:{"1":"1-flügelig","2":"2-flügelig","4":"4-flügelig (Teleskop)"},
@@ -506,6 +507,7 @@ const LM_GZ={
   profil:{fein:"Feingerahmtes Profilsystem (Iso/Mono)",gctherm:"GCprofile Therm (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Integrierter Akku (Notöffnung/-schließung)",nein:"Keine"},
+  aktivierung:{gc339:"GC 339 (GEZE Kombimelder)",gc363:"GC 363 (GEZE Sensor)",radar:"Radar (Mikrowelle)",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 
 const LM_RC={
@@ -517,6 +519,7 @@ const LM_RC={
   profil:{fein:"Feingerahmtes Profilsystem",therm:"Therm-Profil (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Akku-Backup (Notöffnung/-schließung)",nein:"Keine"},
+  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 const LM_GI={
   fluegelanzahl:{"1":"1-flügelig","2":"2-flügelig","4":"4-flügelig (Teleskop)"},
@@ -527,6 +530,7 @@ const LM_GI={
   profil:{fein:"Feingerahmtes Profilsystem",therm:"Therm-Profil (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Akku-Backup (Notöffnung/-schließung)",nein:"Keine"},
+  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 
 const ZL_RC={
@@ -1129,7 +1133,7 @@ function buildSummary(){
       ["Öffnungsbreite",S.oeffnungsbreite?S.oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.fluegelgewicht?S.fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_DK.tuertyp[S.tuertyp]||"–"],["Betriebsmodus",LM_DK.betriebsmodus[S.betriebsmodus]||"–"],
       ["Öffnungsgeschw.",S.oeffnungsgeschw?LM_DK.oeffnungsgeschw[S.oeffnungsgeschw]:"–"],
-      ["Aktivierungssensor",S.aktivierung||"–"],["Montageart",LM_DK.montageart[S.montageart]||"–"],
+      ["Aktivierungssensor",LM_DK.aktivierung[S.aktivierung]||"–"],["Montageart",LM_DK.montageart[S.montageart]||"–"],
       ["MotionIQ",S.motioniq==="ja"?"Aktiv – Radarsensor M A01 + Anschlussplatine CAN":S.motioniq==="nein"?"Nicht verbaut":"–"],
       ["Profil",S.profil?LM_DK.profil[S.profil]:"–"],["Farbgebung",S.farbgebung?LM_DK.farbgebung[S.farbgebung]:"–"],
       ["Verriegelung",S.verriegelung?LM_DK.verriegelung[S.verriegelung]:"–"],
@@ -1143,7 +1147,7 @@ function buildSummary(){
       ["Antriebsmodell",rm?rm.name:"–"],["Flügelanzahl",LM_RC.fluegelanzahl[S.rc_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.rc_oeffnungsbreite?S.rc_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.rc_fluegelgewicht?S.rc_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_RC.tuertyp[S.rc_tuertyp]||"–"],["Betriebsmodus",LM_RC.betriebsmodus[S.rc_betriebsmodus]||"–"],
-      ["Aktivierungssensor",S.rc_aktivierung||"–"],["Montageart",LM_RC.montageart[S.rc_montageart]||"–"],
+      ["Aktivierungssensor",LM_RC.aktivierung[S.rc_aktivierung]||"–"],["Montageart",LM_RC.montageart[S.rc_montageart]||"–"],
       ["Profilsystem",S.rc_profil?LM_RC.profil[S.rc_profil]:"–"],["Farbgebung",S.rc_farbgebung?LM_RC.farbgebung[S.rc_farbgebung]:"–"],
       ["Verriegelung",S.rc_verriegelung?LM_RC.verriegelung[S.rc_verriegelung]:"–"],
       ["Notstrom",S.rc_notfunktion?LM_RC.notfunktion[S.rc_notfunktion]:"–"],
@@ -1156,7 +1160,7 @@ function buildSummary(){
       ["Antriebsmodell",gim?gim.name:"–"],["Flügelanzahl",LM_GI.fluegelanzahl[S.gi_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.gi_oeffnungsbreite?S.gi_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.gi_fluegelgewicht?S.gi_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_GI.tuertyp[S.gi_tuertyp]||"–"],["Betriebsmodus",LM_GI.betriebsmodus[S.gi_betriebsmodus]||"–"],
-      ["Aktivierungssensor",S.gi_aktivierung||"–"],["Montageart",LM_GI.montageart[S.gi_montageart]||"–"],
+      ["Aktivierungssensor",LM_GI.aktivierung[S.gi_aktivierung]||"–"],["Montageart",LM_GI.montageart[S.gi_montageart]||"–"],
       ["Profilsystem",S.gi_profil?LM_GI.profil[S.gi_profil]:"–"],["Farbgebung",S.gi_farbgebung?LM_GI.farbgebung[S.gi_farbgebung]:"–"],
       ["Verriegelung",S.gi_verriegelung?LM_GI.verriegelung[S.gi_verriegelung]:"–"],
       ["Notstrom",S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:"–"],
@@ -1169,7 +1173,7 @@ function buildSummary(){
       ["Antriebsmodell",gm?gm.name:"–"],["Flügelanzahl",LM_GZ.fluegelanzahl[S.gz_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.gz_oeffnungsbreite?S.gz_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.gz_fluegelgewicht?S.gz_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_GZ.tuertyp[S.gz_tuertyp]||"–"],["Betriebsmodus",LM_GZ.betriebsmodus[S.gz_betriebsmodus]||"–"],
-      ["Aktivierungssensor",S.gz_aktivierung||"–"],["Montageart",LM_GZ.montageart[S.gz_montageart]||"–"],
+      ["Aktivierungssensor",LM_GZ.aktivierung[S.gz_aktivierung]||"–"],["Montageart",LM_GZ.montageart[S.gz_montageart]||"–"],
       ["Profilsystem",S.gz_profil?LM_GZ.profil[S.gz_profil]:"–"],["Farbgebung",S.gz_farbgebung?LM_GZ.farbgebung[S.gz_farbgebung]:"–"],
       ["Verriegelung",S.gz_verriegelung?LM_GZ.verriegelung[S.gz_verriegelung]:"–"],
       ["Notstrom",S.gz_notfunktion?LM_GZ.notfunktion[S.gz_notfunktion]:"–"],
@@ -1704,6 +1708,7 @@ function exportPDF(){
     ];
   }
   rows.push(
+    ['Aktivierungssensor', isDK()?(LM_DK.aktivierung[S.aktivierung]||'–'):isRC()?(LM_RC.aktivierung[S.rc_aktivierung]||'–'):isGI()?(LM_GI.aktivierung[S.gi_aktivierung]||'–'):(LM_GZ.aktivierung[S.gz_aktivierung]||'–')],
     ['BEA Sensorik',S.sensorik?SENSORIK_LM[S.sensorik]:'–'],
     ['Absicherungsbereich',S.sensorMontage.length?S.sensorMontage.map(function(s){return SENSOR_MONTAGE_LM[s];}).join(', '):'–'],
   );

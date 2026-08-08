@@ -383,10 +383,13 @@
     if (d.leserSchnittstelle==="RS-485 / OSDP" && d.distanzLeserController && Number(d.distanzLeserController)>600){
       w.push("RS-485-Strecke "+d.distanzLeserController+" m liegt über dem typischen Richtwert (~600 m, kabelabhängig) – Repeater/zusätzlichen Controller einplanen.");
     }
+    if (d.leserSchnittstelle==="Netzwerk (IP-Leser/PoE)" && d.distanzLeserController && Number(d.distanzLeserController)>100){
+      w.push("Netzwerk-Leser-Strecke "+d.distanzLeserController+" m überschreitet die Ethernet/PoE-Grenze von 100 m (IEEE 802.3) – Switch/Repeater näher am Leser einplanen oder Glasfaser-Zwischenstrecke prüfen.");
+    }
     if (d.stromVorOrt==="nein"){
       w.push("Keine Stromversorgung am Einbauort vorhanden – Zuleitung/Netzteil in die Kalkulation aufnehmen.");
     }
-    if (d.netzwerkBenoetigt && project.netzwerkVorhanden==="nein"){
+    if (d.leserSchnittstelle==="Netzwerk (IP-Leser/PoE)" && project.netzwerkVorhanden==="nein"){
       w.push("Netzwerk-Leser geplant, aber kein Netzwerk am Standort vorhanden – Verkabelung oder WLAN/BLE-Alternative klären.");
     }
     return w;

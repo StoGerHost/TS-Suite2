@@ -998,7 +998,7 @@ function chkboxQty(label,hint,field,options){
 function numInput(label,hint,field,unit,ph){
   return '<div class="field"><div class="field-label">'+label+'</div>'+
     (hint?'<p class="field-hint">'+hint+'</p>':'')+
-    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric">'+
+    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric" min="0">'+
     (unit?'<span class="num-unit">'+unit+'</span>':'')+
     '</div></div>';
 }
@@ -2071,10 +2071,24 @@ function handleGPS(){
   );
 }
 
+// Maße und Gewichte können physikalisch nie negativ sein — vorher wurde ein
+// negativer Wert kommentarlos übernommen (bis in PDF und Datenbank hinein).
+function pruefeNumEingabe(el){
+  var wert = el.value;
+  if(wert === '') return wert;
+  var n = parseFloat(wert.toString().replace(',', '.'));
+  if(!isNaN(n) && n < 0){
+    el.value = '';
+    if(window.zeigeWarnung) zeigeWarnung('Maße und Gewichte können nicht negativ sein — bitte erneut eingeben.', {titel:'Ungültiger Wert'});
+    return '';
+  }
+  return wert;
+}
+
 document.getElementById('prod-sw').addEventListener('click',handleClick);
 document.getElementById('content').addEventListener('click',handleClick);
 document.getElementById('content').addEventListener('change',function(ev){
-  if(ev.target.classList.contains('num-input')) set(ev.target.dataset.field,ev.target.value);
+  if(ev.target.classList.contains('num-input')) set(ev.target.dataset.field,pruefeNumEingabe(ev.target));
 });
 document.getElementById('proj-data').addEventListener('change',function(ev){
   if(ev.target.classList.contains('ma-lookup-input')){
@@ -2082,7 +2096,8 @@ document.getElementById('proj-data').addEventListener('change',function(ev){
     return;
   }
   if(ev.target.classList.contains('txt-input')||ev.target.classList.contains('num-input')){
-    set(ev.target.dataset.field,ev.target.value);
+    var wert = ev.target.classList.contains('num-input') ? pruefeNumEingabe(ev.target) : ev.target.value;
+    set(ev.target.dataset.field,wert);
   }
 });
 document.getElementById('proj-data').addEventListener('click',function(ev){

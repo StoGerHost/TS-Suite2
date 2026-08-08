@@ -190,6 +190,25 @@
 const SUPABASE_URL = TENANT.supabaseUrl;
 const SUPABASE_ANON_KEY = TENANT.supabaseKey;
 
+// Fund aus dem Prüfbericht: Fehlende/nicht ladbare Bilder (Fotos, Unterschrift)
+// zeigten bisher nur das Browser-Standard-Fehlersymbol. Ersetzt es durch ein
+// zum Design passendes, gestaltetes Platzhalter-Icon.
+function bildFehler(img){
+  img.onerror = null; // Endlosschleife vermeiden, falls auch das Platzhalterbild fehlschlägt
+  img.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<rect width="100" height="100" fill="#161a22"/>' +
+    '<g stroke="#4a5568" stroke-width="4" stroke-linecap="round">' +
+    '<rect x="18" y="24" width="64" height="52" rx="4" fill="none"/>' +
+    '<circle cx="36" cy="42" r="5" fill="#4a5568" stroke="none"/>' +
+    '<path d="M18 66 L40 48 L58 62 L70 52 L82 64" fill="none"/>' +
+    '</g></svg>'
+  );
+  img.style.objectFit = 'contain';
+  img.style.background = '#161a22';
+  img.title = 'Bild konnte nicht geladen werden';
+}
+
 /* Materialposition anzeigen — alt (String) und neu ({bezeichnung, menge}) */
 function matAnzeige(m){
   if(typeof m === 'string') return m;
@@ -458,13 +477,13 @@ function renderDetail(b){
       ${d.kein_abnehmer_vor_ort
         ? 'Unterschriftsberechtigter nicht vor Ort'
         : `${esc(d.kundenname) || 'kein Name erfasst'}${d.abnehmer_funktion ? ' — ' + esc(d.abnehmer_funktion) : ''}
-           ${d.unterschrift_url ? `<br><img src="${esc(d.unterschrift_url)}" style="max-width:220px;background:#fff;border-radius:2px;margin-top:8px;">` : `<br><span style="color:var(--muted);font-size:12px;">Keine Unterschrift in der Datenbank gespeichert (Speichern-Schalter war aus).</span>`}`}
+           ${d.unterschrift_url ? `<br><img src="${esc(d.unterschrift_url)}" onerror="bildFehler(this)" style="max-width:220px;background:#fff;border-radius:2px;margin-top:8px;">` : `<br><span style="color:var(--muted);font-size:12px;">Keine Unterschrift in der Datenbank gespeichert (Speichern-Schalter war aus).</span>`}`}
     </div>
 
     <p class="section-label">Fotos</p>
     ${(d.foto_urls && d.foto_urls.length) ? `
       <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px,1fr)); gap:8px;">
-        ${d.foto_urls.map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:2px; border:1px solid var(--line);"></a>`).join('')}
+        ${d.foto_urls.map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" onerror="bildFehler(this)" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:2px; border:1px solid var(--line);"></a>`).join('')}
       </div>
     ` : '<div style="font-size:12.5px; color:var(--muted);">Keine Fotos in der Datenbank gespeichert (Speichern-Schalter war aus, oder es wurden keine Fotos aufgenommen).</div>'}
 

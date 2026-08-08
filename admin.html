@@ -246,7 +246,9 @@
       <h2>Mitarbeiter (Datenbank)</h2>
       <p class="hint">Konten samt Kürzel. Deaktivierte können sich nicht mehr anmelden und
         erscheinen nicht mehr in den Konfiguratoren.</p>
-      <table id="tbl-ma"><thead><tr><th>Kürzel</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th></th></tr></thead><tbody></tbody></table>
+      <div style="overflow-x:auto;">
+        <table id="tbl-ma"><thead><tr><th>Kürzel</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
       <p class="empty" id="ma-empty" style="display:none">Keine Mitarbeiter vorhanden.</p>
       <div class="export-row">
         <button class="btn ghost" onclick="exportCodes()">Als ma-codes.json exportieren (Offline-Fallback)</button>
@@ -258,7 +260,9 @@
       <p class="hint">Wer hat wann Rolle, Kürzel, Name oder Aktiv-Status eines Mitarbeiters geändert.
         Wird ausschließlich serverseitig von der Edge Function geschrieben, ist also auch für Admins
         über die App nicht manipulierbar.</p>
-      <table id="tbl-audit"><thead><tr><th>Wann</th><th>Betrifft</th><th>Feld</th><th>Von → Zu</th><th>Geändert von</th></tr></thead><tbody></tbody></table>
+      <div style="overflow-x:auto;">
+        <table id="tbl-audit"><thead><tr><th>Wann</th><th>Betrifft</th><th>Feld</th><th>Von → Zu</th><th>Geändert von</th></tr></thead><tbody></tbody></table>
+      </div>
       <p class="empty" id="audit-empty" style="display:none">Noch keine Einträge oder Laden fehlgeschlagen.</p>
       <div class="export-row">
         <button class="btn ghost" onclick="ladeAuditLog()">↻ Neu laden</button>
@@ -275,7 +279,7 @@
       <p class="hint">Änderungen gelten sofort für alle Geräte (zentral in Supabase). Die Konfiguratoren
         vor Ort merken sich den letzten geladenen Stand lokal, falls beim Kunden kein Netz besteht.</p>
       <div class="search"><input id="art-search" type="text" placeholder="Suchen, z.B. ed100, Verkleidung, dormakaba …" oninput="renderArtikel()"></div>
-      <div id="artikel-groups"></div>
+      <div id="artikel-groups" style="overflow-x:auto;"></div>
       <div class="export-row">
         <button class="btn ghost" onclick="ladeArtikel()">↻ Neu laden</button>
       </div>
@@ -291,7 +295,9 @@
       <p class="hint">Steuert, welche Hersteller-Kacheln im Drehtür-Konfigurator angezeigt werden. Änderungen gelten
         sofort auf diesem Gerät (höchste Priorität). Für alle Geräte dauerhaft: unten exportieren und den Inhalt in
         <span class="mono">hersteller-sichtbar.json</span> im Repository übernehmen.</p>
-      <table id="tbl-sichtbarkeit"><thead><tr><th>Hersteller</th><th>Quelle</th><th>Sichtbar</th><th></th></tr></thead><tbody></tbody></table>
+      <div style="overflow-x:auto;">
+        <table id="tbl-sichtbarkeit"><thead><tr><th>Hersteller</th><th>Quelle</th><th>Sichtbar</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
       <div class="export-row">
         <button class="btn ghost" onclick="exportSichtbarkeit()">Als hersteller-sichtbar.json exportieren</button>
         <button class="btn ghost" onclick="if(confirm('Alle lokalen Sichtbarkeits-Überschreibungen auf diesem Gerät löschen?'))resetSichtbarkeitLocal()">Lokale Änderungen zurücksetzen</button>
