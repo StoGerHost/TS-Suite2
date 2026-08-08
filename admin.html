@@ -247,7 +247,7 @@
       <p class="hint">Konten samt Kürzel. Deaktivierte können sich nicht mehr anmelden und
         erscheinen nicht mehr in den Konfiguratoren.</p>
       <table id="tbl-ma"><thead><tr><th>Kürzel</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th></th></tr></thead><tbody></tbody></table>
-      <p class="empty" id="ma-empty" style="display:none">Laden fehlgeschlagen oder keine Mitarbeiter vorhanden.</p>
+      <p class="empty" id="ma-empty" style="display:none">Keine Mitarbeiter vorhanden.</p>
       <div class="export-row">
         <button class="btn ghost" onclick="exportCodes()">Als ma-codes.json exportieren (Offline-Fallback)</button>
       </div>
@@ -352,11 +352,21 @@ function maStatus(txt){ document.getElementById('ma-status').textContent = txt |
 function ladeMitarbeiter(){
   fetch(MA_FN_URL, { headers: maHeaders() })
     .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(liste){ MA_LISTE = liste; renderMitarbeiter(); })
+    .then(function(liste){
+      MA_LISTE = liste;
+      var empty = document.getElementById('ma-empty');
+      if(empty) empty.textContent = 'Keine Mitarbeiter vorhanden.';
+      renderMitarbeiter();
+    })
     .catch(function(err){
       console.error(err);
       MA_LISTE = [];
       renderMitarbeiter();
+      // Ladefehler bleibt sichtbar, nicht nur als kurzer Toast — sonst nach dem
+      // Ausblenden des Toasts nicht mehr von "wirklich keine Mitarbeiter" zu
+      // unterscheiden.
+      var empty = document.getElementById('ma-empty');
+      if(empty) empty.textContent = 'Laden fehlgeschlagen — bitte Seite neu laden.';
       toast('Mitarbeiterliste konnte nicht geladen werden — Function deployed?');
     });
 }

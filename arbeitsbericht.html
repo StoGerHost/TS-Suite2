@@ -1087,11 +1087,47 @@ let photos = [];
 
 function addPhotos(fileList){
   Array.from(fileList).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
+    komprimiereBild(file).then(dataUrl => {
       const id = Date.now() + Math.random();
-      photos.push({id, dataUrl: e.target.result});
+      photos.push({id, dataUrl});
       renderThumbs();
+    }).catch(err => {
+      console.error('Foto konnte nicht verarbeitet werden:', err);
+    });
+  });
+}
+// Kamerafotos moderner Smartphones sind oft 5-15 MB — unkomprimiert als
+// data:-URL übernommen belastet das unnötig lokalen Speicher, Autosave und
+// den späteren Upload. Verkleinert auf max. 1920px lange Kante, JPEG ~82%.
+// Bei jedem Fehler (z.B. exotisches Dateiformat) wird das Originalbild
+// unverändert übernommen, statt das Foto ganz zu verlieren.
+function komprimiereBild(file, maxDim, qualitaet){
+  maxDim = maxDim || 1920;
+  qualitaet = qualitaet || 0.82;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = e => {
+      const original = e.target.result;
+      const img = new Image();
+      img.onerror = () => resolve(original);
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        try{
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', qualitaet));
+        }catch(err){
+          resolve(original);
+        }
+      };
+      img.src = original;
     };
     reader.readAsDataURL(file);
   });
@@ -1192,10 +1228,16 @@ async function generateReport(){
   const arbeitszeitFehlt = !zeitBlocks.some(block =>
     (block.rows || []).some(r => r.datum && (parseFloat((r.stunden || '').toString().replace(',', '.')) > 0))
   );
+  // E-Mail ist optional, aber wenn eine eingetragen ist, muss sie gültig sein —
+  // vorher wurde eine ungültige Adresse beim Speichern kommentarlos zu null,
+  // ohne dass der Techniker das bemerkt hätte.
+  const emailWert = val('fEmail').trim();
+  const emailUngueltig = !!emailWert && !EMAIL_REGEX.test(emailWert);
 
-  if(fehlend.length || unterschriftFehlt || arbeitszeitFehlt){
+  if(fehlend.length || unterschriftFehlt || arbeitszeitFehlt || emailUngueltig){
     const teile = fehlend.map(f => f.label);
     if(arbeitszeitFehlt) teile.push('Arbeitszeit (mindestens ein Datum mit Stunden erfassen)');
+    if(emailUngueltig) teile.push('E-Mail-Adresse (ungültiges Format)');
     if(unterschriftFehlt) teile.push('Unterschrift (oder „Kein Abnehmer vor Ort" ankreuzen)');
     genStatus.textContent = 'Bitte ausfüllen: ' + teile.join(', ');
     genStatus.className = 'gen-status err';
@@ -1211,6 +1253,10 @@ async function generateReport(){
     } else if(arbeitszeitFehlt){
       const zeitSektion = document.getElementById('technikerZeitBlocks');
       if(zeitSektion) zeitSektion.scrollIntoView({behavior:'smooth', block:'center'});
+    } else if(emailUngueltig){
+      const emailFeld = document.getElementById('fEmail');
+      emailFeld.focus();
+      emailFeld.scrollIntoView({behavior:'smooth', block:'center'});
     } else {
       document.getElementById('keinAbnehmer').scrollIntoView({behavior:'smooth', block:'center'});
     }

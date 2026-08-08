@@ -233,5 +233,23 @@
 
   /* ---------- Start ---------- */
   initClient();
-  if (wantGate && !isUnlocked()) showGate();
+  if (wantGate) {
+    if (!isUnlocked()) {
+      showGate();
+    } else {
+      // Ein Token liegt im localStorage, ob er wirklich noch gültig ist, prüft
+      // erst initClient() -> getSession() asynchron. Bis dahin die Seite kurz
+      // verstecken, damit bei einer inzwischen abgelaufenen Sitzung nicht
+      // kurz geschützter Inhalt aufblitzt, bevor das Gate erscheint.
+      var htmlEl = document.documentElement;
+      var vorherigeVisibility = htmlEl.style.visibility;
+      htmlEl.style.visibility = 'hidden';
+      ready.then(function () {
+        htmlEl.style.visibility = vorherigeVisibility;
+        // War die Sitzung ungültig, hat initClient() bereits showGate()
+        // aufgerufen — das Overlay deckt den jetzt wieder sichtbaren
+        // Inhalt in dem Fall vollständig ab.
+      });
+    }
+  }
 })();

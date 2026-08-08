@@ -518,7 +518,13 @@ async function sucheKontakt(){
         '<a href="#" onclick="TSAuth.showGate(\'Anmelden\');return false;" style="color:var(--accent);">Jetzt anmelden</a></div>';
       return;
     }
-    const filter = `bauvorhaben.ilike.*${term}*,kunde.ilike.*${term}*,ansprechpartner.ilike.*${term}*`;
+    // PostgREST behandelt Komma/Klammer/Punkt/Doppelpunkt als Steuerzeichen in
+    // Filterausdrücken — ein Suchbegriff mit z.B. einem Komma ("Müller, Hans")
+    // hätte die or=(...)-Syntax bisher gesprengt. Werte mit solchen Zeichen
+    // müssen laut PostgREST in doppelte Anführungszeichen gefasst werden.
+    const pgWert = (v) => '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    const suchwert = pgWert('*' + term + '*');
+    const filter = `bauvorhaben.ilike.${suchwert},kunde.ilike.${suchwert},ansprechpartner.ilike.${suchwert}`;
     /* Telefon/E-Mail liegen seit dem CRM-Umbau in kunden bzw. crm_ansprechpartner
        — beide werden per PostgREST-Embedding mitgeladen. */
     const res = await fetch(

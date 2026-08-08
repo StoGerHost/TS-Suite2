@@ -1644,7 +1644,6 @@ function renderSchema(){
 
   html += `<g class="node quelle"><rect x="${quelle.x}" y="${quelle.y-quelle.h/2}" width="${quelle.w}" height="${quelle.h}"></rect>
     <text x="${quelle.x+quelle.w/2}" y="${quelle.y+5}" text-anchor="middle">${quelle.label}</text></g>`;
-  html += `<text class="wlabel" x="${quelle.x}" y="${quelle.y-quelle.h/2-8}" text-anchor="start" style="fill:var(--bp-power);font-style:italic;">← Dropdown</text>`;
 
   html += `<g class="node steuerung"><rect x="${steuerung.x}" y="${steuerung.y-steuerung.h/2}" width="${steuerung.w}" height="${steuerung.h}"></rect>
     <text x="${steuerung.x+steuerung.w/2}" y="${steuerung.y+5}" text-anchor="middle">${steuerung.label}</text></g>`;
