@@ -638,7 +638,19 @@ renderPositionen();
   if(!window.TSAuth || !TSAuth.isUnlocked()) return;
   document.getElementById('admin-gate').style.display = 'none';
   document.getElementById('admin-content').style.display = 'block';
+  kundeAusUrlVorauswaehlen();
 });
+
+// Kommt man aus dem CRM mit ?kunde_id=..., den Kunden direkt vorauswählen,
+// statt dass er erst nochmal manuell gesucht werden muss.
+function kundeAusUrlVorauswaehlen(){
+  var kundeId = new URLSearchParams(window.location.search).get('kunde_id');
+  if(!kundeId) return;
+  fetch(TENANT.supabaseUrl + '/rest/v1/kunden?select=id,name,strasse,plz,ort&id=eq.' + encodeURIComponent(kundeId), { headers: supabaseHeaders() })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){ if(rows.length) kundeWaehlen(rows[0]); })
+    .catch(function(){ /* still usable manually if this fails */ });
+}
 
 document.addEventListener('click', function(e){
   if(!e.target.closest('#kunde-search') && !e.target.closest('#kunde-suggest')){

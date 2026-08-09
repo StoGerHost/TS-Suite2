@@ -693,7 +693,9 @@ async function zeigKundeMaster(id){
 
     <div class="panel">
       <div class="eyebrow">Angebote
-        <button class="plus" onclick="modalNeuesAngebot('${ku.id}')">＋</button></div>
+        <button class="plus" onclick="modalNeuesAngebot('${ku.id}')" title="Angebot hinterlegen (Datei/Betrag manuell)">＋</button>
+        <button class="plus" onclick="oeffneAngebotsGenerator('${ku.id}')" title="Neues Angebot mit Positionen erstellen">🧾</button>
+      </div>
       ${angebote.length ? angebote.map(a => `
         <div class="wv">
           <div style="flex:1">
@@ -1014,9 +1016,23 @@ function angebotRabattZeilen(a){
   return `<div class="datum" style="color:var(--dim)">Rabatt: -${a.rabatt_prozent}%</div>
     <div class="datum" style="color:var(--tuerkis)">Neuer Preis: ${eur(neuerPreis)}</div>`;
 }
+// Öffnet den itemisierten Angebots-Generator für einen Kunden. Läuft CRM innerhalb
+// der Kunden-Center-Hülle (per iframe), wird die Kunde-ID per postMessage an die
+// Hülle übergeben, die den Angebot-Tab aktiviert und vorausfüllt. Wird CRM direkt/
+// eigenständig geöffnet (kein Elternfenster), navigiert die Seite stattdessen selbst
+// dorthin — der Generator liest die Kunde-ID dann aus dem URL-Parameter.
+function oeffneAngebotsGenerator(kundeId){
+  if(window.top !== window){
+    window.top.postMessage({ tsAction: 'openAngebot', kundeId }, window.location.origin);
+  } else {
+    window.location.href = 'angebot-generator.html?kunde_id=' + encodeURIComponent(kundeId);
+  }
+}
+
 function modalNeuesAngebot(kundeId){
   modal(`
-    <h2>Neues Angebot</h2>
+    <h2>Angebot hinterlegen</h2>
+    <p style="font-size:.8rem;color:var(--dim);margin-bottom:14px">Für Angebote, die du woanders erstellt hast (Word, PDF, per Hand) — einfach Eckdaten und Datei hinterlegen. Für ein neues Angebot mit Positionen nutz stattdessen 🧾 oben.</p>
     <label>Bezeichnung</label>
     <input id="agBez" placeholder="z.B. Wartungsvertrag Angebot 2026">
     <label>Betrag (€, optional)</label>
