@@ -153,6 +153,8 @@
   }
 
   .export-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .frame-wrap{height:calc(100vh - 220px);min-height:480px;}
+  .frame-wrap iframe{width:100%;height:100%;border:none;display:block;background:var(--bg);}
 
   .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--surface);color:var(--ink);
     border:1px solid var(--accent);padding:11px 20px;border-radius:2px;font:600 12.5px var(--font-mono);
@@ -205,7 +207,7 @@
   <span class="ico" aria-hidden="true">&#9881;</span>
   <div>
     <h1>Admin-Bereich</h1>
-    <p>Mitarbeiter anlegen, Artikelnummern &amp; Sichtbarkeit &middot; lokal auf diesem Gerät</p>
+    <p>Mitarbeiter anlegen, Artikelnummern, Preisliste, Sichtbarkeit &amp; Importe &middot; ein Admin-Bereich</p>
   </div>
 </div>
 
@@ -214,7 +216,10 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="codes">Tool Mitarbeiter anlegen</button>
     <button class="tab-btn" data-tab="artikel">Artikelnummern</button>
+    <button class="tab-btn" data-tab="preisliste">Preisliste</button>
     <button class="tab-btn" data-tab="sichtbarkeit">Sichtbarkeit</button>
+    <button class="tab-btn" data-tab="import-gevis">Kundenimport</button>
+    <button class="tab-btn" data-tab="import-wartung">Wartungsimport</button>
   </div>
 
   <!-- ═══════════ TAB: MITARBEITER (Datenbank) ═══════════ -->
@@ -287,6 +292,45 @@
 
   </div>
 
+  <!-- ═══════════ TAB: PREISLISTE ═══════════ -->
+  <div class="panel" id="panel-preisliste">
+
+    <div class="card">
+      <h2>Neue Position anlegen</h2>
+      <p class="hint">Für freie Positionen ohne Artikelnummer (z.B. Anfahrtspauschale) einfach das Feld
+        "Artikelnr." leer lassen.</p>
+      <div class="row">
+        <input id="pl-artikelnummer" type="text" placeholder="Artikelnr. (optional)" autocomplete="off">
+        <input id="pl-kategorie" type="text" placeholder="Kategorie, z.B. drehtuer" autocomplete="off">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="pl-bezeichnung" type="text" placeholder="Bezeichnung" autocomplete="off">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="pl-preis" type="number" step="0.01" placeholder="Preis in €" autocomplete="off">
+        <input id="pl-einheit" type="text" placeholder="Einheit, z.B. Stk" autocomplete="off" value="Stk">
+        <button class="btn" id="pl-add-btn" onclick="plAnlegen()">+ Anlegen</button>
+      </div>
+      <p class="hint" id="pl-status" style="margin-top:8px"></p>
+    </div>
+
+    <div class="card">
+      <h2>Preisliste pflegen</h2>
+      <p class="hint">Änderungen gelten sofort für alle Geräte (zentral in Supabase). Positionen mit
+        Artikelnummer werden vom künftigen Angebots-Generator per Artikelnummer gematcht.</p>
+      <div class="search"><input id="pl-search" type="text" placeholder="Suchen, z.B. Artikelnr., Bezeichnung, Kategorie …" oninput="renderPreisliste()"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:12.5px;color:var(--ink-60);cursor:pointer;">
+        <input type="checkbox" id="pl-nur-todo" onchange="renderPreisliste()" style="width:16px;height:16px;cursor:pointer;">
+        Nur unvollständige Positionen (TODO / Preis 0) anzeigen
+      </label>
+      <div id="preisliste-rows" style="overflow-x:auto;"></div>
+      <div class="export-row">
+        <button class="btn ghost" onclick="ladePreisliste()">↻ Neu laden</button>
+      </div>
+    </div>
+
+  </div>
+
   <!-- ═══════════ TAB: SICHTBARKEIT ═══════════ -->
   <div class="panel" id="panel-sichtbarkeit">
 
@@ -304,6 +348,24 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ═══════════ TAB: KUNDENIMPORT (gevis) ═══════════ -->
+  <div class="panel" id="panel-import-gevis">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="frame-wrap" id="frame-wrap-import-gevis">
+        <p class="hint" style="padding:20px;">Lädt …</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TAB: WARTUNGSPROTOKOLL-IMPORT (PDF) ═══════════ -->
+  <div class="panel" id="panel-import-wartung">
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="frame-wrap" id="frame-wrap-import-wartung">
+        <p class="hint" style="padding:20px;">Lädt …</p>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -326,12 +388,32 @@
 })();
 
 // ─── Tabs ───────────────────────────────────────────────────────────────
+// Kundenimport (gevis) und Wartungsprotokoll-Import laufen technisch komplett
+// eigenständig (eigenes Rollen-Gate, eigene globale Funktionsnamen) — statt sie
+// in dieselbe Skript-Umgebung zu verschmelzen (Kollisionsrisiko z.B. bei
+// "admin-gate"), werden sie per iframe eingebunden, genau wie im Kunden-Center.
+// Geladen wird erst beim ersten Öffnen des jeweiligen Tabs.
+var IFRAME_TABS = { 'import-gevis': 'admin-import-gevis.html', 'import-wartung': 'admin-import-wartung.html' };
+var iframeGeladen = {};
+function ladeIframeTab(tab){
+  if(iframeGeladen[tab]) return;
+  var wrap = document.getElementById('frame-wrap-' + tab);
+  if(!wrap) return;
+  var iframe = document.createElement('iframe');
+  iframe.src = IFRAME_TABS[tab];
+  iframe.title = tab;
+  wrap.innerHTML = '';
+  wrap.appendChild(iframe);
+  iframeGeladen[tab] = true;
+}
+
 document.querySelectorAll('.tab-btn').forEach(function(btn){
   btn.addEventListener('click', function(){
     document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
     document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
     btn.classList.add('active');
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    if(IFRAME_TABS[btn.dataset.tab]) ladeIframeTab(btn.dataset.tab);
   });
 });
 
@@ -634,6 +716,124 @@ function saveArtikelRow(btn){
 }
 
 ladeArtikel();
+
+// ═══════════════════ PREISLISTE (crm_preisliste) ═══════════════════
+var PL_LISTE = [];
+
+function plStatus(txt){ document.getElementById('pl-status').textContent = txt || ''; }
+
+function ladePreisliste(){
+  return fetch(TENANT.supabaseUrl + '/rest/v1/crm_preisliste?select=*&order=kategorie.asc,artikelnummer.asc', { headers: maHeaders() })
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(rows){
+      PL_LISTE = rows;
+      renderPreisliste();
+    })
+    .catch(function(err){
+      console.error('Preisliste konnte nicht geladen werden:', err);
+      document.getElementById('preisliste-rows').innerHTML = '<p class="empty">Laden fehlgeschlagen — bitte Internetverbindung prüfen und "Neu laden" versuchen.</p>';
+    });
+}
+
+function istUnvollstaendig(z){
+  return (z.bezeichnung && z.bezeichnung.indexOf('TODO') === 0) || Number(z.preis) === 0;
+}
+
+function renderPreisliste(){
+  var q = document.getElementById('pl-search').value.trim().toLowerCase();
+  var nurTodo = document.getElementById('pl-nur-todo').checked;
+  var container = document.getElementById('preisliste-rows');
+
+  var rows = PL_LISTE.filter(function(z){
+    if(nurTodo && !istUnvollstaendig(z)) return false;
+    if(!q) return true;
+    var hay = (z.bezeichnung+' '+z.kategorie+' '+(z.artikelnummer||'')).toLowerCase();
+    return hay.indexOf(q) > -1;
+  });
+
+  if(!rows.length){ container.innerHTML = '<p class="empty">Keine Treffer.</p>'; return; }
+
+  var html = '<table class="art-row"><tbody>';
+  rows.forEach(function(z){
+    var todo = istUnvollstaendig(z);
+    html += '<tr data-id="'+esc(z.id)+'">'+
+      '<td><div class="key-label">'+(todo?'<span class="src-tag src-leer" style="margin-right:6px">TODO</span>':'')+'</div>'+
+        '<input type="text" class="pl-f-artikelnummer" value="'+esc(z.artikelnummer||'')+'" placeholder="Artikelnr."></td>'+
+      '<td><input type="text" class="pl-f-kategorie" value="'+esc(z.kategorie||'')+'" placeholder="Kategorie"></td>'+
+      '<td><input type="text" class="pl-f-bezeichnung" value="'+esc(z.bezeichnung||'')+'" placeholder="Bezeichnung"></td>'+
+      '<td><input type="number" step="0.01" class="pl-f-preis" value="'+esc(z.preis)+'" placeholder="Preis"></td>'+
+      '<td><input type="text" class="pl-f-einheit" value="'+esc(z.einheit||'')+'" placeholder="Einheit"></td>'+
+      '<td><button class="btn small" onclick="savePreislisteRow(this)">Speichern</button></td>'+
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function savePreislisteRow(btn){
+  var tr = btn.closest('tr');
+  var id = tr.dataset.id;
+  var body = {
+    artikelnummer: tr.querySelector('.pl-f-artikelnummer').value.trim() || null,
+    kategorie: tr.querySelector('.pl-f-kategorie').value.trim(),
+    bezeichnung: tr.querySelector('.pl-f-bezeichnung').value.trim(),
+    preis: parseFloat(tr.querySelector('.pl-f-preis').value) || 0,
+    einheit: tr.querySelector('.pl-f-einheit').value.trim() || null
+  };
+  btn.disabled = true;
+  fetch(TENANT.supabaseUrl + '/rest/v1/crm_preisliste?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: Object.assign({}, maHeaders(), {'Prefer': 'return=minimal'}),
+    body: JSON.stringify(body)
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); })
+  .then(function(){
+    toast('Gespeichert — sofort für alle Geräte gültig');
+    ladePreisliste();
+  })
+  .catch(function(err){
+    console.error('Speichern fehlgeschlagen:', err);
+    toast('Speichern fehlgeschlagen — bitte erneut versuchen');
+  })
+  .finally(function(){ btn.disabled = false; });
+}
+
+function plAnlegen(){
+  var artikelnummer = document.getElementById('pl-artikelnummer').value.trim();
+  var kategorie = document.getElementById('pl-kategorie').value.trim();
+  var bezeichnung = document.getElementById('pl-bezeichnung').value.trim();
+  var preis = parseFloat(document.getElementById('pl-preis').value);
+  var einheit = document.getElementById('pl-einheit').value.trim();
+  if(!kategorie || !bezeichnung || isNaN(preis)){ toast('Bitte Kategorie, Bezeichnung und Preis ausfüllen'); return; }
+  var btn = document.getElementById('pl-add-btn'); btn.disabled = true;
+  plStatus('Lege an ...');
+  fetch(TENANT.supabaseUrl + '/rest/v1/crm_preisliste', {
+    method: 'POST',
+    headers: Object.assign({}, maHeaders(), {'Prefer': 'return=minimal'}),
+    body: JSON.stringify({
+      artikelnummer: artikelnummer || null,
+      kategorie: kategorie,
+      bezeichnung: bezeichnung,
+      preis: preis,
+      einheit: einheit || null
+    })
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); })
+  .then(function(){
+    ['pl-artikelnummer','pl-kategorie','pl-bezeichnung','pl-preis'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('pl-einheit').value = 'Stk';
+    plStatus('Angelegt.');
+    ladePreisliste();
+  })
+  .catch(function(err){
+    console.error('Anlegen fehlgeschlagen:', err);
+    plStatus('');
+    toast('Anlegen fehlgeschlagen — evtl. Artikelnummer schon vergeben');
+  })
+  .finally(function(){ btn.disabled = false; });
+}
+
+ladePreisliste();
 
 // ═══════════════════ SICHTBARKEIT (Hersteller im Drehtür-Konfigurator) ═══════════════════
 var SICHT_LOCAL_KEY='stober_hersteller_sichtbar';
