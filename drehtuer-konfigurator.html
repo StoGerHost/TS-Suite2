@@ -1688,7 +1688,7 @@ function checkStartCode(){
   if(handleAufgenommenCode(val)){
     msg.textContent='✓ Code akzeptiert – '+S.aufgenommenDurch;
     msg.className='ok';
-    autoload();
+    resolveDraftAndRender(S.aufgenommenCode,S.aufgenommenDurch);
     setTimeout(function(){ document.getElementById('code-gate').classList.remove('visible'); },700);
   } else {
     msg.textContent='✗ Ungültiger Code.';
@@ -1698,7 +1698,7 @@ function checkStartCode(){
   }
 }
 function skipStartCode(){
-  autoload();
+  resolveDraftAndRender('','');
   document.getElementById('code-gate').classList.remove('visible');
 }
 
@@ -1958,6 +1958,7 @@ function autosave(){
   try{
     var toSave=Object.assign({},S);
     delete toSave.gpsLoading; delete toSave.gpsError; delete toSave.showSummary;
+    toSave._savedAt=new Date().toISOString();
     localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(toSave));
   }catch(e){}
 }
@@ -1966,6 +1967,38 @@ function autoload(){
     var saved=localStorage.getItem(AUTOSAVE_KEY);
     if(saved){ var p=JSON.parse(saved); _migrateTuerart(p); _migrateEd250pa(p); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
+}
+function hasDraft(){
+  try{ return !!localStorage.getItem(AUTOSAVE_KEY); }catch(e){ return false; }
+}
+function formatSavedAt(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
+    if(saved && saved._savedAt){
+      var d=new Date(saved._savedAt);
+      return d.toLocaleDateString('de-DE')+' '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    }
+  }catch(e){}
+  return '';
+}
+// Fragt bei vorhandenem Entwurf nach Fortsetzen/Neu und sorgt danach für ein Re-Render.
+// code/name: der gerade am Gate eingegebene Mitarbeitercode, bleibt in jedem Fall erhalten.
+// (Namensgleich mit der Schiebetür-Version, aus der diese Funktion 1:1 übernommen wurde,
+// nachdem die vorherige Drehtür-eigene Fassung "resolveDraftOnEntry" versehentlich bei
+// einer späteren Änderung überschrieben worden war.)
+function resolveDraftAndRender(code,name){
+  if(hasDraft()){
+    var when=formatSavedAt();
+    var resume=confirm('Es gibt einen gespeicherten Entwurf'+(when?' vom '+when:'')+'.\n\nOK = fortsetzen\nAbbrechen = neu beginnen');
+    if(resume){
+      autoload();
+    } else {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    }
+  }
+  if(code){ S=Object.assign({},S,{aufgenommenCode:code,aufgenommenDurch:name}); }
+  autosave();
+  render();
 }
 function resetKonfig(){
   if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
