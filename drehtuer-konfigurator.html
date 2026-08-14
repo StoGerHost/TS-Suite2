@@ -26,6 +26,7 @@
     --accent-l:var(--ts-line-20, rgba(58,123,213,.15));--border:var(--ts-line-25, rgba(58,123,213,.25));--muted:var(--ts-muted, #8b95a0);
     --ok:var(--ts-ok, #3ecf8e);--ok-l:rgba(62,207,142,.15);--warn:var(--ts-warn, #e0a53d);--warn-l:rgba(224,165,61,.15);
     --geze:var(--ts-accent, #3a7bd5);--geze-l:rgba(58,123,213,.15);--glow:var(--ts-glow, #5eead4);
+    --field-bg:var(--ts-surface-hover, #161a22);
     --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -62,11 +63,11 @@
   .ptab.ak-gz{border-color:#FFC72C;background:rgba(255,199,44,.12)}
   .ptab.ak-rc{border-color:#1FAE85;background:rgba(31,174,133,.12)}
   .ptab.ak-gi{border-color:#9B59B6;background:rgba(155,89,182,.12)}
-  .ptab-img{width:100%;height:80px;object-fit:contain;border-radius:6px;background:#161a22;display:block}
+  .ptab-img{width:100%;height:80px;object-fit:contain;border-radius:6px;background:var(--field-bg);display:block}
   .ptab-name{font-weight:700;font-size:13px;color:var(--primary)}
   .ptab-sub{font-size:11px;color:var(--muted);text-align:center}
   .ptab.ak-dk .ptab-name{color:#D95E1F} .ptab.ak-gz .ptab-name{color:#f0c05a} .ptab.ak-rc .ptab-name{color:#2fd9a3} .ptab.ak-gi .ptab-name{color:#B388D9}
-  .prod-img-banner{width:100%;max-height:140px;object-fit:contain;border-radius:8px;background:#161a22;display:block;margin-bottom:14px}
+  .prod-img-banner{width:100%;max-height:140px;object-fit:contain;border-radius:8px;background:var(--field-bg);display:block;margin-bottom:14px}
 
   #content{padding:14px 14px 0}
 
@@ -175,7 +176,7 @@
   #paywall-header p{color:rgba(255,255,255,.7);font-size:12px;}
   #paywall-body{padding:20px;}
   #paywall-price{
-    text-align:center;padding:14px;background:#161a22;
+    text-align:center;padding:14px;background:var(--field-bg);
     border-radius:10px;margin-bottom:16px;
   }
   #paywall-price .amount{font-size:32px;font-weight:900;color:var(--accent);}
@@ -204,7 +205,7 @@
   }
   #btn-cancel-pay{
     width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);
-    background:#161a22;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;
+    background:var(--field-bg);color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;
   }
   #paywall-hint{
     font-size:11px;color:var(--muted);text-align:center;
@@ -228,7 +229,7 @@
   .gate-code-wrap input{
     flex:1;padding:11px 12px;border-radius:8px;border:2px solid var(--border);
     font-size:15px;font-family:inherit;outline:none;letter-spacing:.15em;text-align:center;
-    background:#161a22;color:var(--primary);
+    background:var(--field-bg);color:var(--primary);
   }
   .gate-code-wrap button{
     padding:11px 16px;border-radius:8px;border:none;background:var(--accent);
@@ -265,10 +266,10 @@
   .vbox-close{background:rgba(255,255,255,.15);border:none;color:#fff;font-size:16px;border-radius:50%;width:28px;height:28px;cursor:pointer;font-family:inherit}
   .vbox-body{flex:1;overflow-y:auto;padding:14px 16px}
   .vbox-save-row{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px}
-  .vbox-save-row input{flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#161a22;color:var(--primary)}
+  .vbox-save-row input{flex:1;padding:10px 12px;border:2px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:var(--field-bg);color:var(--primary)}
   .vbox-save-row input:focus{border-color:var(--glow);box-shadow:0 0 0 3px rgba(94,234,212,.2)}
   .vbox-save-btn{padding:10px 16px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap}
-  .vbox-reset-btn{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;background:#161a22;color:#e05a4e;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
+  .vbox-reset-btn{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--field-bg);color:#e05a4e;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
 
   /* ─── Artikel-Upload Modal & Override-Banner ────────────────── */
   #artikel-upload-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:flex-end;justify-content:center;padding:0}
@@ -2012,7 +2013,7 @@ function renderVorlagenModal(){
         +'<div style="flex:1"><div style="font-weight:700;font-size:14px">'+v.name+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">'+v.date+' &middot; '+(v.state.produkt||'?')+'</div></div>'
         +'<button onclick="loadVorlage('+i+')" style="padding:8px 14px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Laden</button>'
-        +'<button onclick="deleteVorlage('+i+')" style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);background:#161a22;color:#e05a4e;font-size:13px;cursor:pointer;font-family:inherit">✕</button>'
+        +'<button onclick="deleteVorlage('+i+')" style="padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--field-bg);color:#e05a4e;font-size:13px;cursor:pointer;font-family:inherit">✕</button>'
         +'</div>';
     }).join('');
 }

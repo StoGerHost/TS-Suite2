@@ -33,7 +33,9 @@ html[data-theme="dark"] {
   --ts-ink-80: rgba(233, 237, 242, .8);
   --ts-ink-70: rgba(233, 237, 242, .7);
   --ts-ink-60: rgba(233, 237, 242, .6);
+  --ts-ink-50: rgba(233, 237, 242, .5);
   --ts-ink-45: rgba(233, 237, 242, .45);
+  --ts-ink-40: rgba(233, 237, 242, .4);
   --ts-muted: #8b95a0;
 
   /* Akzent- und Statusfarben */
@@ -69,8 +71,14 @@ html[data-theme="light"] {
   --ts-ink: #1a2d44;
   --ts-ink-80: rgba(26, 45, 68, .8);
   --ts-ink-70: rgba(26, 45, 68, .7);
-  --ts-ink-60: rgba(26, 45, 68, .6);
-  --ts-ink-45: rgba(26, 45, 68, .45);
+  /* Ab hier bewusst KEINE Transparenz mehr: dieselbe Deckkraft, die im
+     Dunkelmodus auf schwarzem Grund noch gut lesbar bleibt, verwäscht auf
+     weißem Grund zu stark (z.B. .45 Deckkraft ergab nur ~2,7:1 Kontrast,
+     WCAG-Minimum sind 4,5:1). Feste Töne halten den Kontrast verlässlich ein. */
+  --ts-ink-60: #4a5b70;
+  --ts-ink-50: #5a6b80;
+  --ts-ink-45: #64748a;
+  --ts-ink-40: #6b7a8d;
   --ts-muted: #6b7a8d;
 
   --ts-accent: #205ea6;
