@@ -9,13 +9,18 @@
 <meta name="apple-mobile-web-app-title" content="Kunden-Center">
 <meta name="theme-color" content="#0a0a0c">
 <title>TS Suite Werkzeuge — Kunden-Center</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <style>
   :root{
-    --bg:#0a0a0c; --surface:#111318; --surface-hover:#141821;
-    --ink:#e9edf2; --ink-60:rgba(233,237,242,.6); --ink-45:rgba(233,237,242,.45); --ink-40:rgba(233,237,242,.4);
-    --accent:#3a7bd5; --line-20:rgba(58,123,213,.2); --line-30:rgba(58,123,213,.3); --line-35:rgba(58,123,213,.35);
-    --font-display:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
-    --font-mono:ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,Menlo,monospace;
+    /* Werte verweisen auf die zentralen --ts-*-Tokens aus ts-theme.css
+       (Hell-/Dunkelmodus). Der zweite Wert je var() ist der bisherige
+       Farbwert als Fallback. */
+    --bg:var(--ts-bg, #0a0a0c); --surface:var(--ts-surface, #111318); --surface-hover:var(--ts-surface-hover, #141821);
+    --ink:var(--ts-ink, #e9edf2); --ink-60:var(--ts-ink-60, rgba(233,237,242,.6)); --ink-45:var(--ts-ink-45, rgba(233,237,242,.45)); --ink-40:var(--ts-ink-40, rgba(233,237,242,.4));
+    --accent:var(--ts-accent, #3a7bd5); --line-20:var(--ts-line-20, rgba(58,123,213,.2)); --line-30:var(--ts-line-30, rgba(58,123,213,.3)); --line-35:var(--ts-line-35, rgba(58,123,213,.35));
+    --font-display:var(--ts-font-display, 'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif);
+    --font-mono:var(--ts-font-mono, ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,Menlo,monospace);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
@@ -24,9 +29,9 @@
     display:flex;flex-direction:column;}
 
   .ts-backbar{flex-shrink:0;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    background:var(--bg);color:var(--ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
     font:600 12px/1.4 var(--font-mono);letter-spacing:.03em;border-bottom:1px solid var(--line-35);flex-wrap:wrap;}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+  .ts-backbar__link{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
   @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
   .ts-backbar__slash{color:var(--ink-40);}
   .ts-backbar__current{color:var(--accent);font-weight:700;}
