@@ -4,39 +4,42 @@
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Arbeitsbericht — TS-Suite</title>
+<title>Arbeitsbericht — Blueprint</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <script src="config.js"></script>
 <script src="ts-auth.js" data-gate data-title="Arbeitsbericht"></script>
 <style>
 /* --- Einheitliche TS-Suite-Backbar (auf allen Seiten identisch) --- */
 .ts-backbar{position:sticky;top:0;z-index:9999;display:flex;align-items:center;gap:10px;
-  background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  background:var(--ts-bg, #0a0a0c);color:var(--ts-ink, #e9edf2);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
   font:600 12px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.03em;
   border-bottom:1px solid rgba(120,140,160,.35);flex-wrap:wrap;}
-.ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+.ts-backbar__link{color:var(--ts-ink, #e9edf2);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
   transition:color .15s ease;white-space:nowrap;}
-@media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
-.ts-backbar__slash{color:rgba(233,237,242,.4);}
-.ts-backbar__current{color:#3a7bd5;font-weight:700;}
+@media(hover:hover){ .ts-backbar__link:hover{color:var(--ts-accent, #3a7bd5);} }
+.ts-backbar__slash{color:var(--ts-ink-45, rgba(233,237,242,.4));}
+.ts-backbar__current{color:var(--ts-accent, #3a7bd5);font-weight:700;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<!-- Gemeinsame PDF-Layout-Funktion, auch von uebersicht.html genutzt ("PDF neu erzeugen") -->
-<script src="ts-pdf-arbeitsbericht.js"></script>
-<script src="ts-warnung.js"></script>
 <style>
   :root{
-    --bg:#0e1318;
-    --panel:#161d24;
-    --panel-2:#1b232b;
-    --line:#28333d;
+    /* bg/panel/text/muted/danger/ok folgen dem zentralen Hell-/Dunkel-
+       Umschalter (--ts-*). blue/blue-dim/amber bleiben bewusst die
+       eigene "Blueprint"-Akzentfarbe dieses Tools und ändern sich beim
+       Umschalten nicht - Fallback ist jeweils der bisherige Wert. */
+    --bg:var(--ts-bg, #0e1318);
+    --panel:var(--ts-surface, #161d24);
+    --panel-2:var(--ts-surface-hover, #1b232b);
+    --line:var(--ts-line-30, #28333d);
     --blue:#4a90b8;
     --blue-dim:#2e4a5a;
     --amber:#e8934a;
-    --text:#e7edf2;
-    --muted:#8394a1;
-    --danger:#c9604f;
-    --ok:#5c9e7c;
+    --text:var(--ts-ink, #e7edf2);
+    --muted:var(--ts-muted, #8394a1);
+    --danger:var(--ts-danger, #c9604f);
+    --ok:var(--ts-ok, #5c9e7c);
     --radius:2px;
   }
   *{box-sizing:border-box;}
@@ -58,7 +61,8 @@
     padding:22px 18px 16px;
     border-bottom:1px solid var(--line);
     position:sticky; top:0; z-index:5;
-    background:rgba(14,19,24,0.92);
+    background:var(--bg);
+    background:color-mix(in srgb, var(--bg) 92%, transparent);
     backdrop-filter:blur(6px);
   }
   .eyebrow{
@@ -375,7 +379,7 @@
         Standort beim Absenden mit übertragen
       </label>
       <div style="font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.4;">
-        Standardmäßig aktiv. Fragt beim Absenden eines Berichts den aktuellen GPS-Standort ab und speichert ihn mit. Der Browser fragt dafür explizit um Erlaubnis. Kann nur von Admins geändert werden — bei Nicht-Admins ist der Schalter gesperrt.
+        Standardmäßig aktiv. Fragt beim Absenden eines Berichts den aktuellen GPS-Standort ab und speichert ihn mit. Der Browser fragt dafür explizit um Erlaubnis. Ausschalten und Wiedereinschalten erfordern jeweils den Admin-Code. 
       </div>
     </div>
     <div style="border-top:1px solid var(--line);padding-top:14px;">
@@ -422,11 +426,11 @@
     <input type="file" id="auftragInput" accept="application/json,.json" style="display:none">
     <div class="pdf-status" id="auftragStatus"></div>
 
-    <label>Kunde *</label>
+    <label>Kunde</label>
     <input type="text" id="fKunde" placeholder="z. B. Stadt Karlsruhe" list="kundenListe" autocomplete="off">
     <datalist id="kundenListe"></datalist>
 
-    <label>Bauvorhaben *</label>
+    <label>Bauvorhaben</label>
     <input type="text" id="fBauvorhaben" placeholder="z. B. Karlsburg BA3 BS-Sanierung">
 
     <label>Zugehöriger Vorgang <span style="color:var(--muted);font-weight:normal;">(optional)</span></label>
@@ -461,7 +465,7 @@
         <input type="text" id="fAngebotsnr" placeholder="i-2026-XXXXX">
       </div>
       <div>
-        <label>Datum *</label>
+        <label>Datum</label>
         <input type="date" id="fDatum">
       </div>
     </div>
@@ -474,14 +478,14 @@
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">02</span> Zeiterfassung *</p>
+    <p class="card-title"><span class="n">02</span> Zeiterfassung</p>
     <div id="technikerZeitBlocks"></div>
     <button class="add-btn" id="addTechnikerBlock">+ Weiterer Techniker auf der Baustelle</button>
     <div class="zeit-total" id="zeitTotal">Gesamt: 0,0 Std.</div>
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung *</p>
+    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="add-btn" id="openWartungGen" style="flex:1;text-align:center;">+ Wartungs-Generator verwenden</button>
     </div>
@@ -598,7 +602,6 @@
 </div>
 
 <div class="generate">
-  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">* Pflichtfeld</div>
   <button id="genBtn">Bericht als PDF erzeugen</button>
   <div class="gen-status" id="genStatus"></div>
 </div>
@@ -1087,47 +1090,11 @@ let photos = [];
 
 function addPhotos(fileList){
   Array.from(fileList).forEach(file => {
-    komprimiereBild(file).then(dataUrl => {
-      const id = Date.now() + Math.random();
-      photos.push({id, dataUrl});
-      renderThumbs();
-    }).catch(err => {
-      console.error('Foto konnte nicht verarbeitet werden:', err);
-    });
-  });
-}
-// Kamerafotos moderner Smartphones sind oft 5-15 MB — unkomprimiert als
-// data:-URL übernommen belastet das unnötig lokalen Speicher, Autosave und
-// den späteren Upload. Verkleinert auf max. 1920px lange Kante, JPEG ~82%.
-// Bei jedem Fehler (z.B. exotisches Dateiformat) wird das Originalbild
-// unverändert übernommen, statt das Foto ganz zu verlieren.
-function komprimiereBild(file, maxDim, qualitaet){
-  maxDim = maxDim || 1920;
-  qualitaet = qualitaet || 0.82;
-  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(reader.error);
     reader.onload = e => {
-      const original = e.target.result;
-      const img = new Image();
-      img.onerror = () => resolve(original);
-      img.onload = () => {
-        let { width, height } = img;
-        if(width > maxDim || height > maxDim){
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
-        try{
-          const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', qualitaet));
-        }catch(err){
-          resolve(original);
-        }
-      };
-      img.src = original;
+      const id = Date.now() + Math.random();
+      photos.push({id, dataUrl: e.target.result});
+      renderThumbs();
     };
     reader.readAsDataURL(file);
   });
@@ -1151,7 +1118,14 @@ document.getElementById('photoFile').addEventListener('change', e => addPhotos(e
 /* ---------- Unterschrift ---------- */
 const canvas = document.getElementById('sig');
 const ctx = canvas.getContext('2d');
-ctx.strokeStyle = '#e7edf2';
+// Stiftfarbe folgt dem Text-Ton des aktuellen Themes, sonst wäre die
+// Unterschrift im Hellmodus (helle Stiftfarbe auf hellem Feld) unsichtbar.
+function sigStrokeColor(){
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--text').trim();
+  return v || '#e7edf2';
+}
+ctx.strokeStyle = sigStrokeColor();
+document.addEventListener('tstheme:change', () => { ctx.strokeStyle = sigStrokeColor(); });
 ctx.lineWidth = 2.2;
 ctx.lineCap = 'round';
 let drawing = false, hasSig = false;
@@ -1188,121 +1162,170 @@ document.getElementById('keinAbnehmer').addEventListener('change', e => {
 /* ---------- PDF Bericht generieren ---------- */
 document.getElementById('genBtn').addEventListener('click', generateReport);
 
-// ─── Pflichtfelder: ohne diese ist ein Arbeitsbericht wertlos bzw. nicht
-// zuordenbar. Wird vor JEDEM Speichern/PDF-Erzeugen geprüft — vorher konnte
-// ein komplett leeres Formular abgeschickt werden und landete trotzdem in
-// der Datenbank. ───────────────────────────────────────────────────────────
-const PFLICHTFELDER = [
-  {id:'fKunde', label:'Kunde'},
-  {id:'fBauvorhaben', label:'Bauvorhaben'},
-  {id:'fDatum', label:'Datum'},
-  {id:'fTaetigkeit', label:'Tätigkeitsbeschreibung'}
-];
-function pruefePflichtfelder(){
-  const fehlend = [];
-  PFLICHTFELDER.forEach(f => {
-    const el = document.getElementById(f.id);
-    const leer = !el || !el.value || !el.value.trim();
-    if(el) el.style.borderColor = leer ? 'var(--danger)' : '';
-    if(leer) fehlend.push(f);
-  });
-  return fehlend;
-}
-// Rand-Hervorhebung entfernen, sobald der Nutzer zu tippen anfängt
-PFLICHTFELDER.forEach(f => {
-  const el = document.getElementById(f.id);
-  if(el) el.addEventListener('input', () => { el.style.borderColor = ''; });
-});
-
 async function generateReport(){
   const genStatus = document.getElementById('genStatus');
   const btn = document.getElementById('genBtn');
-
-  const fehlend = pruefePflichtfelder();
-  // Fund 8 aus dem Prüfbericht: Bericht konnte bisher ohne Kundenunterschrift
-  // UND ohne "Kein Abnehmer vor Ort" stillschweigend gespeichert werden.
-  const keinAbnehmerJetzt = document.getElementById('keinAbnehmer').checked;
-  const unterschriftFehlt = !keinAbnehmerJetzt && !hasSig;
-  // Arbeitszeit ist ebenfalls Pflicht: mindestens eine Zeiterfassungs-Zeile mit
-  // Datum UND Stunden > 0, sonst lässt sich ein Bericht ohne jede erfasste Zeit abschicken.
-  const arbeitszeitFehlt = !zeitBlocks.some(block =>
-    (block.rows || []).some(r => r.datum && (parseFloat((r.stunden || '').toString().replace(',', '.')) > 0))
-  );
-  // E-Mail ist optional, aber wenn eine eingetragen ist, muss sie gültig sein —
-  // vorher wurde eine ungültige Adresse beim Speichern kommentarlos zu null,
-  // ohne dass der Techniker das bemerkt hätte.
-  const emailWert = val('fEmail').trim();
-  const emailUngueltig = !!emailWert && !EMAIL_REGEX.test(emailWert);
-
-  if(fehlend.length || unterschriftFehlt || arbeitszeitFehlt || emailUngueltig){
-    const teile = fehlend.map(f => f.label);
-    if(arbeitszeitFehlt) teile.push('Arbeitszeit (mindestens ein Datum mit Stunden erfassen)');
-    if(emailUngueltig) teile.push('E-Mail-Adresse (ungültiges Format)');
-    if(unterschriftFehlt) teile.push('Unterschrift (oder „Kein Abnehmer vor Ort" ankreuzen)');
-    genStatus.textContent = 'Bitte ausfüllen: ' + teile.join(', ');
-    genStatus.className = 'gen-status err';
-    // Schwebende Meldung zusätzlich zum Text oben im Formular — der reine Text
-    // wurde beim Ausfüllen weiter unten im Formular leicht übersehen.
-    if(window.zeigeWarnung){
-      zeigeWarnung('Bitte ergänzen, bevor der Bericht erstellt wird:\n\n• ' + teile.join('\n• '), {titel:'Formular unvollständig'});
-    }
-    if(fehlend.length){
-      const erstesFeld = document.getElementById(fehlend[0].id);
-      erstesFeld.focus();
-      erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
-    } else if(arbeitszeitFehlt){
-      const zeitSektion = document.getElementById('technikerZeitBlocks');
-      if(zeitSektion) zeitSektion.scrollIntoView({behavior:'smooth', block:'center'});
-    } else if(emailUngueltig){
-      const emailFeld = document.getElementById('fEmail');
-      emailFeld.focus();
-      emailFeld.scrollIntoView({behavior:'smooth', block:'center'});
-    } else {
-      document.getElementById('keinAbnehmer').scrollIntoView({behavior:'smooth', block:'center'});
-    }
-    return;
-  }
-  genStatus.className = 'gen-status';
-
   btn.disabled = true;
   genStatus.textContent = 'Bericht wird erstellt ...';
 
   try{
-    // ─── PDF-Eingabestruktur zusammenstellen ────────────────────────────────
-    // Das eigentliche Layout kommt jetzt aus ts-pdf-arbeitsbericht.js, gemeinsam
-    // mit uebersicht.html genutzt (dort: "PDF neu erzeugen"), damit beide
-    // Ausgaben garantiert identisch bleiben statt unabhängig zu drften.
-    const status = document.querySelector('input[name="arbeitsstatus"]:checked').value;
-    const keinAbnehmer = document.getElementById('keinAbnehmer').checked;
-    const zeiterfassung = zeitBlocks.map(block => ({
-      techniker: block.name, primary: block.primary,
-      tage: block.rows.map(r => ({datum: r.datum, stunden: r.stunden, wegepauschale: r.wegepauschale}))
-    }));
-    const materialZeilen = [
-      ...materialItems.filter(i => i.checked).map(i => '• ' + (i.menge && i.menge !== 1 ? i.menge + '× ' : '') + i.label),
-      ...(val('fMaterial') ? val('fMaterial').split('\n').filter(Boolean) : [])
-    ];
-    const pdfEingabe = {
-      kunde: val('fKunde'),
-      bauvorhaben: val('fBauvorhaben'),
-      angebotsnr: val('fAngebotsnr'),
-      datumLabel: 'Datum',
-      datumWert: val('fDatum'),
-      techniker: val('fTechniker'),
-      lieferanschrift: val('fLieferanschrift'),
-      zeiterfassung,
-      taetigkeit: val('fTaetigkeit'),
-      status,
-      internerBericht: val('fInternerBericht'),
-      hinweis: val('fHinweis'),
-      materialZeilen,
-      keinAbnehmerVorOrt: keinAbnehmer,
-      unterschriftDataUrl: (!keinAbnehmer && hasSig) ? canvas.toDataURL('image/png') : null,
-      kundenname: val('fKundenname'),
-      abnehmerFunktion: val('fAbnehmerFunktion'),
-      fotoDataUrls: photos.map(p => ({dataUrl: p.dataUrl, format: 'JPEG'})),
-    };
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({unit:'mm', format:'a4'});
+    const pageW = 210, margin = 16;
+    let y = 20;
 
+    doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    doc.text('Arbeitsbericht', margin, y); y += 10;
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const fields = [
+      ['Kunde', val('fKunde')],
+      ['Bauvorhaben', val('fBauvorhaben')],
+      ['Angebots-/Auftragsnr.', val('fAngebotsnr')],
+      ['Datum', val('fDatum')],
+      ['Techniker', val('fTechniker')],
+    ];
+    fields.forEach(([label, value]) => {
+      doc.setFont('helvetica','bold'); doc.text(label + ':', margin, y);
+      doc.setFont('helvetica','normal'); doc.text(value || '-', margin + 55, y);
+      y += 6.5;
+    });
+    const lieferwert = val('fLieferanschrift');
+    if(lieferwert){
+      doc.setFont('helvetica','bold'); doc.text('Lieferanschrift:', margin, y);
+      doc.setFont('helvetica','normal');
+      const liefLines = doc.splitTextToSize(lieferwert, pageW - margin - 55 - margin);
+      doc.text(liefLines, margin + 55, y);
+      y += Math.max(6.5, liefLines.length * 5);
+    }
+
+    y += 4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Zeiterfassung', margin, y); y += 7;
+    doc.setFontSize(10);
+    let gesamtStunden = 0;
+    let gesamtWegepauschalen = 0;
+    zeitBlocks.forEach(block => {
+      doc.setFont('helvetica','bold');
+      doc.text(block.name + (block.primary ? ' (Gerät)' : ''), margin, y); y += 5.5;
+      doc.setFont('helvetica','normal');
+      block.rows.forEach(r => {
+        const std = parseFloat((r.stunden||'').toString().replace(',','.')) || 0;
+        if(r.datum || std){
+          const datumFmt = r.datum ? r.datum.split('-').reverse().join('.') : '-';
+          const wegeText = r.wegepauschale ? '  ·  Wegepauschale' : '';
+          doc.text(`  ${datumFmt}   ${std.toFixed(2).replace('.',',').replace(/,?0+$/,'').replace(/,$/,'') || '0'} Std.${wegeText}`, margin, y);
+          y += 5.5;
+          if(r.wegepauschale) gesamtWegepauschalen++;
+        }
+      });
+      const blockStunden = stundenOf(block.rows);
+      gesamtStunden += blockStunden;
+      doc.setFont('helvetica','italic');
+      doc.text(`  Zwischensumme: ${blockStunden.toFixed(2).replace('.',',').replace(/,?0+$/,'').replace(/,$/,'')} Std.`, margin, y);
+      y += 7;
+    });
+    doc.setFont('helvetica','bold');
+    doc.text('Gesamt: ' + gesamtStunden.toFixed(2).replace('.',',').replace(/,?0+$/,'').replace(/,$/,'') + ' Std.'
+      + (gesamtWegepauschalen ? `  ·  Wegepauschalen: ${gesamtWegepauschalen}x` : ''), margin, y);
+    y += 10;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Tätigkeitsbeschreibung', margin, y); y += 7;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    const taetigkeit = val('fTaetigkeit') || '-';
+    const taetLines = doc.splitTextToSize(taetigkeit, pageW - margin*2);
+    doc.text(taetLines, margin, y);
+    y += taetLines.length * 5 + 6;
+
+    const status = document.querySelector('input[name="arbeitsstatus"]:checked').value;
+    doc.setFont('helvetica','bold');
+    doc.text('Status: ' + (status === 'beendet' ? 'Arbeiten beendet' : 'Arbeiten werden fortgesetzt'), margin, y);
+    y += 10;
+
+    const internerBericht = val('fInternerBericht');
+    if(internerBericht){
+      if(y > 250){ doc.addPage(); y = 20; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text('Interner Bericht (nicht für den Kunden)', margin, y); y += 7;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      const ibLines = doc.splitTextToSize(internerBericht, pageW - margin*2);
+      doc.text(ibLines, margin, y); y += ibLines.length * 5 + 8;
+    }
+
+    const hinweis = val('fHinweis');
+    if(hinweis){
+      if(y > 250){ doc.addPage(); y = 20; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text('Hinweis', margin, y); y += 7;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      const hLines = doc.splitTextToSize(hinweis, pageW - margin*2);
+      doc.text(hLines, margin, y); y += hLines.length * 5 + 8;
+    }
+
+    if(y > 240){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Materialverbrauch', margin, y); y += 7;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+
+    const checkedItems = materialItems.filter(i => i.checked).map(i => '• ' + (i.menge && i.menge !== 1 ? i.menge + '× ' : '') + i.label);
+    const material = val('fMaterial');
+    const materialBlocks = [...checkedItems];
+    if(material) materialBlocks.push(...material.split('\n').filter(Boolean));
+    const materialText = materialBlocks.length ? materialBlocks.join('\n') : '-';
+
+    const matLines = doc.splitTextToSize(materialText, pageW - margin*2);
+    doc.text(matLines, margin, y);
+    y += matLines.length * 5 + 8;
+
+    if(photos.length){
+      if(y > 230){ doc.addPage(); y = 20; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      doc.text('Fotos', margin, y); y += 7;
+      let x = margin;
+      const imgW = 55, imgH = 55, gap = 6;
+      for(const p of photos){
+        if(x + imgW > pageW - margin){ x = margin; y += imgH + gap; }
+        if(y + imgH > 280){ doc.addPage(); y = 20; x = margin; }
+        try{ doc.addImage(p.dataUrl, 'JPEG', x, y, imgW, imgH); }catch(e){}
+        x += imgW + gap;
+      }
+      y += imgH + 12;
+    }
+
+    if(y > 230){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.text('Kundenunterschrift', margin, y); y += 4;
+
+    const keinAbnehmer = document.getElementById('keinAbnehmer').checked;
+    if(keinAbnehmer){
+      y += 8;
+      doc.setFont('helvetica','italic'); doc.setFontSize(10);
+      doc.text('Unterschriftsberechtigter nicht vor Ort', margin, y);
+      y += 8;
+    } else {
+      if(hasSig){
+        doc.addImage(canvas.toDataURL('image/png'), 'PNG', margin, y, 90, 40);
+      } else {
+        doc.setFont('helvetica','normal'); doc.setFontSize(10);
+        doc.text('(keine Unterschrift erfasst)', margin, y + 10);
+      }
+      y += 44;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.text(val('fKundenname') || '-', margin, y);
+      doc.setDrawColor(180); doc.line(margin, y-1, margin+90, y-1);
+      y += 8;
+      const funktion = val('fAbnehmerFunktion');
+      if(funktion){
+        doc.text('Funktion: ' + funktion, margin, y);
+        y += 6;
+      }
+    }
+
+    const zeitDaten = zeitBlocks.map(b => ({
+      techniker: b.name, primary: b.primary,
+      tage: b.rows.map(r => ({datum: r.datum, stunden: r.stunden, wegepauschale: r.wegepauschale}))
+    }));
     // Vereinheitlichtes Dropdown liefert "wartung:<id>" oder "wv:<id>" —
     // hier in die generischen Felder auflösen. wartungsposition_id bleibt
     // als abgeleitetes Kompatibilitätsfeld erhalten (u.a. für bestehende
@@ -1324,9 +1347,9 @@ async function generateReport(){
         ansprechpartner: val('fAnsprechpartner') || null,
         telefon: val('fTelefon') || null,
         email: (val('fEmail') && EMAIL_REGEX.test(val('fEmail').trim())) ? val('fEmail').trim() : null,
-        zeiterfassung,
+        zeiterfassung: zeitDaten,
         taetigkeit: val('fTaetigkeit') || null,
-        status,
+        status: document.querySelector('input[name="arbeitsstatus"]:checked').value,
         interner_bericht: val('fInternerBericht') || null,
         hinweis: val('fHinweis') || null,
         material_checkliste: materialItems.filter(i => i.checked).map(i => ({bezeichnung: i.label, menge: i.menge || 1})),
@@ -1430,12 +1453,10 @@ async function generateReport(){
 
     // PDF-Download bewusst GANZ AM ENDE, nach allen Netzwerk-Aufrufen:
     // Der Download-Dialog (bzw. das Sichern/Teilen-Sheet, das doc.save()
-    // in erzeugeArbeitsberichtPdf() auslöst) unterbricht offenbar laufende
-    // fetch()-Anfragen, besonders im eingebetteten Trello-In-App-Browser
-    // ("Load failed"). Deshalb muss die Trello-Rückmeldung fertig sein,
-    // BEVOR der Download startet.
-    pdfEingabe.dateiname = filename;
-    erzeugeArbeitsberichtPdf(pdfEingabe);
+    // auslöst) unterbricht offenbar laufende fetch()-Anfragen, besonders
+    // im eingebetteten Trello-In-App-Browser ("Load failed"). Deshalb
+    // muss die Trello-Rückmeldung fertig sein, BEVOR der Download startet.
+    doc.save(filename);
   } catch(err){
     genStatus.textContent = 'Fehler beim Erstellen des Berichts.';
     console.error(err);
@@ -2055,42 +2076,32 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-/* ---------- Admin-Rolle (schützt sicherheitsrelevante Einstellungen) ---------- */
-let meineRolle = null; // null = noch nicht geprüft
-async function pruefeMeineRolle(){
-  if(meineRolle) return meineRolle;
-  try{
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/mitarbeiter?me=1`, { headers: supabaseHeaders() });
-    const ich = await res.json().catch(() => null);
-    meineRolle = (ich && ich.rolle) || 'unbekannt';
-  } catch(err){
-    console.error('Rollenprüfung fehlgeschlagen:', err);
-    meineRolle = 'unbekannt'; // im Zweifel gesperrt, nicht offen
-  }
-  return meineRolle;
-}
-function aktualisiereStandortSperre(){
-  const toggle = document.getElementById('standortToggle');
-  const gesperrt = meineRolle !== 'admin';
-  toggle.disabled = gesperrt;
-  toggle.closest('label').style.opacity = gesperrt ? '.5' : '1';
-  toggle.closest('label').style.cursor = gesperrt ? 'not-allowed' : 'pointer';
-}
-
 /* ---------- Admin-Panel ---------- */
 document.getElementById('adminBtn').addEventListener('click', () => {
   renderTechList();
   document.getElementById('bilderSpeichernToggle').checked = localStorage.getItem('ts_bilder_speichern') === '1';
   document.getElementById('standortToggle').checked = standortIstAktiv();
   adminModal.style.display = 'flex';
-  aktualisiereStandortSperre(); // sofort mit letztem bekannten Stand sperren, dann live nachschärfen
-  pruefeMeineRolle().then(aktualisiereStandortSperre);
 });
-/* GPS-Schalter: disabled-Attribut verhindert jede Bedienung durch Nicht-Admins
-   bereits auf DOM-Ebene — kein Umweg über preventDefault()/Code-Prompt mehr nötig. */
-document.getElementById('standortToggle').addEventListener('change', function(){
-  localStorage.setItem('ts_standort_uebertragen', this.checked ? '1' : '0');
-  aktualisiereStandortHinweis();
+/* GPS-Schalter ist zusätzlich zum Login mit dem Admin-Code geschützt. */
+document.getElementById('standortToggle').addEventListener('click', function(e){
+  e.preventDefault(); // Häkchen erst nach korrektem Code setzen
+  const toggle = this;
+  /* Wichtig: nicht this.checked auswerten — das ist während des Klicks
+     bereits umgeschaltet und wird durch preventDefault() nach dem
+     Handler wieder zurückgesetzt. Quelle der Wahrheit ist localStorage. */
+  const neuerZustand = !standortIstAktiv();
+  const eingabe = prompt('Admin-Code zum Ändern der Standort-Funktion:');
+  if(eingabe === null) return; // abgebrochen
+  if(eingabe === TENANT.adminCode){
+    localStorage.setItem('ts_standort_uebertragen', neuerZustand ? '1' : '0');
+    aktualisiereStandortHinweis();
+    /* Häkchen erst setzen, nachdem der Browser das preventDefault-
+       Rollback ausgeführt hat: */
+    setTimeout(function(){ toggle.checked = neuerZustand; }, 0);
+  } else {
+    alert('Falscher Admin-Code – Standort-Funktion wurde nicht geändert.');
+  }
 });
 function aktualisiereMedienStatus(){
   const an = localStorage.getItem('ts_bilder_speichern') === '1';

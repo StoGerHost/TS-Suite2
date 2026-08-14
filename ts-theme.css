@@ -1,0 +1,131 @@
+/* ============================================================
+   TS-Suite · Zentrales Theme-System (ts-theme.css)
+   ------------------------------------------------------------
+   Einheitliche Design-Tokens (Farben, Schriften) für Hell- und
+   Dunkelmodus. Gilt suite-weit, ersetzt schrittweise die lokalen
+   :root{...}-Blöcke der einzelnen Tools.
+
+   Einbindung (im <head>, VOR dem Tool-eigenen <style>-Block):
+     <link rel="stylesheet" href="ts-theme.css">
+     <script src="ts-theme.js"></script>
+
+   Alle Tokens sind mit dem Präfix "--ts-" versehen, damit sie
+   NICHT mit den bestehenden lokalen Variablen einer Seite
+   kollidieren (z. B. --accent, --bg). So kann diese Datei schon
+   eingebunden werden, bevor ein Tool im zweiten Schritt seine
+   eigenen Variablen auf --ts-* umstellt (siehe Migrationsleit-
+   faden in ts-theme.js).
+
+   Umschaltung erfolgt über das Attribut data-theme="light" bzw.
+   "dark" auf <html>. Wird von ts-theme.js gesetzt.
+   ============================================================ */
+
+:root,
+html[data-theme="dark"] {
+  /* Flächen */
+  --ts-bg: #0a0a0c;
+  --ts-surface: #111318;
+  --ts-surface-hover: #141821;
+  --ts-surface-alt: #0d0f13;
+
+  /* Text */
+  --ts-ink: #e9edf2;
+  --ts-ink-80: rgba(233, 237, 242, .8);
+  --ts-ink-70: rgba(233, 237, 242, .7);
+  --ts-ink-60: rgba(233, 237, 242, .6);
+  --ts-ink-45: rgba(233, 237, 242, .45);
+  --ts-muted: #8b95a0;
+
+  /* Akzent- und Statusfarben */
+  --ts-accent: #3a7bd5;
+  --ts-accent-dark: #2f66b3;
+  --ts-glow: #5eead4;
+  --ts-ok: #3ecf8e;
+  --ts-warn: #e0a53d;
+  --ts-danger: #e05a4e;
+
+  /* Linien/Rahmen */
+  --ts-line-20: rgba(58, 123, 213, .2);
+  --ts-line-25: rgba(58, 123, 213, .25);
+  --ts-line-30: rgba(58, 123, 213, .3);
+  --ts-line-35: rgba(58, 123, 213, .35);
+
+  /* Schrift */
+  --ts-font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --ts-font-mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Consolas, Menlo, monospace;
+
+  /* Sonstiges */
+  --ts-radius: 8px;
+  --ts-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  --ts-bg: #f2f4f7;
+  --ts-surface: #ffffff;
+  --ts-surface-hover: #eef2f8;
+  --ts-surface-alt: #f8fafb;
+
+  --ts-ink: #1a2d44;
+  --ts-ink-80: rgba(26, 45, 68, .8);
+  --ts-ink-70: rgba(26, 45, 68, .7);
+  --ts-ink-60: rgba(26, 45, 68, .6);
+  --ts-ink-45: rgba(26, 45, 68, .45);
+  --ts-muted: #6b7a8d;
+
+  --ts-accent: #205ea6;
+  --ts-accent-dark: #143f73;
+  --ts-glow: #0f9c86;
+  --ts-ok: #2f6b46;
+  --ts-warn: #a5750f;
+  --ts-danger: #a4321f;
+
+  --ts-line-20: rgba(32, 94, 166, .15);
+  --ts-line-25: rgba(32, 94, 166, .2);
+  --ts-line-30: rgba(32, 94, 166, .25);
+  --ts-line-35: rgba(32, 94, 166, .3);
+
+  --ts-shadow: 0 4px 16px rgba(26, 45, 68, .12);
+  color-scheme: light;
+}
+
+/* Sanfter Übergang beim Umschalten, statt hartem Umspringen */
+html[data-ts-theme-transition] * {
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease !important;
+}
+
+/* ---------- Umschalt-Button (wird von ts-theme.js injiziert) ---------- */
+#ts-theme-toggle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ts-surface);
+  color: var(--ts-ink);
+  border: 1.5px solid var(--ts-line-30);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font: 600 12px/1 var(--ts-font-mono);
+  letter-spacing: .02em;
+  cursor: pointer;
+  box-shadow: var(--ts-shadow);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#ts-theme-toggle:hover {
+  border-color: var(--ts-accent);
+}
+
+#ts-theme-toggle .ts-theme-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Tools mit eigener Floating-Action-Leiste unten rechts (z.B. Aufmaß-
+   Konfigurator) können den Button per Klasse nach oben versetzen: */
+#ts-theme-toggle.ts-theme-toggle--raised {
+  bottom: 76px;
+}

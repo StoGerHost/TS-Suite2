@@ -7,23 +7,26 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ZuKo Kabelplan-Generator</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Blueprint-Palette (dunkel), an den Rest der Suite angeglichen */
-    --ink:#e9edf2;
-    --ink-soft:#9aa5b0;
-    --paper:#0a0a0c;
-    --card:#111318;
-    --line:rgba(58,123,213,.25);
-    --accent:#3a7bd5;
+    /* Blueprint-Palette, jetzt an den zentralen Hell/Dunkel-Umschalter
+       angeschlossen (--ts-*), Fallback ist der bisherige Dunkelwert. */
+    --ink:var(--ts-ink, #e9edf2);
+    --ink-soft:var(--ts-ink-60, #9aa5b0);
+    --paper:var(--ts-bg, #0a0a0c);
+    --card:var(--ts-surface, #111318);
+    --line:var(--ts-line-25, rgba(58,123,213,.25));
+    --accent:var(--ts-accent, #3a7bd5);
     --accent-dark:#7fb3f0;
-    --ok:#3ecf8e;
-    --warn:#e05a4e;
-    --warn-bg:rgba(224,90,78,.15);
-    --muted:#8b95a0;
-    --chip-bg:rgba(233,237,242,.08);
-    --glow:#5eead4;
+    --ok:var(--ts-ok, #3ecf8e);
+    --warn:var(--ts-danger, #e05a4e);
+    --warn-bg:color-mix(in srgb, var(--warn) 15%, var(--card));
+    --muted:var(--ts-muted, #8b95a0);
+    --chip-bg:color-mix(in srgb, var(--ink) 8%, transparent);
+    --glow:var(--ts-glow, #5eead4);
 
     /* Bestehende Blueprint-Variablennamen auf die neue Palette gemappt,
        damit der gesamte restliche CSS-/SVG-Code unverändert bleibt. */
@@ -180,14 +183,14 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    background:var(--paper);color:var(--ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid var(--line);}
+  .ts-backbar__link{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  @media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
-  .ts-backbar__slash{color:rgba(233,237,242,.35);}
-  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
+  .ts-backbar__slash{color:var(--ink-soft);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
@@ -836,7 +839,7 @@ function attachSystemeHandlers(){
     btn.addEventListener('click', async ()=>{
       if(!confirm('System wirklich löschen?')) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
-      await saveSysteme(); renderSysteme();
+      await saveSysteme(); renderSysteme(); fillSystemSelect();
     });
   });
   list.querySelectorAll('[data-action="add-bauteil"]').forEach(btn=>{
@@ -849,8 +852,6 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-bauteil"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const sys = findSys(btn.dataset.sys);
-      const b = sys?.bauteile.find(x=>x.id===btn.dataset.bauteil);
-      if(!confirm('Bauteil "' + (b?.name||'') + '" wirklich entfernen? Alle zugehörigen Klemmen gehen dabei mit verloren.')) return;
       sys.bauteile = sys.bauteile.filter(b=>b.id!==btn.dataset.bauteil);
       await saveSysteme(); renderSysteme();
     });
@@ -865,7 +866,6 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-klemme"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const b = findBauteil(btn.dataset.sys, btn.dataset.bauteil);
-      if(!confirm('Klemme wirklich entfernen?')) return;
       b.klemmen = b.klemmen.filter(k=>k.id!==btn.dataset.klemme);
       await saveSysteme(); renderSysteme();
     });
@@ -1647,6 +1647,7 @@ function renderSchema(){
 
   html += `<g class="node quelle"><rect x="${quelle.x}" y="${quelle.y-quelle.h/2}" width="${quelle.w}" height="${quelle.h}"></rect>
     <text x="${quelle.x+quelle.w/2}" y="${quelle.y+5}" text-anchor="middle">${quelle.label}</text></g>`;
+  html += `<text class="wlabel" x="${quelle.x}" y="${quelle.y-quelle.h/2-8}" text-anchor="start" style="fill:var(--bp-power);font-style:italic;">← Dropdown</text>`;
 
   html += `<g class="node steuerung"><rect x="${steuerung.x}" y="${steuerung.y-steuerung.h/2}" width="${steuerung.w}" height="${steuerung.h}"></rect>
     <text x="${steuerung.x+steuerung.w/2}" y="${steuerung.y+5}" text-anchor="middle">${steuerung.label}</text></g>`;

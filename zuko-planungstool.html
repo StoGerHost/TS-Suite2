@@ -8,21 +8,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Zutrittskontrolle – Planungstool für den Außendienst</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <style>
   :root{
-    --ink:#e9edf2;
-    --ink-soft:#9aa5b0;
-    --paper:#0a0a0c;
-    --card:#111318;
-    --line:rgba(58,123,213,.25);
-    --accent:#3a7bd5;
+    /* Blueprint-Palette, jetzt an den zentralen Hell/Dunkel-Umschalter
+       angeschlossen (--ts-*), Fallback ist der bisherige Dunkelwert. */
+    --ink:var(--ts-ink, #e9edf2);
+    --ink-soft:var(--ts-ink-60, #9aa5b0);
+    --paper:var(--ts-bg, #0a0a0c);
+    --card:var(--ts-surface, #111318);
+    --line:var(--ts-line-25, rgba(58,123,213,.25));
+    --accent:var(--ts-accent, #3a7bd5);
     --accent-dark:#7fb3f0;
-    --ok:#3ecf8e;
-    --warn:#e05a4e;
-    --warn-bg:rgba(224,90,78,.15);
-    --muted:#8b95a0;
-    --chip-bg:rgba(233,237,242,.08);
-    --glow:#5eead4;
+    --ok:var(--ts-ok, #3ecf8e);
+    --warn:var(--ts-danger, #e05a4e);
+    --warn-bg:color-mix(in srgb, var(--warn) 15%, var(--card));
+    --muted:var(--ts-muted, #8b95a0);
+    --chip-bg:color-mix(in srgb, var(--ink) 8%, transparent);
+    --glow:var(--ts-glow, #5eead4);
     --font-display:'Arial Narrow', 'Helvetica Neue Condensed', Arial, sans-serif;
     --font-body:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
     --font-mono:ui-monospace,'Cascadia Mono','Consolas','SFMono-Regular',Menlo,monospace;
@@ -37,7 +41,7 @@
   button{font-family:var(--font-body);cursor:pointer;}
   input,select,textarea{
     font-family:var(--font-body);font-size:16px;color:var(--ink);
-    background:#0d0f13;border:1px solid var(--line);border-radius:7px;padding:11px 12px;width:100%;
+    background:var(--card);border:1px solid var(--line);border-radius:7px;padding:11px 12px;width:100%;
   }
   input:focus,select:focus,textarea:focus{outline:2px solid var(--glow);outline-offset:1px;border-color:var(--glow);box-shadow:0 0 0 3px rgba(94,234,212,.15);}
   label{display:block;font-size:13px;font-family:var(--font-mono);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px;}
@@ -98,7 +102,7 @@
   .door-body{padding:4px 16px 16px;border-top:1px solid var(--line);}
   .door-body[hidden]{display:none;}
   .checkbox-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
-  .checkbox-row label.cb{display:flex;align-items:center;gap:8px;font-family:var(--font-body);text-transform:none;font-size:13.5px;color:var(--ink);letter-spacing:0;border:1px solid var(--line);border-radius:20px;padding:9px 14px;min-height:40px;background:#0d0f13;}
+  .checkbox-row label.cb{display:flex;align-items:center;gap:8px;font-family:var(--font-body);text-transform:none;font-size:13.5px;color:var(--ink);letter-spacing:0;border:1px solid var(--line);border-radius:20px;padding:9px 14px;min-height:40px;background:var(--card);}
   .checkbox-row label.cb:has(input:checked){background:rgba(58,123,213,.15);border-color:var(--accent);color:var(--accent-dark);font-weight:600;}
   .checkbox-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;}
   .warnings-box{margin-top:6px;}
@@ -106,7 +110,7 @@
   .ok-note{font-size:12.5px;color:var(--ok);font-family:var(--font-mono);}
 
   /* ---- buttons ---- */
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#0d0f13;color:var(--ink);padding:13px 18px;min-height:46px;border-radius:8px;font-size:14.5px;font-weight:600;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:13px 18px;min-height:46px;border-radius:8px;font-size:14.5px;font-weight:600;}
   @media(hover:hover){ .btn:hover{border-color:var(--accent);} }
   .btn.primary{background:var(--accent);border-color:var(--accent);color:#0a0a0c;}
   @media(hover:hover){ .btn.primary:hover{background:var(--accent-dark);} }
@@ -150,14 +154,14 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    background:var(--paper);color:var(--ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid var(--line);}
+  .ts-backbar__link{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  @media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
-  .ts-backbar__slash{color:rgba(233,237,242,.35);}
-  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
+  .ts-backbar__slash{color:var(--ink-soft);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
@@ -383,13 +387,10 @@
     if (d.leserSchnittstelle==="RS-485 / OSDP" && d.distanzLeserController && Number(d.distanzLeserController)>600){
       w.push("RS-485-Strecke "+d.distanzLeserController+" m liegt über dem typischen Richtwert (~600 m, kabelabhängig) – Repeater/zusätzlichen Controller einplanen.");
     }
-    if (d.leserSchnittstelle==="Netzwerk (IP-Leser/PoE)" && d.distanzLeserController && Number(d.distanzLeserController)>100){
-      w.push("Netzwerk-Leser-Strecke "+d.distanzLeserController+" m überschreitet die Ethernet/PoE-Grenze von 100 m (IEEE 802.3) – Switch/Repeater näher am Leser einplanen oder Glasfaser-Zwischenstrecke prüfen.");
-    }
     if (d.stromVorOrt==="nein"){
       w.push("Keine Stromversorgung am Einbauort vorhanden – Zuleitung/Netzteil in die Kalkulation aufnehmen.");
     }
-    if (d.leserSchnittstelle==="Netzwerk (IP-Leser/PoE)" && project.netzwerkVorhanden==="nein"){
+    if (d.netzwerkBenoetigt && project.netzwerkVorhanden==="nein"){
       w.push("Netzwerk-Leser geplant, aber kein Netzwerk am Standort vorhanden – Verkabelung oder WLAN/BLE-Alternative klären.");
     }
     return w;

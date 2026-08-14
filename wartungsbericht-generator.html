@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anlagenbericht-Generator</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
+<style>
+  :root{
+    /* Diese Seite war bisher als einzige der Suite FEST auf Hell verdrahtet
+       (kein Dark Mode). Jetzt folgen die Grundfarben dem zentralen
+       Umschalter; der bisherige Wert bleibt als Fallback UND als
+       Hell-Erscheinungsbild erhalten. --accent bleibt die eigene,
+       gedeckte Akzentfarbe dieses Tools.
+       Achtung fuer Marko: Standardmäßig zeigt die Seite jetzt (wie der
+       Rest der Suite) zuerst Dunkelmodus, bis jemand einmal umschaltet -
+       vorher war sie immer hell. Das war so mit dir abgestimmt (ein
+       gemeinsamer, suite-weiter Umschalter statt Insellösung). */
+    --ink:var(--ts-ink, #1b1e1c);
+    --paper:var(--ts-bg, #f6f5f1);
+    --paper-raised:var(--ts-surface, #ffffff);
+    --line:var(--ts-line-30, #d8d6ce);
+    --ok:var(--ts-ok, #2f6b46);
+    --ok-bg:color-mix(in srgb, var(--ok) 18%, var(--paper-raised));
+    --bad:var(--ts-danger, #a4321f);
+    --bad-bg:color-mix(in srgb, var(--bad) 18%, var(--paper-raised));
+    --accent:#1f4e5f;
+    --accent-bg:color-mix(in srgb, var(--accent) 15%, var(--paper-raised));
+    --muted:var(--ts-muted, #6b6a63);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;}
+  header{
+    padding:20px 16px 16px;
+    border-bottom:3px solid var(--ink);
+    background:var(--paper-raised);
+  }
+  header h1{margin:0 0 2px; font-size:19px; letter-spacing:.2px;}
+  header .sub{
+    font-size:12.5px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.6px;
+  }
+  main{max-width:720px;margin:0 auto;padding:16px 16px 100px;}
+  section{margin-bottom:22px;}
+
+  .step-eyebrow{
+    font-size:11px; text-transform:uppercase; letter-spacing:.8px;
+    color:var(--muted); margin-bottom:6px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .step-eyebrow .n{
+    width:18px;height:18px; border-radius:50%;
+    background:var(--ink); color:var(--paper);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:10px;
+  }
+  h2{font-size:15px;margin:0 0 10px;}
+  h3{font-size:12.5px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);}
+
+  .anlagen-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .anlage-add{
+    border:1.5px dashed var(--line); border-radius:10px;
+    padding:12px 10px; background:#fff; cursor:pointer; user-select:none;
+    transition:border-color .12s, background .12s;
+  }
+  .anlage-add:hover{border-color:var(--accent); background:var(--accent-bg);}
+  .anlage-add .name{font-size:14px;font-weight:600;}
+  .anlage-add .norm{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .instance{
+    border:1px solid var(--line); border-radius:10px;
+    background:#fff; margin-bottom:14px; overflow:hidden;
+  }
+  .instance-header{
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    border-bottom:1px solid var(--line); background:var(--paper);
+    flex-wrap:wrap;
+  }
+  .instance-label{
+    flex:1; min-width:100px; background:transparent; border:none; border-bottom:1px dashed var(--line);
+    font-size:14px; font-weight:700; color:var(--accent); padding:3px 2px;
+  }
+  .instance-label:focus{outline:none; border-bottom-color:var(--accent);}
+  .instance-norm{font-size:10.5px; color:var(--muted); white-space:nowrap;}
+  .instance-toggle, .instance-remove{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    width:28px; height:28px; border-radius:7px; cursor:pointer; font-size:14px; flex-shrink:0;
+  }
+  .instance-remove:hover{border-color:var(--bad); color:var(--bad);}
+  .instance-body{padding:14px 12px;}
+  .instance-body.collapsed{display:none;}
+
+  .einsatzart-row{
+    display:flex; width:100%; gap:6px; margin-top:2px;
+  }
+  .einsatzart-btn{
+    flex:1; padding:6px 0; border-radius:7px; border:1.5px solid var(--line);
+    background:#fafaf8; font-size:12px; font-weight:600; text-align:center; cursor:pointer;
+    color:var(--muted);
+  }
+  .einsatzart-btn.sel{border-color:var(--accent); background:var(--accent-bg); color:var(--accent);}
+
+  .general-block{
+    border:1px solid var(--line); border-radius:9px; padding:12px; margin-bottom:14px; background:var(--paper);
+  }
+  .general-row{margin-bottom:10px;}
+  .general-row:last-child{margin-bottom:0;}
+  .general-row .label{font-size:12.5px; font-weight:600; margin-bottom:5px;}
+  .general-row .pair{display:flex;gap:8px;}
+  .general-btn{
+    flex:1; padding:8px 0; border-radius:7px; border:1.5px solid var(--line);
+    background:#fff; font-size:12.5px; font-weight:600; text-align:center; cursor:pointer;
+  }
+  .general-btn.pos.sel{border-color:var(--ok);background:var(--ok-bg);color:var(--ok);}
+  .general-btn.neg.sel{border-color:var(--bad);background:var(--bad-bg);color:var(--bad);}
+
+  .point{
+    border:1px solid var(--line); border-radius:9px;
+    padding:11px 12px; margin-bottom:8px; background:#fff;
+  }
+  .point .txt{font-size:14.5px;margin-bottom:4px;}
+  .hint{font-size:12px; color:var(--muted); font-style:italic; margin-bottom:9px; line-height:1.35;}
+  .toggle-row{display:flex;gap:8px;}
+  .toggle-btn{
+    flex:1; padding:9px 0; border-radius:7px; border:1.5px solid var(--line);
+    background:#fafaf8; font-size:13px; font-weight:600; text-align:center; cursor:pointer;
+  }
+  .toggle-btn.ok.sel{border-color:var(--ok);background:var(--ok-bg);color:var(--ok);}
+  .toggle-btn.bad.sel{border-color:var(--bad);background:var(--bad-bg);color:var(--bad);}
+  .toggle-btn.na.sel{border-color:var(--muted);background:#ecebe6;color:var(--ink);}
+  .note-wrap{margin-top:8px;display:none;}
+  .note-wrap.show{display:block;}
+  .note-wrap textarea, .stoerung-block textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:7px;
+    font-size:14px; font-family:inherit; min-height:52px; resize:vertical;
+  }
+
+  .stoerung-block .field{margin-bottom:12px;}
+  .stoerung-block .field:last-child{margin-bottom:0;}
+  .stoerung-block label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+
+  .summary-bar{
+    position:fixed;bottom:0;left:0;right:0;
+    background:var(--paper-raised); border-top:2px solid var(--ink);
+    padding:10px 16px; display:flex; gap:10px; align-items:center;
+  }
+  .summary-bar .status{font-size:12.5px;color:var(--muted);flex:1;}
+  .gen-btn{
+    background:var(--ink); color:var(--paper); border:none;
+    padding:12px 18px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .gen-btn:disabled{opacity:.4;}
+
+  .output-wrap{display:none;margin-top:20px;}
+  .output-wrap.show{display:block;}
+  .output-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .copy-btn{
+    background:var(--accent);color:#fff;border:none;
+    padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  pre.report{
+    white-space:pre-wrap; background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:10px; padding:16px; font-size:13.5px; line-height:1.55;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Anlagenbericht-Generator</h1>
+  <div class="sub">Wartung &amp; Störung · mehrere Anlagen möglich · lokal im Browser</div>
+</header>
+
+<main>
+
+  <section>
+    <div class="step-eyebrow"><span class="n">1</span> Anlage hinzufügen — auch mehrfach (z.B. mehrere Drehtüren)</div>
+    <div class="anlagen-grid" id="anlagen-grid"></div>
+  </section>
+
+  <section id="instances-section" style="display:none;">
+    <div class="step-eyebrow"><span class="n">2</span> Zustand &amp; Details je Anlage</div>
+    <div id="instances"></div>
+  </section>
+
+  <div class="output-wrap" id="output-wrap">
+    <div class="output-head">
+      <h2 style="margin:0;">Generierter Bericht</h2>
+      <button class="copy-btn" id="copy-btn">Text kopieren</button>
+    </div>
+    <pre class="report" id="report-text"></pre>
+  </div>
+
+</main>
+
+<div class="summary-bar">
+  <div class="status" id="status-text">Füge mindestens eine Anlage hinzu.</div>
+  <button class="gen-btn" id="gen-btn" disabled>Bericht erstellen</button>
+</div>
+
+<script>
+// ---------- Datenmodell: modulare Prüfpunkt-Blöcke je Anlagentyp (nur für Einsatzart "Wartung") ----------
+const ANLAGEN = {
+  drehtuer: {
+    name: "Drehtürantrieb (automatisch)",
+    norm: "EN 16005 / DIN 18650-1,2 / ASR A1.7",
+    points: [
+      { text: "Sichtprüfung Türblatt und Rahmen auf Beschädigungen" },
+      { text: "Funktionsprüfung Öffnungs- und Schließbewegung" },
+      { text: "Prüfung Sicherheitssensoren (Haupt- und Nebenschließkante)" },
+      { text: "Prüfung Kraftbegrenzung / Einklemmschutz" },
+      { text: "Prüfung Notöffnung bzw. Fluchtwegfunktion",
+        hint: "Nur erforderlich, wenn die Tür Teil eines Flucht-/Rettungswegs ist." },
+      { text: "Prüfung Verriegelung und Betriebswahlschalter (Tag/Nacht/Aus)",
+        hint: "Nur erforderlich, wenn die Anlage über eine verriegelbare Betriebsart verfügt." },
+      { text: "Schmierung und Sichtprüfung Verschleißteile (Rollen, Führung, Lager)" },
+      { text: "Prüfung elektrischer Anschlüsse und Steuerung" },
+      { text: "Kennzeichnung / Piktogramme vorhanden und lesbar" },
+      { text: "Prüfbuch-Eintrag aktualisiert" }
+    ]
+  },
+  schiebetuer: {
+    name: "Schiebetürantrieb (automatisch)",
+    norm: "EN 16005 / DIN 18650-1,2 / ASR A1.7 / AutSchR (Rettungsweg)",
+    points: [
+      { text: "Sichtprüfung Laufschienen und Türflügel" },
+      { text: "Funktionsprüfung Öffnungs- und Schließbewegung inkl. Endlagen" },
+      { text: "Prüfung Sicherheitssensoren (Bewegungsmelder, Schließkanten)" },
+      { text: "Prüfung Kraftbegrenzung / Einklemmschutz" },
+      { text: "Prüfung Fluchtwegfunktion / Notentriegelung",
+        hint: "Nur erforderlich, wenn die Tür Teil eines Flucht-/Rettungswegs ist (AutSchR)." },
+      { text: "Prüfung Verriegelung und Betriebswahlschalter (Tag/Nacht/Aus)",
+        hint: "Nur erforderlich, wenn die Anlage über eine verriegelbare Betriebsart verfügt." },
+      { text: "Schmierung Laufwagen, Rollen, Führungsschienen" },
+      { text: "Prüfung elektrischer Anschlüsse und Steuerung" },
+      { text: "Kennzeichnung / Piktogramme vorhanden und lesbar" },
+      { text: "Prüfbuch-Eintrag aktualisiert" }
+    ]
+  },
+  feststellanlage: {
+    name: "Feststellanlage",
+    norm: "DIN 14677-1,2",
+    points: [
+      { text: "Sichtprüfung Feststellvorrichtung (Magnet/Ankerplatte oder Türschließer mit Feststellung)" },
+      { text: "Funktionsprüfung Auslösung über Rauchschalter/Brandmelder" },
+      { text: "Funktionsprüfung Handauslösetaster",
+        hint: "Entfällt, wenn die Feststellung bereits durch geringen Druck auf das Türblatt aufgehoben werden kann (z.B. Freilauftürschließer/Haftmagnet-Ausführung)." },
+      { text: "Prüfung Schließfolge und vollständiges Schließen des Türblatts" },
+      { text: "Prüfung Stromversorgung / Netzgerät / Notstromfunktion" },
+      { text: "Prüfung Ankopplung Brandmeldeanlage",
+        hint: "Nur bei Feststellanlage Typ 2/4 (Anbindung an BMA); entfällt bei Typ 1/3 (autarke Anlage)." },
+      { text: "Sichtprüfung Schließbereich auf Fremdkörper/Blockaden" },
+      { text: "Prüfbuch-Eintrag der Feststellanlage aktualisiert" }
+    ]
+  },
+  brandschutztuer: {
+    name: "Brandschutztür (baulich)",
+    norm: "DIBt-Zulassung / Feuerwiderstandsklasse",
+    points: [
+      { text: "Sichtprüfung Türblatt, Zarge und Dichtungen auf Beschädigung" },
+      { text: "Prüfung Selbstschließer / vollständiges, dichtes Schließen" },
+      { text: "Prüfung Kennzeichnungsschild (CE, Feuerwiderstandsklasse) vorhanden und lesbar" },
+      { text: "Prüfung auf unzulässige Veränderungen (Bohrungen, Anbauten, Keile)" },
+      { text: "Prüfung Brand-/Rauchschutzdichtungen auf Vollständigkeit" },
+      { text: "Freihaltung des Schließbereichs geprüft" },
+      { text: "Prüfbuch-Eintrag aktualisiert" }
+    ]
+  }
+};
+
+// Allgemeinzustand: gilt für jede Anlage, unabhängig von Wartung/Störung
+const GENERAL_FIELDS = [
+  { key: 'eintreffen', label: 'Zustand bei Eintreffen', pos: 'In Funktion', neg: 'Ohne Funktion' },
+  { key: 'elektrisch', label: 'Elektrischer Zustand', pos: 'Elektrisch OK', neg: 'Elektrisch defekt' },
+  { key: 'mechanisch', label: 'Mechanischer Zustand', pos: 'Mechanisch OK', neg: 'Mechanisch defekt' },
+  { key: 'verlassen', label: 'Zustand bei Verlassen', pos: 'In Funktion', neg: 'Ohne Funktion' }
+];
+
+// ---------- Zustand: Liste von Anlagen-Instanzen ----------
+const state = {
+  instances: [], // {id, typeKey, label, mode:'wartung'|'stoerung', general:{}, results:{}, stoerung:{}, collapsed}
+  counters: {}
+};
+let idSeq = 1;
+
+const grid = document.getElementById('anlagen-grid');
+const instancesSection = document.getElementById('instances-section');
+const instancesEl = document.getElementById('instances');
+const statusText = document.getElementById('status-text');
+const genBtn = document.getElementById('gen-btn');
+
+Object.entries(ANLAGEN).forEach(([key, a]) => {
+  const div = document.createElement('div');
+  div.className = 'anlage-add';
+  div.innerHTML = `<div class="name">+ ${a.name}</div><div class="norm mono">${a.norm}</div>`;
+  div.addEventListener('click', () => addInstance(key));
+  grid.appendChild(div);
+});
+
+function addInstance(typeKey){
+  state.counters[typeKey] = (state.counters[typeKey] || 0) + 1;
+  const a = ANLAGEN[typeKey];
+  const shortName = a.name.split(' (')[0].split(' —')[0];
+  state.instances.push({
+    id: idSeq++,
+    typeKey,
+    label: `${shortName} ${state.counters[typeKey]}`,
+    mode: 'wartung',
+    general: {}, // key -> 'pos'|'neg'|null
+    results: {}, // idx -> {status,note}  (Wartung)
+    stoerung: { gemeldet: '', ursache: '', massnahme: '' },
+    collapsed: false
+  });
+  renderInstances();
+}
+
+function removeInstance(id){
+  state.instances = state.instances.filter(i => i.id !== id);
+  renderInstances();
+}
+
+function renderInstances(){
+  instancesEl.innerHTML = '';
+  if(state.instances.length === 0){
+    instancesSection.style.display = 'none';
+    updateStatus();
+    return;
+  }
+  instancesSection.style.display = 'block';
+
+  state.instances.forEach(inst => {
+    const a = ANLAGEN[inst.typeKey];
+    const card = document.createElement('div');
+    card.className = 'instance';
+    card.innerHTML = `
+      <div class="instance-header">
+        <input type="text" class="instance-label" data-inst="${inst.id}" value="${inst.label}">
+        <span class="instance-norm mono">${a.norm}</span>
+        <button type="button" class="instance-toggle" data-inst-toggle="${inst.id}">${inst.collapsed ? '▸' : '▾'}</button>
+        <button type="button" class="instance-remove" data-inst-remove="${inst.id}">×</button>
+        <div class="einsatzart-row">
+          <div class="einsatzart-btn${inst.mode === 'wartung' ? ' sel' : ''}" data-inst-mode="${inst.id}" data-mode="wartung">Wartung</div>
+          <div class="einsatzart-btn${inst.mode === 'stoerung' ? ' sel' : ''}" data-inst-mode="${inst.id}" data-mode="stoerung">Störung</div>
+        </div>
+      </div>
+      <div class="instance-body${inst.collapsed ? ' collapsed' : ''}" data-inst-body="${inst.id}"></div>
+    `;
+    instancesEl.appendChild(card);
+
+    const body = card.querySelector(`[data-inst-body="${inst.id}"]`);
+
+    // --- Allgemeinzustand (immer sichtbar) ---
+    const genBlock = document.createElement('div');
+    genBlock.className = 'general-block';
+    genBlock.innerHTML = `<h3>Allgemeinzustand</h3>` + GENERAL_FIELDS.map(f => `
+      <div class="general-row">
+        <div class="label">${f.label}</div>
+        <div class="pair">
+          <div class="general-btn pos${inst.general[f.key] === 'pos' ? ' sel' : ''}" data-inst="${inst.id}" data-field="${f.key}" data-val="pos">${f.pos}</div>
+          <div class="general-btn neg${inst.general[f.key] === 'neg' ? ' sel' : ''}" data-inst="${inst.id}" data-field="${f.key}" data-val="neg">${f.neg}</div>
+        </div>
+      </div>
+    `).join('');
+    body.appendChild(genBlock);
+
+    if(inst.mode === 'wartung'){
+      const h = document.createElement('h3');
+      h.textContent = 'Prüfpunkte (Norm-Wartung)';
+      h.style.marginTop = '16px';
+      body.appendChild(h);
+
+      a.points.forEach((point, idx) => {
+        if(!inst.results[idx]) inst.results[idx] = { status: null, note: '' };
+        const r = inst.results[idx];
+        const hintHtml = point.hint ? `<div class="hint">${point.hint}</div>` : '';
+        const noteVisible = (r.status === 'bad' || r.status === 'na');
+        const el = document.createElement('div');
+        el.className = 'point';
+        el.innerHTML = `
+          <div class="txt">${point.text}</div>
+          ${hintHtml}
+          <div class="toggle-row">
+            <div class="toggle-btn ok${r.status === 'ok' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="ok">OK</div>
+            <div class="toggle-btn bad${r.status === 'bad' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="bad">Nicht OK</div>
+            <div class="toggle-btn na${r.status === 'na' ? ' sel' : ''}" data-inst="${inst.id}" data-idx="${idx}" data-val="na">Entfällt</div>
+          </div>
+          <div class="note-wrap${noteVisible ? ' show' : ''}" data-inst-note="${inst.id}|${idx}">
+            <textarea placeholder="${r.status === 'na' ? 'Begründung (optional), z.B. nicht verbaut...' : 'Kurz beschreiben, was festgestellt wurde...'}">${r.note || ''}</textarea>
+          </div>
+        `;
+        body.appendChild(el);
+      });
+    } else {
+      const h = document.createElement('h3');
+      h.textContent = 'Störungsdetails';
+      h.style.marginTop = '16px';
+      body.appendChild(h);
+
+      const stBlock = document.createElement('div');
+      stBlock.className = 'stoerung-block';
+      stBlock.innerHTML = `
+        <div class="field">
+          <label>Gemeldeter Fehler / Symptom</label>
+          <textarea data-inst-stoerung="${inst.id}|gemeldet" placeholder="Was wurde gemeldet bzw. beim Eintreffen festgestellt?">${inst.stoerung.gemeldet || ''}</textarea>
+        </div>
+        <div class="field">
+          <label>Festgestellte Ursache</label>
+          <textarea data-inst-stoerung="${inst.id}|ursache" placeholder="z.B. defekter Sensor, gerissener Riemen, Kurzschluss ...">${inst.stoerung.ursache || ''}</textarea>
+        </div>
+        <div class="field">
+          <label>Durchgeführte Maßnahme</label>
+          <textarea data-inst-stoerung="${inst.id}|massnahme" placeholder="z.B. Bauteil getauscht, provisorisch instand gesetzt, Ersatzteil bestellt ...">${inst.stoerung.massnahme || ''}</textarea>
+        </div>
+      `;
+      body.appendChild(stBlock);
+    }
+  });
+
+  // Label bearbeiten (z.B. Türnummer eintragen)
+  instancesEl.querySelectorAll('.instance-label').forEach(input => {
+    input.addEventListener('input', e => {
+      const inst = state.instances.find(i => i.id == e.target.dataset.inst);
+      if(inst) inst.label = e.target.value;
+    });
+  });
+
+  // Ein-/Ausklappen
+  instancesEl.querySelectorAll('[data-inst-toggle]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = state.instances.find(i => i.id == btn.dataset.instToggle);
+      inst.collapsed = !inst.collapsed;
+      renderInstances();
+    });
+  });
+
+  // Entfernen
+  instancesEl.querySelectorAll('[data-inst-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeInstance(parseInt(btn.dataset.instRemove)));
+  });
+
+  // Einsatzart wechseln (Wartung/Störung)
+  instancesEl.querySelectorAll('[data-inst-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = state.instances.find(i => i.id == btn.dataset.instMode);
+      inst.mode = btn.dataset.mode;
+      renderInstances();
+    });
+  });
+
+  // Allgemeinzustand-Buttons
+  instancesEl.querySelectorAll('.general-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const inst = state.instances.find(i => i.id == btn.dataset.inst);
+      const field = btn.dataset.field;
+      inst.general[field] = btn.dataset.val;
+
+      const row = btn.closest('.general-row');
+      row.querySelectorAll('.general-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      updateStatus();
+    });
+  });
+
+  // OK / Nicht OK / Entfällt (Wartung)
+  instancesEl.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const instId = btn.dataset.inst;
+      const idx = btn.dataset.idx;
+      const val = btn.dataset.val;
+      const inst = state.instances.find(i => i.id == instId);
+      inst.results[idx].status = val;
+
+      const parent = btn.closest('.point');
+      parent.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+
+      const note = parent.querySelector('.note-wrap');
+      const ta = note.querySelector('textarea');
+      if(val === 'bad'){
+        note.classList.add('show');
+        ta.placeholder = 'Kurz beschreiben, was festgestellt wurde...';
+      } else if(val === 'na'){
+        note.classList.add('show');
+        ta.placeholder = 'Begründung (optional), z.B. nicht verbaut...';
+      } else {
+        note.classList.remove('show');
+        inst.results[idx].note = '';
+        ta.value = '';
+      }
+      updateStatus();
+    });
+  });
+
+  instancesEl.querySelectorAll('.note-wrap textarea').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const [instId, idx] = e.target.closest('.note-wrap').dataset.instNote.split('|');
+      const inst = state.instances.find(i => i.id == instId);
+      inst.results[idx].note = e.target.value;
+    });
+  });
+
+  // Störungsfelder
+  instancesEl.querySelectorAll('[data-inst-stoerung]').forEach(ta => {
+    ta.addEventListener('input', e => {
+      const [instId, field] = e.target.dataset.instStoerung.split('|');
+      const inst = state.instances.find(i => i.id == instId);
+      inst.stoerung[field] = e.target.value;
+      updateStatus();
+    });
+  });
+
+  updateStatus();
+}
+
+function updateStatus(){
+  if(state.instances.length === 0){
+    statusText.textContent = 'Füge mindestens eine Anlage hinzu.';
+    genBtn.disabled = true;
+    return;
+  }
+  let answeredAny = false;
+  let totalFields = 0;
+  let answeredFields = 0;
+
+  state.instances.forEach(inst => {
+    totalFields += GENERAL_FIELDS.length;
+    answeredFields += GENERAL_FIELDS.filter(f => inst.general[f.key]).length;
+
+    if(inst.mode === 'wartung'){
+      const pts = ANLAGEN[inst.typeKey].points;
+      totalFields += pts.length;
+      answeredFields += Object.values(inst.results).filter(r => r.status !== null).length;
+    } else {
+      totalFields += 3;
+      answeredFields += ['gemeldet','ursache','massnahme'].filter(k => inst.stoerung[k]?.trim()).length;
+    }
+  });
+  answeredAny = answeredFields > 0;
+
+  statusText.innerHTML = `${state.instances.length} Anlage(n) — <b>${answeredFields}/${totalFields}</b> Angaben erfasst`;
+  genBtn.disabled = !answeredAny;
+}
+
+// ---------- Berichtstext generieren ----------
+genBtn.addEventListener('click', generateReport);
+
+function generateReport(){
+  let lines = [];
+
+  state.instances.forEach(inst => {
+    const a = ANLAGEN[inst.typeKey];
+    const modeLabel = inst.mode === 'wartung' ? 'Wartung' : 'Störung';
+    lines.push(`${inst.label || a.name} — ${modeLabel}:`);
+
+    GENERAL_FIELDS.forEach(f => {
+      const v = inst.general[f.key];
+      if(!v) return;
+      lines.push(`${f.label}: ${v === 'pos' ? f.pos : f.neg}`);
+    });
+
+    if(inst.mode === 'wartung'){
+      let hasPoints = false;
+      a.points.forEach((point, idx) => {
+        const r = inst.results[idx];
+        if(!r || r.status === null) return;
+        if(!hasPoints){ lines.push('Prüfpunkte:'); hasPoints = true; }
+        if(r.status === 'ok'){
+          lines.push(`- ${point.text}: OK`);
+        } else if(r.status === 'na'){
+          const note = r.note?.trim();
+          lines.push(`- ${point.text}: entfällt${note ? ' — ' + note : ''}`);
+        } else {
+          const note = r.note?.trim() || 'ohne weitere Anmerkung';
+          lines.push(`- ${point.text}: NICHT OK — ${note}`);
+        }
+      });
+    } else {
+      if(inst.stoerung.gemeldet?.trim()) lines.push(`Gemeldeter Fehler / Symptom: ${inst.stoerung.gemeldet.trim()}`);
+      if(inst.stoerung.ursache?.trim()) lines.push(`Festgestellte Ursache: ${inst.stoerung.ursache.trim()}`);
+      if(inst.stoerung.massnahme?.trim()) lines.push(`Durchgeführte Maßnahme: ${inst.stoerung.massnahme.trim()}`);
+    }
+    lines.push('');
+  });
+
+  const reportText = lines.join('\n').trim();
+  document.getElementById('report-text').textContent = reportText;
+  document.getElementById('output-wrap').classList.add('show');
+  document.getElementById('output-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------- Kopieren ----------
+document.getElementById('copy-btn').addEventListener('click', () => {
+  const text = document.getElementById('report-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    const old = btn.textContent;
+    btn.textContent = 'Kopiert ✓';
+    setTimeout(() => btn.textContent = old, 1500);
+  });
+});
+</script>
+
+</body>
+</html>

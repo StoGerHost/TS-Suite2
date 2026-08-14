@@ -11,17 +11,18 @@
   <meta name="theme-color" content="#0a0a0c">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%231A2D44'/%3E%3Crect x='40' y='60' width='20' height='392' rx='6' fill='%23D95E1F'/%3E%3Ctext x='75' y='310' font-family='Arial' font-weight='900' font-size='105' fill='white'%3ESCH%3C/text%3E%3C/svg%3E">
   <title>TS Suite – Schiebetür Konfigurator</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <script src="config.js"></script>
-<!-- Nur als API eingebunden (kein data-gate) — die Seite bleibt frei nutzbar,
-     Login wird erst beim Klick auf "Artikelnummern verwalten" verlangt. -->
-<script src="ts-auth.js"></script>
-<script src="ts-warnung.js"></script>
 <style>
   :root{
-    --bg:#0a0a0c;--panel:#111318;--primary:#e9edf2;--accent:#3a7bd5;
-    --accent-l:rgba(58,123,213,.15);--border:rgba(58,123,213,.25);--muted:#8b95a0;
-    --ok:#3ecf8e;--ok-l:rgba(62,207,142,.15);--warn:#e0a53d;--warn-l:rgba(224,165,61,.15);
-    --geze:#3a7bd5;--geze-l:rgba(58,123,213,.15);--glow:#5eead4;
+    /* Grundfarben folgen dem zentralen Umschalter (--ts-*); die farbigen
+       Hersteller-Kopfleisten (#hdr.dk/.gz/.rc/.gi weiter unten) bleiben
+       bewusst fest, da sie Markenfarben und keine Theme-Farbe sind. */
+    --bg:var(--ts-bg, #0a0a0c);--panel:var(--ts-surface, #111318);--primary:var(--ts-ink, #e9edf2);--accent:var(--ts-accent, #3a7bd5);
+    --accent-l:var(--ts-line-20, rgba(58,123,213,.15));--border:var(--ts-line-25, rgba(58,123,213,.25));--muted:var(--ts-muted, #8b95a0);
+    --ok:var(--ts-ok, #3ecf8e);--ok-l:rgba(62,207,142,.15);--warn:var(--ts-warn, #e0a53d);--warn-l:rgba(224,165,61,.15);
+    --geze:var(--ts-accent, #3a7bd5);--geze-l:rgba(58,123,213,.15);--glow:var(--ts-glow, #5eead4);
     --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -48,18 +49,6 @@
   #install-banner{background:var(--accent);padding:12px 16px;display:flex;align-items:center;gap:10px}
   #install-banner.hidden{display:none}
   #install-close{background:rgba(255,255,255,.2);border:none;border-radius:99px;padding:4px 10px;color:#fff;font-size:13px;font-weight:600;min-height:32px}
-  #artikel-offline-hinweis{background:#8a5a1f;padding:12px 16px;display:flex;align-items:center;gap:10px}
-  #artikel-offline-hinweis.hidden{display:none}
-  #artikel-upload-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:flex-end;justify-content:center;padding:0}
-  #artikel-upload-overlay.visible{display:flex}
-  #artikel-upload-box{background:var(--panel);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -4px 32px rgba(0,0,0,.6)}
-  #artikel-override-banner{background:#8a5a1f;padding:12px 16px;display:flex;align-items:center;gap:10px}
-  #artikel-override-banner.hidden{display:none}
-  #artikel-upload-status{display:block;font-size:12.5px;line-height:1.5;padding:10px 12px;border:1.5px dashed var(--border);border-radius:8px;margin-bottom:14px}
-  .artikel-upload-row{display:flex;flex-direction:column;gap:10px}
-  .artikel-upload-label{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:2px dashed var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
-  .artikel-upload-label:active{border-color:var(--glow)}
-  .artikel-upload-hint{font-size:11.5px;color:var(--muted);line-height:1.5}
 
   /* Product tabs */
   #prod-sw{padding:14px 14px 0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -296,39 +285,18 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;
+    background:var(--bg);color:var(--primary);padding:10px 16px;
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid var(--border);}
+  .ts-backbar__link{color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  @media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
-  .ts-backbar__slash{color:rgba(233,237,242,.35);}
-  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
+  .ts-backbar__slash{color:var(--muted);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
 <!-- Vorlagen Modal -->
-<div id="artikel-upload-overlay">
-  <div id="artikel-upload-box">
-    <div class="vbox-hdr">
-      <h3>📥 Artikelnummern</h3>
-      <span></span>
-      <button class="vbox-close" onclick="closeArtikelUploadModal()">✕</button>
-    </div>
-    <div class="vbox-body">
-      <span id="artikel-upload-status">Lade Status …</span>
-      <div class="artikel-upload-row">
-        <label class="artikel-upload-label" for="artikel-file-input">📄 artikel.json auswählen &amp; hochladen</label>
-        <input type="file" id="artikel-file-input" accept="application/json,.json" style="display:none" onchange="handleArtikelUpload(event)">
-        <div class="artikel-upload-hint">Erwartet wird eine JSON-Datei im Format von <span class="mono">artikel.json</span> (Schlüssel/Wert-Paare). Die Übernahme gilt nur auf diesem Gerät und übersteuert die zentrale Datei aus dem Repository, bis sie zurückgesetzt wird.</div>
-      </div>
-    </div>
-    <div class="vbox-save-row">
-      <button class="vbox-reset-btn" style="flex:1" onclick="resetArtikelOverride()">🗑 Lokale Überschreibung zurücksetzen</button>
-    </div>
-  </div>
-</div>
-
 <div id="vorlagen-overlay">
   <div id="vorlagen-box">
     <div class="vbox-hdr">
@@ -429,7 +397,6 @@
   <div style="display:flex;align-items:center;flex:1;min-width:0">
     <div id="hdr-bar"></div>
     <div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="background:#577496;color:#fff;font-weight:900;font-size:11px;padding:2px 7px;border-radius:3px;letter-spacing:.04em;flex-shrink:0">TS Suite</span><span id="hdr-title" style="color:#fff;font-weight:800;font-size:16px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">Schiebetür Konfigurator</span></div><div id="hdr-sub">Automatische Schiebetür &middot; Konfiguration</div></div>
-    <button class="hdr-icon-btn" onclick="showArtikelUploadModal()">📥</button>
   </div>
   <div id="prog-ring"><div id="prog-inner"><span id="prog-pct">0%</span></div></div>
 </div>
@@ -438,12 +405,6 @@
   <div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Als App installieren</div>
   <div style="color:rgba(255,255,255,.85);font-size:12px">Tippe auf <b>Teilen ⬆</b> &rarr; „Zum Home-Bildschirm"</div></div>
   <button id="install-close">✕</button>
-</div>
-<div id="artikel-override-banner" class="hidden"></div>
-<div id="artikel-offline-hinweis" class="hidden">
-  <span style="font-size:18px;flex-shrink:0">⚠️</span>
-  <div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Offline</div>
-  <div id="artikel-offline-text" style="color:rgba(255,255,255,.85);font-size:12px">Artikelnummern vom letzten bekannten Stand</div></div>
 </div>
 <div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div>
 <div id="proj-data"></div>
@@ -496,7 +457,6 @@ const LM_DK={
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   oeffnungsgeschw:{standard:"Standard",erhoehen:"Erhöht",reduziert:"Reduziert (leise)"},
   notfunktion:{akku:"Akku-Backup",nein:"Keine"},
-  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 const LM_GZ={
   fluegelanzahl:{"1":"1-flügelig","2":"2-flügelig","4":"4-flügelig (Teleskop)"},
@@ -507,7 +467,6 @@ const LM_GZ={
   profil:{fein:"Feingerahmtes Profilsystem (Iso/Mono)",gctherm:"GCprofile Therm (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Integrierter Akku (Notöffnung/-schließung)",nein:"Keine"},
-  aktivierung:{gc339:"GC 339 (GEZE Kombimelder)",gc363:"GC 363 (GEZE Sensor)",radar:"Radar (Mikrowelle)",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 
 const LM_RC={
@@ -519,7 +478,6 @@ const LM_RC={
   profil:{fein:"Feingerahmtes Profilsystem",therm:"Therm-Profil (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Akku-Backup (Notöffnung/-schließung)",nein:"Keine"},
-  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 const LM_GI={
   fluegelanzahl:{"1":"1-flügelig","2":"2-flügelig","4":"4-flügelig (Teleskop)"},
@@ -530,7 +488,6 @@ const LM_GI={
   profil:{fein:"Feingerahmtes Profilsystem",therm:"Therm-Profil (Energiespar)",esg:"ESG-Klemmprofil",rahmen:"Bauseitiger Rahmenflügel",holz:"Holzflügel (bauseitig)"},
   farbgebung:{silber:"Silber (Eloxal)",weiss:"Weiß RAL 9016",bronze:"Bronze/Braun",schwarz:"Schwarz RAL 9005",individuell:"RAL individuell"},
   notfunktion:{akku:"Akku-Backup (Notöffnung/-schließung)",nein:"Keine"},
-  aktivierung:{radar:"Radar (Mikrowelle)",dual:"Dual-Technologie (Radar + IR)",ir:"Aktiv-Infrarot",taster:"Aktivierungstaster",zugang:"Zutrittskontrolle"},
 };
 
 const ZL_RC={
@@ -599,17 +556,7 @@ let S={
   showSummary:false,
   notizen:"",tueranzahl:"1",
 };
-// Felder, bei deren Änderung sich ein Eignungs-Grenzwert (getEmp()) ändern kann.
-// Bewusst nur diese wenigen, nicht bei jeder Feldänderung — sonst poppt die
-// Warnung bei jedem Klick auf, der mit Gewicht/Breite nichts zu tun hat.
-var EMP_TRIGGER_FELDER=['oeffnungsbreite','fluegelgewicht','gz_fluegelgewicht'];
-function set(k,v){
-  S=Object.assign({},S,{[k]:v});autosave();render();
-  if(EMP_TRIGGER_FELDER.indexOf(k)>-1){
-    var emp=getEmp();
-    if(emp&&emp.warn&&window.zeigeWarnung) zeigeWarnung(emp.reason,{titel:'Grenzwert überschritten'});
-  }
-}
+function set(k,v){S=Object.assign({},S,{[k]:v});render();}
 function toggleArr(k,v){var a=S[k]||[];S=Object.assign({},S,{[k]:a.includes(v)?a.filter(function(x){return x!==v}):[...a,v]});autosave();render();}
 function isDK(){return S.produkt==="dk";}
 function isRC(){return S.produkt==="rc";}
@@ -629,20 +576,8 @@ function getEmp(){
   if(isDK()){
     var b=parseInt(S.oeffnungsbreite),g=parseInt(S.fluegelgewicht);
     var m=getDKModell(); if(!m||(!b&&!g)) return null;
-    // Grenzen kommen jetzt direkt aus den Modell-Fakten (DK_MODELLE), nicht mehr aus einer
-    // groben "startsWith es400"-Prüfung — die ignorierte bisher, dass Teleskop-Modelle (T)
-    // eigene, engere Gewichtsgrenzen UND eine weitere Breitengrenze haben (4000 statt 3000 mm),
-    // und dass ES 400 PRO/FST je nach Flügelanzahl 250 kg (1-flügelig) oder 200 kg (2-flügelig) erlaubt.
-    var istTeleskop = m.value==='es250t'||m.value==='es250tfst'||m.value==='es400t'||m.value==='es400tfst';
-    var maxG, maxB;
-    if(istTeleskop){
-      maxG = (m.value==='es400t'||m.value==='es400tfst') ? 100 : 65;
-      maxB = 4000;
-    } else {
-      var istEs400 = m.value==='es400pro'||m.value==='es400fst';
-      maxG = istEs400 ? (S.fluegelanzahl==='1'?250:200) : 125;
-      maxB = 3000;
-    }
+    var maxG=m.value.startsWith("es400")?250:125;
+    var maxB=3000;
     if(g>maxG||b>maxB) return {warn:true,reason:"Werte überschreiten Modell-Maximum ("+maxG+" kg / "+maxB+" mm)"};
     if(g&&b) return {warn:false,reason:"Werte im zulässigen Bereich für "+m.name};
   } else if(isRC()||isGI()){
@@ -1133,7 +1068,7 @@ function buildSummary(){
       ["Öffnungsbreite",S.oeffnungsbreite?S.oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.fluegelgewicht?S.fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_DK.tuertyp[S.tuertyp]||"–"],["Betriebsmodus",LM_DK.betriebsmodus[S.betriebsmodus]||"–"],
       ["Öffnungsgeschw.",S.oeffnungsgeschw?LM_DK.oeffnungsgeschw[S.oeffnungsgeschw]:"–"],
-      ["Aktivierungssensor",LM_DK.aktivierung[S.aktivierung]||"–"],["Montageart",LM_DK.montageart[S.montageart]||"–"],
+      ["Aktivierungssensor",S.aktivierung||"–"],["Montageart",LM_DK.montageart[S.montageart]||"–"],
       ["MotionIQ",S.motioniq==="ja"?"Aktiv – Radarsensor M A01 + Anschlussplatine CAN":S.motioniq==="nein"?"Nicht verbaut":"–"],
       ["Profil",S.profil?LM_DK.profil[S.profil]:"–"],["Farbgebung",S.farbgebung?LM_DK.farbgebung[S.farbgebung]:"–"],
       ["Verriegelung",S.verriegelung?LM_DK.verriegelung[S.verriegelung]:"–"],
@@ -1147,7 +1082,7 @@ function buildSummary(){
       ["Antriebsmodell",rm?rm.name:"–"],["Flügelanzahl",LM_RC.fluegelanzahl[S.rc_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.rc_oeffnungsbreite?S.rc_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.rc_fluegelgewicht?S.rc_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_RC.tuertyp[S.rc_tuertyp]||"–"],["Betriebsmodus",LM_RC.betriebsmodus[S.rc_betriebsmodus]||"–"],
-      ["Aktivierungssensor",LM_RC.aktivierung[S.rc_aktivierung]||"–"],["Montageart",LM_RC.montageart[S.rc_montageart]||"–"],
+      ["Aktivierungssensor",S.rc_aktivierung||"–"],["Montageart",LM_RC.montageart[S.rc_montageart]||"–"],
       ["Profilsystem",S.rc_profil?LM_RC.profil[S.rc_profil]:"–"],["Farbgebung",S.rc_farbgebung?LM_RC.farbgebung[S.rc_farbgebung]:"–"],
       ["Verriegelung",S.rc_verriegelung?LM_RC.verriegelung[S.rc_verriegelung]:"–"],
       ["Notstrom",S.rc_notfunktion?LM_RC.notfunktion[S.rc_notfunktion]:"–"],
@@ -1160,7 +1095,7 @@ function buildSummary(){
       ["Antriebsmodell",gim?gim.name:"–"],["Flügelanzahl",LM_GI.fluegelanzahl[S.gi_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.gi_oeffnungsbreite?S.gi_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.gi_fluegelgewicht?S.gi_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_GI.tuertyp[S.gi_tuertyp]||"–"],["Betriebsmodus",LM_GI.betriebsmodus[S.gi_betriebsmodus]||"–"],
-      ["Aktivierungssensor",LM_GI.aktivierung[S.gi_aktivierung]||"–"],["Montageart",LM_GI.montageart[S.gi_montageart]||"–"],
+      ["Aktivierungssensor",S.gi_aktivierung||"–"],["Montageart",LM_GI.montageart[S.gi_montageart]||"–"],
       ["Profilsystem",S.gi_profil?LM_GI.profil[S.gi_profil]:"–"],["Farbgebung",S.gi_farbgebung?LM_GI.farbgebung[S.gi_farbgebung]:"–"],
       ["Verriegelung",S.gi_verriegelung?LM_GI.verriegelung[S.gi_verriegelung]:"–"],
       ["Notstrom",S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:"–"],
@@ -1173,7 +1108,7 @@ function buildSummary(){
       ["Antriebsmodell",gm?gm.name:"–"],["Flügelanzahl",LM_GZ.fluegelanzahl[S.gz_fluegelanzahl]||"–"],
       ["Öffnungsbreite",S.gz_oeffnungsbreite?S.gz_oeffnungsbreite+" mm":"–"],["Flügelgewicht",S.gz_fluegelgewicht?S.gz_fluegelgewicht+" kg":"–"],
       ["Türtyp",LM_GZ.tuertyp[S.gz_tuertyp]||"–"],["Betriebsmodus",LM_GZ.betriebsmodus[S.gz_betriebsmodus]||"–"],
-      ["Aktivierungssensor",LM_GZ.aktivierung[S.gz_aktivierung]||"–"],["Montageart",LM_GZ.montageart[S.gz_montageart]||"–"],
+      ["Aktivierungssensor",S.gz_aktivierung||"–"],["Montageart",LM_GZ.montageart[S.gz_montageart]||"–"],
       ["Profilsystem",S.gz_profil?LM_GZ.profil[S.gz_profil]:"–"],["Farbgebung",S.gz_farbgebung?LM_GZ.farbgebung[S.gz_farbgebung]:"–"],
       ["Verriegelung",S.gz_verriegelung?LM_GZ.verriegelung[S.gz_verriegelung]:"–"],
       ["Notstrom",S.gz_notfunktion?LM_GZ.notfunktion[S.gz_notfunktion]:"–"],
@@ -1224,126 +1159,6 @@ function getArtNr(key){
   if(window._artikelCentral[full]!==undefined && window._artikelCentral[full]!=='') return window._artikelCentral[full];
   // 3) hardcodierte Defaults
   return ARTIKEL_DEFAULTS[key]||'';
-}
-
-// ─── Artikel-Upload: manuelles Einspielen einer artikel.json auf diesem Gerät ───
-// Schreibt in denselben ARTIKEL_STORAGE_KEY wie admin.html (Layer 1, höchste Priorität).
-// Zusätzlich Meta-Eintrag (Zeitpunkt/Dateiname/Anzahl) für die sichtbare Status-Anzeige,
-// damit ein aktiver Override nie unbemerkt bleibt. Identisch zum Drehtür-Konfigurator.
-var ARTIKEL_META_KEY='stober_artikel_meta';
-
-function getArtikelMeta(){
-  try{ return JSON.parse(localStorage.getItem(ARTIKEL_META_KEY)||'null'); }catch(e){ return null; }
-}
-
-function fmtArtikelDatum(iso){
-  var d=new Date(iso);
-  return d.toLocaleDateString('de-DE')+', '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr';
-}
-
-function renderArtikelStatus(){
-  var meta=getArtikelMeta();
-  var banner=document.getElementById('artikel-override-banner');
-  var statusEl=document.getElementById('artikel-upload-status');
-  if(meta && meta.count){
-    var dStr=fmtArtikelDatum(meta.uploadedAt);
-    if(banner){
-      banner.innerHTML='<span style="font-size:18px;flex-shrink:0">⚠️</span>'
-        +'<div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Lokale Artikelnummern aktiv</div>'
-        +'<div style="color:rgba(255,255,255,.85);font-size:12px">seit '+dStr+' · '+meta.count+' Einträge auf diesem Gerät'+(meta.filename?' · '+meta.filename:'')+'</div></div>'
-        +'<button class="hdr-icon-btn" onclick="showArtikelUploadModal()">Verwalten</button>';
-      banner.classList.remove('hidden');
-    }
-    if(statusEl){
-      statusEl.innerHTML='⚠️ <b>Lokale Überschreibung aktiv</b><br>Hochgeladen am '+dStr+' · '+meta.count+' Einträge'+(meta.filename?' · Datei: '+meta.filename:'')+'<br>Es gilt diese Datei statt der zentralen <span class="mono">artikel.json</span> aus dem Repository – nur auf diesem Gerät.';
-      statusEl.style.borderColor='#8a5a1f'; statusEl.style.color='#f0c987';
-    }
-  }else{
-    if(banner) banner.classList.add('hidden');
-    if(statusEl){
-      statusEl.innerHTML='Keine lokale Überschreibung aktiv – die zentrale <span class="mono">artikel.json</span> aus dem Repository wird verwendet.';
-      statusEl.style.borderColor='var(--border)'; statusEl.style.color='var(--muted)';
-    }
-  }
-}
-
-// Artikelnummern-Verwaltung ist nur für Admins gedacht. Der Rest des
-// Konfigurators bleibt komplett frei nutzbar (kein data-gate im <head>) —
-// Login wird erst hier, beim Klick auf das 📥-Icon, verlangt.
-var _artikelAdminGeprueft = false;
-async function showArtikelUploadModal(){
-  if(!window.TSAuth){ alert('Login-Modul konnte nicht geladen werden (Internetverbindung prüfen).'); return; }
-  await TSAuth.ready;
-  if(!TSAuth.isUnlocked()){
-    // Zeigt das Login-Overlay; nach erfolgreichem Login lädt ts-auth.js die
-    // Seite neu (Standardverhalten) — Icon danach einfach erneut anklicken.
-    TSAuth.showGate('Artikelnummern verwalten (nur Admin)');
-    return;
-  }
-  const admin = await pruefeIstArtikelAdmin();
-  if(!admin){
-    alert('Dieser Bereich ist nur für Admins.');
-    return;
-  }
-  _artikelAdminGeprueft = true;
-  document.getElementById('artikel-upload-overlay').classList.add('visible');
-  renderArtikelStatus();
-}
-async function pruefeIstArtikelAdmin(){
-  try{
-    if(typeof TENANT === 'undefined' || !TENANT.supabaseUrl) return false;
-    const res = await fetch(TENANT.supabaseUrl + '/functions/v1/mitarbeiter?me=1', {
-      headers: { 'Authorization': 'Bearer ' + TSAuth.getToken(), 'apikey': TENANT.supabaseKey }
-    });
-    const ich = await res.json().catch(function(){ return null; });
-    return !!(ich && ich.rolle === 'admin');
-  }catch(e){ console.error('Admin-Check fehlgeschlagen:', e); return false; }
-}
-function closeArtikelUploadModal(){ document.getElementById('artikel-upload-overlay').classList.remove('visible'); }
-
-function handleArtikelUpload(evt){
-  // Defensive Zweitprüfung: das Overlay ist nur nach bestätigtem Admin-Check
-  // erreichbar, aber der <input type=file> bleibt technisch im DOM. Ohne
-  // bestätigten Check hier abbrechen, statt der Modal-Sichtbarkeit blind zu vertrauen.
-  if(!_artikelAdminGeprueft){ alert('Nicht berechtigt.'); evt.target.value=''; return; }
-  var file=evt.target.files && evt.target.files[0];
-  if(!file) return;
-  if(!/\.json$/i.test(file.name)){
-    if(!confirm('Die Datei heißt nicht auf ".json" – trotzdem versuchen zu lesen?')){ evt.target.value=''; return; }
-  }
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var data;
-    try{ data=JSON.parse(e.target.result); }
-    catch(err){ alert('Datei ist kein gültiges JSON.'); evt.target.value=''; return; }
-    if(!data || typeof data!=='object' || Array.isArray(data)){
-      alert('Erwartet wird ein JSON-Objekt mit Schlüssel/Wert-Paaren (wie artikel.json).'); evt.target.value=''; return;
-    }
-    var keys=Object.keys(data);
-    if(!keys.length){ alert('Die Datei enthält keine Einträge.'); evt.target.value=''; return; }
-    var relevant=keys.filter(function(k){ return k.indexOf('schiebetuer.')===0; }).length;
-    if(relevant===0 && !confirm('Keine Schlüssel mit Prefix "schiebetuer." gefunden ('+keys.length+' Einträge insgesamt). Trotzdem übernehmen?')){
-      evt.target.value=''; return;
-    }
-    localStorage.setItem(ARTIKEL_STORAGE_KEY, JSON.stringify(data));
-    localStorage.setItem(ARTIKEL_META_KEY, JSON.stringify({uploadedAt:new Date().toISOString(), filename:file.name, count:keys.length}));
-    renderArtikelStatus();
-    evt.target.value='';
-    if(typeof render==='function') render();
-    alert('Artikelnummern übernommen: '+keys.length+' Einträge. Aktiv auf diesem Gerät, bis zurückgesetzt.');
-  };
-  reader.onerror=function(){ alert('Datei konnte nicht gelesen werden.'); };
-  reader.readAsText(file,'utf-8');
-}
-
-function resetArtikelOverride(){
-  var meta=getArtikelMeta();
-  if(!meta){ alert('Es ist aktuell keine lokale Überschreibung aktiv.'); return; }
-  if(!confirm('Lokale Artikelnummer-Überschreibung auf diesem Gerät löschen? Danach gilt wieder die zentrale artikel.json.')) return;
-  localStorage.removeItem(ARTIKEL_STORAGE_KEY);
-  localStorage.removeItem(ARTIKEL_META_KEY);
-  renderArtikelStatus();
-  if(typeof render==='function') render();
 }
 
 // ─── Paywall & MA-Code System ──────────────────────────────────────────────────
@@ -1415,55 +1230,14 @@ function onMACodesLoaded(){
   var msg=document.getElementById('code-gate-msg');
   if(msg && msg.textContent==='Lade Codes …') msg.textContent='';
 }
-try{ loadMAcodes(); }catch(e){ console.error('loadMAcodes() fehlgeschlagen:', e); }
-try{ renderArtikelStatus(); }catch(e){ console.error('renderArtikelStatus() fehlgeschlagen:', e); }
+loadMAcodes();
 
-// ─── Zentrale Artikelnummern: Supabase (live) mit lokalem Cache für den
-// Offline-Fall beim Kunden vor Ort. Ersetzt das bisherige artikel.json +
-// ETag-Update-Banner-Modell — admin.html schreibt jetzt direkt in die
-// Supabase-Tabelle "artikelnummern", hier wird bei jedem Laden versucht,
-// den aktuellen Stand zu holen; schlägt das fehl (kein Netz beim Kunden),
-// wird der zuletzt erfolgreich geladene Stand aus localStorage verwendet
-// und sichtbar als "Offline" markiert.
-var ARTIKEL_CACHE_KEY='ts_artikelnummern_cache';
-
-function setArtikelOfflineHinweis(stand){
-  var el=document.getElementById('artikel-offline-hinweis');
-  if(!el) return;
-  if(stand===false){ el.classList.add('hidden'); return; }
-  var txt=document.getElementById('artikel-offline-text');
-  if(stand){
-    var d=new Date(stand);
-    if(txt) txt.textContent='Artikelnummern vom '+d.toLocaleDateString('de-DE')+', '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr (letzter bekannter Stand)';
-  } else {
-    if(txt) txt.textContent='Keine gecachten Artikelnummern auf diesem Gerät — bitte einmal mit Internetverbindung öffnen.';
-  }
-  el.classList.remove('hidden');
-}
-
-// ─── Zentrale Artikelnummern laden (Supabase, mit Offline-Cache-Fallback) + Abdeckungs-Check ───
+// ─── Zentrale Artikelnummern laden (artikel.json) + Abdeckungs-Check ────────────
 function loadArtikel(){
-  return fetch(TENANT.supabaseUrl + '/rest/v1/artikelnummern?select=key,wert', {
-      headers: {
-        'apikey': TENANT.supabaseKey,
-        'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || TENANT.supabaseKey)
-      },
-      cache: 'no-store'
-    })
-    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(rows){
-      var daten={};
-      rows.forEach(function(row){ daten[row.key]=row.wert; });
-      window._artikelCentral=daten;
-      try{ localStorage.setItem(ARTIKEL_CACHE_KEY, JSON.stringify({stand:new Date().toISOString(), daten:daten})); }catch(e){}
-      setArtikelOfflineHinweis(false);
-    })
-    .catch(function(){
-      var cache=null;
-      try{ cache=JSON.parse(localStorage.getItem(ARTIKEL_CACHE_KEY)||'null'); }catch(e){}
-      window._artikelCentral=(cache && cache.daten) || {};
-      setArtikelOfflineHinweis(cache ? cache.stand : null);
-    })
+  return fetch('artikel.json',{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('fetch failed'); return r.json(); })
+    .then(function(json){ window._artikelCentral = json || {}; })
+    .catch(function(){ window._artikelCentral = {}; })
     .then(function(){
       try{
         var ab=pruefeArtikelAbdeckung();
@@ -1510,7 +1284,7 @@ window.artikelAbdeckung=function(){
   if(a.verdaechtig.length){ console.log('— Kein Nr.-Format ('+a.verdaechtig.length+'):'); console.table(a.verdaechtig.map(function(f){return {Key:f.key,Wert:f.nr,Komponente:f.ctx};})); }
   return a;
 };
-try{ loadArtikel(); }catch(e){ console.error('loadArtikel() fehlgeschlagen:', e); }
+loadArtikel();
 function logMaCode(code){
   try{
     var logs=JSON.parse(localStorage.getItem('stober_ma_logs'))||[];
@@ -1579,7 +1353,7 @@ function checkStartCode(){
   if(handleAufgenommenCode(val)){
     msg.textContent='✓ Code akzeptiert – '+S.aufgenommenDurch;
     msg.className='ok';
-    resolveDraftAndRender(S.aufgenommenCode,S.aufgenommenDurch);
+    autoload();
     setTimeout(function(){ document.getElementById('code-gate').classList.remove('visible'); },700);
   } else {
     msg.textContent='✗ Ungültiger Code.';
@@ -1588,7 +1362,7 @@ function checkStartCode(){
   }
 }
 function skipStartCode(){
-  resolveDraftAndRender('','');
+  autoload();
   document.getElementById('code-gate').classList.remove('visible');
 }
 
@@ -1708,7 +1482,6 @@ function exportPDF(){
     ];
   }
   rows.push(
-    ['Aktivierungssensor', isDK()?(LM_DK.aktivierung[S.aktivierung]||'–'):isRC()?(LM_RC.aktivierung[S.rc_aktivierung]||'–'):isGI()?(LM_GI.aktivierung[S.gi_aktivierung]||'–'):(LM_GZ.aktivierung[S.gz_aktivierung]||'–')],
     ['BEA Sensorik',S.sensorik?SENSORIK_LM[S.sensorik]:'–'],
     ['Absicherungsbereich',S.sensorMontage.length?S.sensorMontage.map(function(s){return SENSOR_MONTAGE_LM[s];}).join(', '):'–'],
   );
@@ -1828,7 +1601,6 @@ function autosave(){
   try{
     var toSave=Object.assign({},S);
     delete toSave.gpsLoading; delete toSave.gpsError; delete toSave.showSummary;
-    toSave._savedAt=new Date().toISOString();
     localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(toSave));
   }catch(e){}
 }
@@ -1837,35 +1609,6 @@ function autoload(){
     var saved=localStorage.getItem(AUTOSAVE_KEY);
     if(saved){ var p=JSON.parse(saved); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
-}
-function hasDraft(){
-  try{ return !!localStorage.getItem(AUTOSAVE_KEY); }catch(e){ return false; }
-}
-function formatSavedAt(){
-  try{
-    var saved=JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
-    if(saved && saved._savedAt){
-      var d=new Date(saved._savedAt);
-      return d.toLocaleDateString('de-DE')+' '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    }
-  }catch(e){}
-  return '';
-}
-// Fragt bei vorhandenem Entwurf nach Fortsetzen/Neu und sorgt danach für ein Re-Render.
-// code/name: der gerade am Gate eingegebene Mitarbeitercode, bleibt in jedem Fall erhalten.
-function resolveDraftAndRender(code,name){
-  if(hasDraft()){
-    var when=formatSavedAt();
-    var resume=confirm('Es gibt einen gespeicherten Entwurf'+(when?' vom '+when:'')+'.\n\nOK = fortsetzen\nAbbrechen = neu beginnen');
-    if(resume){
-      autoload();
-    } else {
-      localStorage.removeItem(AUTOSAVE_KEY);
-    }
-  }
-  if(code){ S=Object.assign({},S,{aufgenommenCode:code,aufgenommenDurch:name}); }
-  autosave();
-  render();
 }
 function resetKonfig(){
   if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
@@ -1929,7 +1672,7 @@ function handleClick(ev){
     return;
   }
   var a=btn.dataset.action,f=btn.dataset.field,v=btn.dataset.value;
-  if(a==='prod'){S.produkt=v;S.showSummary=false;autosave();render();return;}
+  if(a==='prod'){S.produkt=v;S.showSummary=false;render();return;}
   if(a==='radio') set(f,v);
   if(a==='chk')   toggleArr(f,v);
 }
@@ -1953,7 +1696,7 @@ function handleGPS(){
             bs_strasse:(road+nr).trim(),
             bs_plzort:(plz+(city?' '+city:'')).trim(),
             gpsLoading:false,gpsError:''
-          });autosave();render();
+          });render();
         })
         .catch(function(){
           S=Object.assign({},S,{gpsLoading:false,gpsError:'Adresse konnte nicht ermittelt werden. Internetverbindung prüfen.'});render();
@@ -1977,7 +1720,6 @@ document.getElementById('content').addEventListener('change',function(ev){
 document.getElementById('proj-data').addEventListener('change',function(ev){
   if(ev.target.classList.contains('ma-lookup-input')){
     handleAufgenommenCode(ev.target.value);
-    autosave();
     return;
   }
   if(ev.target.classList.contains('txt-input')||ev.target.classList.contains('num-input')){
@@ -2081,8 +1823,8 @@ function FOTO_PDF(){
     +'<div style="border:1px solid #D2DAE3;border-top:none;padding:10px;display:flex;flex-wrap:wrap;gap:8px">'+imgs+'</div></div>';
 }
 
-try{ render(); }catch(e){ console.error('render() fehlgeschlagen:', e); }
-try{ fotoInit(); }catch(e){ console.error('fotoInit() fehlgeschlagen:', e); }
+render();
+fotoInit();
 
 
 // ─── Admin: MA-Code Logs (Browser-Konsole) ─────────────────────────────────

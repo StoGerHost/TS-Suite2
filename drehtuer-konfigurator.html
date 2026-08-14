@@ -11,17 +11,21 @@
   <meta name="theme-color" content="#0a0a0c">
   <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%231A2D44'/%3E%3Crect x='60' y='60' width='32' height='392' rx='10' fill='%23D95E1F'/%3E%3Ctext x='115' y='310' font-family='Arial' font-weight='900' font-size='200' fill='white'%3EED%3C/text%3E%3C/svg%3E">
   <title>TS Suite – Drehtür Konfigurator</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <script src="config.js"></script>
 <!-- Nur als API eingebunden (kein data-gate) — die Seite bleibt frei nutzbar,
      Login wird erst beim Klick auf "Artikelnummern verwalten" verlangt. -->
 <script src="ts-auth.js"></script>
-<script src="ts-warnung.js"></script>
 <style>
   :root{
-    --bg:#0a0a0c;--panel:#111318;--primary:#e9edf2;--accent:#3a7bd5;
-    --accent-l:rgba(58,123,213,.15);--border:rgba(58,123,213,.25);--muted:#8b95a0;
-    --ok:#3ecf8e;--ok-l:rgba(62,207,142,.15);--warn:#e0a53d;--warn-l:rgba(224,165,61,.15);
-    --geze:#3a7bd5;--geze-l:rgba(58,123,213,.15);--glow:#5eead4;
+    /* Grundfarben folgen dem zentralen Umschalter (--ts-*); die farbigen
+       Hersteller-Kopfleisten (#hdr.dk/.gz/.rc/.gi weiter unten) bleiben
+       bewusst fest, da sie Markenfarben und keine Theme-Farbe sind. */
+    --bg:var(--ts-bg, #0a0a0c);--panel:var(--ts-surface, #111318);--primary:var(--ts-ink, #e9edf2);--accent:var(--ts-accent, #3a7bd5);
+    --accent-l:var(--ts-line-20, rgba(58,123,213,.15));--border:var(--ts-line-25, rgba(58,123,213,.25));--muted:var(--ts-muted, #8b95a0);
+    --ok:var(--ts-ok, #3ecf8e);--ok-l:rgba(62,207,142,.15);--warn:var(--ts-warn, #e0a53d);--warn-l:rgba(224,165,61,.15);
+    --geze:var(--ts-accent, #3a7bd5);--geze-l:rgba(58,123,213,.15);--glow:var(--ts-glow, #5eead4);
     --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -272,8 +276,8 @@
   #artikel-upload-box{background:var(--panel);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:82vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -4px 32px rgba(0,0,0,.6)}
   #artikel-override-banner{background:#8a5a1f;padding:12px 16px;display:flex;align-items:center;gap:10px}
   #artikel-override-banner.hidden{display:none}
-  #artikel-offline-hinweis{background:#8a5a1f;padding:12px 16px;display:flex;align-items:center;gap:10px}
-  #artikel-offline-hinweis.hidden{display:none}
+  #artikel-update-banner{background:#1a5f8a;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  #artikel-update-banner.hidden{display:none}
   #artikel-upload-status{display:block;font-size:12.5px;line-height:1.5;padding:10px 12px;border:1.5px dashed var(--border);border-radius:8px;margin-bottom:14px}
   .artikel-upload-row{display:flex;flex-direction:column;gap:10px}
   .artikel-upload-label{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border:2px dashed var(--border);border-radius:10px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;text-align:center}
@@ -296,14 +300,14 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;
+    background:var(--bg);color:var(--primary);padding:10px 16px;
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid var(--border);}
+  .ts-backbar__link{color:var(--primary);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  .ts-backbar__link:hover{color:#3a7bd5;}
-  .ts-backbar__slash{color:rgba(233,237,242,.35);}
-  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ts-backbar__link:hover{color:var(--accent);}
+  .ts-backbar__slash{color:var(--muted);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
@@ -447,10 +451,12 @@
 </div>
 
 <div id="artikel-override-banner" class="hidden"></div>
-<div id="artikel-offline-hinweis" class="hidden">
-  <span style="font-size:18px;flex-shrink:0">⚠️</span>
-  <div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Offline</div>
-  <div id="artikel-offline-text" style="color:rgba(255,255,255,.85);font-size:12px">Artikelnummern vom letzten bekannten Stand</div></div>
+<div id="artikel-update-banner" class="hidden">
+  <span style="font-size:18px;flex-shrink:0">🔄</span>
+  <div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Neue Artikelnummern verfügbar</div>
+  <div style="color:rgba(255,255,255,.85);font-size:12px">Auf dem Server liegt eine aktuellere <span class="mono">artikel.json</span></div></div>
+  <button class="hdr-icon-btn" onclick="applyArtikelUpdate()">Übernehmen</button>
+  <button class="hdr-icon-btn" onclick="dismissArtikelUpdateBanner()" style="margin-left:6px">✕</button>
 </div>
 
 <div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div>
@@ -698,22 +704,60 @@ function resetArtikelOverride(){
   if(typeof render==='function') render();
 }
 
-// ─── Offline-Hinweis für die Artikelnummern (siehe loadArtikel() weiter unten) ───
-// Ersetzt das bisherige artikel.json + ETag-Update-Banner-Modell — admin.html
-// schreibt jetzt direkt in die Supabase-Tabelle "artikelnummern".
-function setArtikelOfflineHinweis(stand){
-  var el=document.getElementById('artikel-offline-hinweis');
-  if(!el) return;
-  if(stand===false){ el.classList.add('hidden'); return; }
-  var txt=document.getElementById('artikel-offline-text');
-  if(stand){
-    var d=new Date(stand);
-    if(txt) txt.textContent='Artikelnummern vom '+d.toLocaleDateString('de-DE')+', '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr (letzter bekannter Stand)';
-  } else {
-    if(txt) txt.textContent='Keine gecachten Artikelnummern auf diesem Gerät — bitte einmal mit Internetverbindung öffnen.';
-  }
-  el.classList.remove('hidden');
+// ─── Update-Erkennung: erkennt per ETag/Last-Modified, ob auf dem Server eine neuere
+// artikel.json liegt, und prüft das beim (Wieder-)Aktivwerden des Tabs, statt dauerhaft
+// im Hintergrund zu pollen. Zeigt bei Unterschied einen Hinweis-Banner; Übernahme erst
+// nach Klick des Nutzers ("automatisch NACH Hinweis", nicht automatisch ohne Rückfrage).
+var ARTIKEL_ETAG_KEY='stober_artikel_etag';
+
+function _artikelVersionTag(headers){
+  return headers.get('etag') || headers.get('last-modified') || null;
 }
+
+function checkArtikelUpdate(){
+  return fetch('artikel.json',{method:'HEAD',cache:'no-store'})
+    .then(function(r){
+      if(!r.ok) return;
+      var tag=_artikelVersionTag(r.headers);
+      if(!tag) return; // Server liefert keine Versions-Info -> kein Vergleich möglich
+      var known=localStorage.getItem(ARTIKEL_ETAG_KEY);
+      if(known && known!==tag){
+        var banner=document.getElementById('artikel-update-banner');
+        if(banner){ banner.dataset.newTag=tag; banner.classList.remove('hidden'); }
+      }else if(!known){
+        localStorage.setItem(ARTIKEL_ETAG_KEY, tag);
+      }
+    })
+    .catch(function(){}); // z.B. offline -> einfach ignorieren, kein Fehler-UI nötig
+}
+
+function applyArtikelUpdate(){
+  var banner=document.getElementById('artikel-update-banner');
+  var newTag=banner ? banner.dataset.newTag : null;
+  fetch('artikel.json',{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('fetch failed'); return r.json(); })
+    .then(function(json){
+      window._artikelCentral=json||{};
+      if(newTag) localStorage.setItem(ARTIKEL_ETAG_KEY, newTag);
+      if(banner) banner.classList.add('hidden');
+      renderArtikelStatus();
+      if(typeof render==='function') render();
+      alert('Aktuelle Artikelnummern übernommen.');
+    })
+    .catch(function(){ alert('Aktualisierung fehlgeschlagen – bitte Seite manuell neu laden.'); });
+}
+
+function dismissArtikelUpdateBanner(){
+  var banner=document.getElementById('artikel-update-banner');
+  if(banner) banner.classList.add('hidden');
+}
+
+// Prüfen, wenn der Tab wieder sichtbar wird (z.B. nach App-Wechsel auf dem Tablet)
+// und beim Zurückkehren aus dem bfcache (iOS Safari feuert visibilitychange nicht immer zuverlässig).
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState==='visible') checkArtikelUpdate();
+});
+window.addEventListener('pageshow', function(){ checkArtikelUpdate(); });
 
 // ─── Hersteller-Sichtbarkeit: zentrale hersteller-sichtbar.json + localStorage (Admin) + Defaults ───
 // Gleiches Drei-Stufen-Prinzip wie bei den Artikelnummern. Steuert, welche Hersteller-Tabs
@@ -862,9 +906,6 @@ let S={
   showSummary:false,
   notizen:"",tueranzahl:"1",
 };
-// Felder, bei deren Änderung sich ein Eignungs-Grenzwert (getEmpD()/getEmpG())
-// ändern kann. Bewusst nur diese, nicht bei jeder Feldänderung.
-var EMP_TRIGGER_FUNKTION={tuerbreite:getEmpD, tuergewicht:getEmpD, g_tuergewicht:getEmpG};
 function set(k,v){
   var patch={};patch[k]=v;
   if(k==='fluegelanzahl') patch.schliessfolge=(v==='2')?'ja':'';
@@ -872,10 +913,6 @@ function set(k,v){
   // Flügelanzahl wird deshalb automatisch mitgesetzt, sobald ED 250 PA gewählt wird.
   if(k==='modell'&&v==='ed250pa'){ patch.fluegelanzahl='2'; patch.schliessfolge='ja'; }
   S=Object.assign({},S,patch);autosave();render();
-  if(EMP_TRIGGER_FUNKTION[k]){
-    var emp=EMP_TRIGGER_FUNKTION[k]();
-    if(emp&&emp.warn&&window.zeigeWarnung) zeigeWarnung(emp.reason,{titel:'Grenzwert überschritten'});
-  }
 }
 function handleAufgenommenCode(code){
   code=code.trim();
@@ -998,7 +1035,7 @@ function chkboxQty(label,hint,field,options){
 function numInput(label,hint,field,unit,ph){
   return '<div class="field"><div class="field-label">'+label+'</div>'+
     (hint?'<p class="field-hint">'+hint+'</p>':'')+
-    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric" min="0">'+
+    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric">'+
     (unit?'<span class="num-unit">'+unit+'</span>':'')+
     '</div></div>';
 }
@@ -1538,35 +1575,20 @@ function onMACodesLoaded(){
   var msg=document.getElementById('code-gate-msg');
   if(msg && msg.textContent==='Lade Codes …') msg.textContent='';
 }
-try{ loadMAcodes(); }catch(e){ console.error('loadMAcodes() fehlgeschlagen:', e); }
-try{ renderArtikelStatus(); }catch(e){ console.error('renderArtikelStatus() fehlgeschlagen:', e); }
+loadMAcodes();
+renderArtikelStatus();
 
 // ─── Zentrale Artikelnummern laden (artikel.json) + Abdeckungs-Check ────────────
-var ARTIKEL_CACHE_KEY='ts_artikelnummern_cache';
 function loadArtikel(){
-  return fetch(TENANT.supabaseUrl + '/rest/v1/artikelnummern?select=key,wert', {
-      headers: {
-        'apikey': TENANT.supabaseKey,
-        'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || TENANT.supabaseKey)
-      },
-      cache: 'no-store'
+  return fetch('artikel.json',{cache:'no-store'})
+    .then(function(r){
+      if(!r.ok) throw new Error('fetch failed');
+      var tag=_artikelVersionTag(r.headers);
+      if(tag && !localStorage.getItem(ARTIKEL_ETAG_KEY)) localStorage.setItem(ARTIKEL_ETAG_KEY, tag);
+      return r.json();
     })
-    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(rows){
-      var daten={};
-      rows.forEach(function(row){ daten[row.key]=row.wert; });
-      window._artikelCentral=daten;
-      try{ localStorage.setItem(ARTIKEL_CACHE_KEY, JSON.stringify({stand:new Date().toISOString(), daten:daten})); }catch(e){}
-      setArtikelOfflineHinweis(false);
-    })
-    .catch(function(){
-      // Kein Netz beim Kunden vor Ort -> letzten lokalen Stand verwenden, sichtbar markieren.
-      // Defaults (siehe getArtNr) greifen weiterhin, falls auch der Cache leer ist.
-      var cache=null;
-      try{ cache=JSON.parse(localStorage.getItem(ARTIKEL_CACHE_KEY)||'null'); }catch(e){}
-      window._artikelCentral=(cache && cache.daten) || {};
-      setArtikelOfflineHinweis(cache ? cache.stand : null);
-    })
+    .then(function(json){ window._artikelCentral = json || {}; })
+    .catch(function(){ window._artikelCentral = {}; })   // Defaults greifen weiterhin
     .then(function(){
       try{
         var ab=pruefeArtikelAbdeckung();
@@ -1617,7 +1639,7 @@ window.artikelAbdeckung=function(){
   if(a.verdaechtig.length){ console.log('— Kein Nr.-Format ('+a.verdaechtig.length+'):'); console.table(a.verdaechtig.map(function(f){return {Key:f.key,Wert:f.nr,Komponente:f.ctx};})); }
   return a;
 };
-try{ loadArtikel(); }catch(e){ console.error('loadArtikel() fehlgeschlagen:', e); }
+loadArtikel();
 
 function logMaCode(code) {
   try {
@@ -1688,7 +1710,7 @@ function checkStartCode(){
   if(handleAufgenommenCode(val)){
     msg.textContent='✓ Code akzeptiert – '+S.aufgenommenDurch;
     msg.className='ok';
-    resolveDraftAndRender(S.aufgenommenCode,S.aufgenommenDurch);
+    autoload();
     setTimeout(function(){ document.getElementById('code-gate').classList.remove('visible'); },700);
   } else {
     msg.textContent='✗ Ungültiger Code.';
@@ -1698,7 +1720,7 @@ function checkStartCode(){
   }
 }
 function skipStartCode(){
-  resolveDraftAndRender('','');
+  autoload();
   document.getElementById('code-gate').classList.remove('visible');
 }
 
@@ -1958,7 +1980,6 @@ function autosave(){
   try{
     var toSave=Object.assign({},S);
     delete toSave.gpsLoading; delete toSave.gpsError; delete toSave.showSummary;
-    toSave._savedAt=new Date().toISOString();
     localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(toSave));
   }catch(e){}
 }
@@ -1967,38 +1988,6 @@ function autoload(){
     var saved=localStorage.getItem(AUTOSAVE_KEY);
     if(saved){ var p=JSON.parse(saved); _migrateTuerart(p); _migrateEd250pa(p); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
-}
-function hasDraft(){
-  try{ return !!localStorage.getItem(AUTOSAVE_KEY); }catch(e){ return false; }
-}
-function formatSavedAt(){
-  try{
-    var saved=JSON.parse(localStorage.getItem(AUTOSAVE_KEY));
-    if(saved && saved._savedAt){
-      var d=new Date(saved._savedAt);
-      return d.toLocaleDateString('de-DE')+' '+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    }
-  }catch(e){}
-  return '';
-}
-// Fragt bei vorhandenem Entwurf nach Fortsetzen/Neu und sorgt danach für ein Re-Render.
-// code/name: der gerade am Gate eingegebene Mitarbeitercode, bleibt in jedem Fall erhalten.
-// (Namensgleich mit der Schiebetür-Version, aus der diese Funktion 1:1 übernommen wurde,
-// nachdem die vorherige Drehtür-eigene Fassung "resolveDraftOnEntry" versehentlich bei
-// einer späteren Änderung überschrieben worden war.)
-function resolveDraftAndRender(code,name){
-  if(hasDraft()){
-    var when=formatSavedAt();
-    var resume=confirm('Es gibt einen gespeicherten Entwurf'+(when?' vom '+when:'')+'.\n\nOK = fortsetzen\nAbbrechen = neu beginnen');
-    if(resume){
-      autoload();
-    } else {
-      localStorage.removeItem(AUTOSAVE_KEY);
-    }
-  }
-  if(code){ S=Object.assign({},S,{aufgenommenCode:code,aufgenommenDurch:name}); }
-  autosave();
-  render();
 }
 function resetKonfig(){
   if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
@@ -2064,7 +2053,7 @@ function handleClick(ev){
     return;
   }
   var a=btn.dataset.action,f=btn.dataset.field,v=btn.dataset.value;
-  if(a==='prod'){S.produkt=v;S.showSummary=false;autosave();render();return;}
+  if(a==='prod'){S.produkt=v;S.showSummary=false;render();return;}
   if(a==='radio') set(f,v);
   if(a==='chk')   toggleArr(f,v);
 }
@@ -2088,7 +2077,7 @@ function handleGPS(){
             bs_strasse:(road+nr).trim(),
             bs_plzort:(plz+(city?' '+city:'')).trim(),
             gpsLoading:false,gpsError:''
-          });autosave();render();
+          });render();
         })
         .catch(function(){
           S=Object.assign({},S,{gpsLoading:false,gpsError:'Adresse konnte nicht ermittelt werden. Internetverbindung prüfen.'});render();
@@ -2104,24 +2093,10 @@ function handleGPS(){
   );
 }
 
-// Maße und Gewichte können physikalisch nie negativ sein — vorher wurde ein
-// negativer Wert kommentarlos übernommen (bis in PDF und Datenbank hinein).
-function pruefeNumEingabe(el){
-  var wert = el.value;
-  if(wert === '') return wert;
-  var n = parseFloat(wert.toString().replace(',', '.'));
-  if(!isNaN(n) && n < 0){
-    el.value = '';
-    if(window.zeigeWarnung) zeigeWarnung('Maße und Gewichte können nicht negativ sein — bitte erneut eingeben.', {titel:'Ungültiger Wert'});
-    return '';
-  }
-  return wert;
-}
-
 document.getElementById('prod-sw').addEventListener('click',handleClick);
 document.getElementById('content').addEventListener('click',handleClick);
 document.getElementById('content').addEventListener('change',function(ev){
-  if(ev.target.classList.contains('num-input')) set(ev.target.dataset.field,pruefeNumEingabe(ev.target));
+  if(ev.target.classList.contains('num-input')) set(ev.target.dataset.field,ev.target.value);
 });
 document.getElementById('proj-data').addEventListener('change',function(ev){
   if(ev.target.classList.contains('ma-lookup-input')){
@@ -2129,8 +2104,7 @@ document.getElementById('proj-data').addEventListener('change',function(ev){
     return;
   }
   if(ev.target.classList.contains('txt-input')||ev.target.classList.contains('num-input')){
-    var wert = ev.target.classList.contains('num-input') ? pruefeNumEingabe(ev.target) : ev.target.value;
-    set(ev.target.dataset.field,wert);
+    set(ev.target.dataset.field,ev.target.value);
   }
 });
 document.getElementById('proj-data').addEventListener('click',function(ev){
@@ -2234,8 +2208,8 @@ function FOTO_PDF(){
     +'<div style="border:1px solid var(--border);border-top:none;padding:10px;display:flex;flex-wrap:wrap;gap:8px">'+imgs+'</div></div>';
 }
 
-try{ render(); }catch(e){ console.error('render() fehlgeschlagen:', e); }
-try{ fotoInit(); }catch(e){ console.error('fotoInit() fehlgeschlagen:', e); }
+render();
+fotoInit();
 
 
 // ─── Mitarbeitercode-Gate beim Laden anzeigen ──────────────────────────────────
