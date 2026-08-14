@@ -9,6 +9,8 @@
 <title>ZuKo Kabelplan-Generator</title>
 <link rel="stylesheet" href="ts-theme.css">
 <script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -712,7 +714,7 @@ async function saveSysteme(){
   setTimeout(()=>{ statusEl.textContent=''; }, 2000);
 }
 async function savePlaene(){
-  try{ await appStorage.set('kabelplaene', JSON.stringify(plaene), false); }catch(e){ alert('Fehler beim Speichern des Plans.'); }
+  try{ await appStorage.set('kabelplaene', JSON.stringify(plaene), false); }catch(e){ TSToast.show('Fehler beim Speichern des Plans.', 'error'); }
 }
 
 // ---------- TABS ----------
@@ -729,7 +731,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 document.getElementById('btn-add-system').addEventListener('click', async ()=>{
   const h = document.getElementById('new-hersteller').value.trim();
   const m = document.getElementById('new-modell').value.trim();
-  if(!h || !m){ alert('Bitte Hersteller und Modell angeben.'); return; }
+  if(!h || !m){ TSToast.show('Bitte Hersteller und Modell angeben.', 'error'); return; }
   systeme.push({ id: uid(), hersteller:h, modell:m, bauteile:[] });
   document.getElementById('new-hersteller').value='';
   document.getElementById('new-modell').value='';
@@ -837,7 +839,7 @@ function attachSystemeHandlers(){
   const list = document.getElementById('systeme-list');
   list.querySelectorAll('[data-action="del-system"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      if(!confirm('System wirklich löschen?')) return;
+      if(!(await TSConfirm.ask('System wirklich löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
       await saveSysteme(); renderSysteme(); fillSystemSelect();
     });
@@ -1014,8 +1016,8 @@ document.getElementById('btn-add-connection').addEventListener('click', ()=>{
   const vonK = document.getElementById('kp-von-klemme').value;
   const nachB = document.getElementById('kp-nach-bauteil').value;
   const nachK = document.getElementById('kp-nach-klemme').value;
-  if(!vonB || !nachB || !vonK || !nachK){ alert('Bitte Bauteil und Klemme auf beiden Seiten wählen.'); return; }
-  if(vonB === nachB && vonK === nachK){ alert('Von- und Nach-Klemme dürfen nicht identisch sein.'); return; }
+  if(!vonB || !nachB || !vonK || !nachK){ TSToast.show('Bitte Bauteil und Klemme auf beiden Seiten wählen.', 'error'); return; }
+  if(vonB === nachB && vonK === nachK){ TSToast.show('Von- und Nach-Klemme dürfen nicht identisch sein.', 'error'); return; }
   const typ = document.getElementById('kp-typ').value;
   currentPlan.connections.push({
     id: uid(), von:vonB, vonKlemme:vonK, nach:nachB, nachKlemme:nachK,
@@ -1028,9 +1030,9 @@ document.getElementById('btn-add-connection').addEventListener('click', ()=>{
   updateKpVisibility();
 });
 
-function autoSuggestConnections(){
+async function autoSuggestConnections(){
   const bauteile = selectedBauteile();
-  if(bauteile.length < 2){ alert('Mindestens 2 Bauteile auswählen.'); return; }
+  if(bauteile.length < 2){ TSToast.show('Mindestens 2 Bauteile auswählen.', 'error'); return; }
   const hub = bauteile.find(b=>b.typ==='steuerung') || bauteile.find(b=>b.typ==='netzteil') || bauteile[0];
   const others = bauteile.filter(b=>b.id!==hub.id);
 
@@ -1073,7 +1075,7 @@ function autoSuggestConnections(){
   });
 
   if(newConns.length === 0){
-    alert('Keine eindeutigen Vorschläge gefunden. Bei mehreren gleichartigen Bauteilen müssen die Hub-Klemmen die Nummer im Namen tragen (z.B. "Leser 2"), sonst bitte manuell verbinden.');
+    await TSNotice.show('Keine eindeutigen Vorschläge gefunden. Bei mehreren gleichartigen Bauteilen müssen die Hub-Klemmen die Nummer im Namen tragen (z.B. "Leser 2"), sonst bitte manuell verbinden.');
     return;
   }
   currentPlan.connections = currentPlan.connections.concat(newConns);
@@ -1245,7 +1247,7 @@ document.getElementById('kp-projekt').addEventListener('input', e=>currentPlan.p
 document.getElementById('kp-tuer').addEventListener('input', e=>currentPlan.tuer=e.target.value);
 
 document.getElementById('btn-save-plan').addEventListener('click', async ()=>{
-  if(!currentPlan.projekt){ alert('Bitte Projekt/Kunde angeben, damit Du den Plan wiederfindest.'); return; }
+  if(!currentPlan.projekt){ TSToast.show('Bitte Projekt/Kunde angeben, damit Du den Plan wiederfindest.', 'error'); return; }
   if(!currentPlan.id) currentPlan.id = uid();
   currentPlan.datum = new Date().toISOString().slice(0,10);
   const idx = plaene.findIndex(p=>p.id===currentPlan.id);
@@ -1253,7 +1255,7 @@ document.getElementById('btn-save-plan').addEventListener('click', async ()=>{
   else plaene.push(JSON.parse(JSON.stringify(currentPlan)));
   await savePlaene();
   renderPlaene();
-  alert('Plan gespeichert.');
+  TSToast.show('Plan gespeichert.', 'ok');
 });
 
 document.getElementById('btn-print-plan').addEventListener('click', ()=>{ generatePlanPdf(); });
@@ -1378,7 +1380,7 @@ function systemForBauteil(bId){
 async function generatePlanPdf(){
   const bauteile = selectedBauteile();
   const statusEl = document.getElementById('pdf-status');
-  if(bauteile.length===0){ alert('Keine Bauteile ausgewählt.'); return; }
+  if(bauteile.length===0){ TSToast.show('Keine Bauteile ausgewählt.', 'error'); return; }
   statusEl.textContent = 'PDF wird erzeugt…';
 
   const PAGE_W = 595.28, PAGE_H = 841.89, MARGIN = 42;
@@ -1509,8 +1511,8 @@ async function generatePlanPdf(){
   statusEl.textContent = 'PDF erzeugt und heruntergeladen.';
   setTimeout(()=>{ statusEl.textContent=''; }, 3000);
 }
-document.getElementById('btn-reset-plan').addEventListener('click', ()=>{
-  if(!confirm('Aktuellen Plan verwerfen und neu beginnen?')) return;
+document.getElementById('btn-reset-plan').addEventListener('click', async ()=>{
+  if(!(await TSConfirm.ask('Aktuellen Plan verwerfen und neu beginnen?', {danger:true, confirmLabel:'Verwerfen'}))) return;
   currentPlan = { id:null, projekt:'', tuer:'', bauteilIds:[], connections:[] };
   document.getElementById('kp-projekt').value='';
   document.getElementById('kp-tuer').value='';
@@ -1558,7 +1560,7 @@ function renderPlaene(){
   });
   list.querySelectorAll('[data-action="del-plan"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
-      if(!confirm('Plan wirklich löschen?')) return;
+      if(!(await TSConfirm.ask('Plan wirklich löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
       plaene = plaene.filter(x=>x.id!==btn.dataset.id);
       await savePlaene();
       renderPlaene();

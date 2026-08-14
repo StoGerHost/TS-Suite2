@@ -1,0 +1,67 @@
+/* ============================================================
+   TS-Suite · Zentrales Feedback-System (ts-feedback.css)
+   ------------------------------------------------------------
+   Ersetzt native Browser-Popups (alert/confirm) durch gestylte,
+   zum Theme passende Bausteine. Nutzt dieselben --ts-*-Tokens
+   wie ts-theme.css und funktioniert daher automatisch in Hell
+   und Dunkel.
+
+   Einbindung (im <head>, NACH ts-theme.css):
+     <link rel="stylesheet" href="ts-theme.css">
+     <script src="ts-theme.js"></script>
+     <link rel="stylesheet" href="ts-feedback.css">
+     <script src="ts-feedback.js"></script>
+
+   Drei Bausteine, siehe ts-feedback.js für die API:
+     1) Toast    - kurze, selbst verschwindende Statusmeldung
+     2) Confirm  - Ja/Abbrechen-Rückfrage (ersetzt confirm())
+     3) Notice   - Hinweis mit OK-Button, muss aktiv weggeklickt
+                   werden (ersetzt "wichtige" alert()-Aufrufe)
+   ============================================================ */
+
+/* ---------- 1) Toast ---------- */
+#ts-toast{
+  position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%) translateY(8px);
+  max-width:min(420px, calc(100vw - 32px));
+  background:var(--ts-surface);color:var(--ts-ink);
+  border:1px solid var(--ts-line-30);border-radius:10px;
+  padding:12px 18px;font:600 13px/1.4 var(--ts-font-mono,inherit);
+  box-shadow:var(--ts-shadow);
+  opacity:0;pointer-events:none;transition:opacity .22s ease, transform .22s ease;
+  z-index:100000;text-align:center;white-space:pre-line;
+}
+#ts-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#ts-toast[data-kind="error"]{border-color:var(--ts-danger);}
+#ts-toast[data-kind="ok"]{border-color:var(--ts-ok);}
+
+/* ---------- 2) + 3) gemeinsame Modal-Basis (Confirm & Notice) ---------- */
+.ts-modal-backdrop{
+  position:fixed;inset:0;z-index:100010;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;transition:opacity .18s ease;
+}
+.ts-modal-backdrop.show{opacity:1;}
+.ts-modal-box{
+  background:var(--ts-surface);color:var(--ts-ink);
+  border:1px solid var(--ts-line-30);border-radius:12px;
+  max-width:380px;width:100%;padding:24px 22px;
+  box-shadow:var(--ts-shadow);
+  transform:scale(.96);transition:transform .18s ease;
+  font-family:var(--ts-font-display,inherit);
+}
+.ts-modal-backdrop.show .ts-modal-box{transform:scale(1);}
+.ts-modal-icon{font-size:26px;margin-bottom:8px;line-height:1;}
+.ts-modal-msg{font-size:14.5px;line-height:1.5;color:var(--ts-ink);white-space:pre-line;}
+.ts-modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap;}
+.ts-modal-btn{
+  min-height:42px;padding:10px 18px;border-radius:8px;border:1px solid var(--ts-line-30);
+  background:transparent;color:var(--ts-ink);font:600 13px var(--ts-font-mono,inherit);
+  cursor:pointer;touch-action:manipulation;
+}
+.ts-modal-btn.primary{background:var(--ts-accent);border-color:var(--ts-accent);color:#fff;}
+.ts-modal-btn.danger{background:var(--ts-danger);border-color:var(--ts-danger);color:#fff;}
+@media(hover:hover){
+  .ts-modal-btn:hover{border-color:var(--ts-accent);}
+  .ts-modal-btn.primary:hover,.ts-modal-btn.danger:hover{filter:brightness(1.08);}
+}

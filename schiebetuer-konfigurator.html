@@ -13,6 +13,8 @@
   <title>TS Suite – Schiebetür Konfigurator</title>
 <link rel="stylesheet" href="ts-theme.css">
 <script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
 <script src="config.js"></script>
 <style>
   :root{
@@ -1400,7 +1402,7 @@ function buildArtikelliste(){
   return rows;
 }
 // ─── PDF Export ───────────────────────────────────────────────────────────────
-function exportPDF(){
+async function exportPDF(){
   // Validierung: Alle Pflichtfelder prüfen
   var pflicht = PFLICHT_AKTUELL();
   var missing = [];
@@ -1410,7 +1412,7 @@ function exportPDF(){
     }
   }
   if(missing.length > 0){
-    alert('Bitte füllen Sie alle Pflichtfelder aus:\n- ' + missing.join('\n- '));
+    await TSNotice.show('Bitte füllen Sie alle Pflichtfelder aus:\n- ' + missing.join('\n- '));
     return;
   }
   
@@ -1544,7 +1546,7 @@ function exportPDF(){
     a.click();
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(blobUrl); },5000);
-    alert('Druckansicht wurde als Datei heruntergeladen. Öffne die Datei und drucke sie als PDF.');
+    await TSNotice.show('Druckansicht wurde als Datei heruntergeladen. Öffne die Datei und drucke sie als PDF.');
   }
 }
 
@@ -1611,8 +1613,8 @@ function autoload(){
     if(saved){ var p=JSON.parse(saved); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
 }
-function resetKonfig(){
-  if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
+async function resetKonfig(){
+  if(await TSConfirm.ask('Aktuelle Konfiguration wirklich löschen und neu starten?', {danger:true, confirmLabel:'Löschen'})){
     localStorage.removeItem(AUTOSAVE_KEY);
     location.reload();
   }
@@ -1643,7 +1645,7 @@ function saveNewVorlage(){
   var name=inp.value.trim();
   if(!name){ inp.focus(); inp.style.borderColor='#e05a4e'; setTimeout(function(){inp.style.borderColor='';},1500); return; }
   var vl=getVorlagen();
-  if(vl.length>=10){ alert('Maximal 10 Vorlagen – bitte erst eine löschen.'); return; }
+  if(vl.length>=10){ TSToast.show('Maximal 10 Vorlagen – bitte erst eine löschen.', 'error'); return; }
   var tpl={};
   Object.keys(S).forEach(function(k){ if(PROJ_SKIP.indexOf(k)===-1) tpl[k]=S[k]; });
   vl.unshift({name:name,date:new Date().toLocaleDateString('de-DE'),state:tpl});
@@ -1768,7 +1770,7 @@ function fotoCompress(file, cb){
 function fotoAdd(files){
   var list=Array.prototype.slice.call(files||[]);
   var slots=FOTO_MAX-FOTOS.length;
-  if(slots<=0){ alert('Maximal '+FOTO_MAX+' Fotos. Bitte erst eines entfernen.'); return; }
+  if(slots<=0){ TSToast.show('Maximal '+FOTO_MAX+' Fotos. Bitte erst eines entfernen.', 'error'); return; }
   list.slice(0,slots).forEach(function(f){
     if(!f.type||f.type.indexOf('image/')!==0) return;
     fotoCompress(f,function(url){ if(url){ FOTOS.push({name:f.name||'Foto',url:url}); fotoRender(); } });
@@ -1846,8 +1848,8 @@ window.downloadMaLogs = function(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
-window.clearMaLogs = function(){
-  if(confirm('Alle MA-Code Logs wirklich löschen?')){
+window.clearMaLogs = async function(){
+  if(await TSConfirm.ask('Alle MA-Code Logs wirklich löschen?', {danger:true, confirmLabel:'Löschen'})){
     localStorage.removeItem('stober_ma_logs');
   }
 };
@@ -1861,7 +1863,7 @@ window._adminConsoleReady = true;
   // 1. Rechtsklick deaktivieren
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
-    alert('Rechtsklick ist deaktiviert. Inhalte sind urheberrechtlich geschützt.');
+    TSToast.show('Rechtsklick ist deaktiviert. Inhalte sind urheberrechtlich geschützt.', 'error');
     return false;
   }, false);
   
@@ -1880,7 +1882,7 @@ window._adminConsoleReady = true;
   // 3. Copy/Cut/Paste verhindern
   document.addEventListener('copy', function(e) {
     e.preventDefault();
-    alert('Kopieren ist deaktiviert. Diese Inhalte sind geschützt.');
+    TSToast.show('Kopieren ist deaktiviert. Diese Inhalte sind geschützt.', 'error');
     return false;
   }, false);
   
@@ -1906,7 +1908,7 @@ window._adminConsoleReady = true;
     // Ctrl+C oder Cmd+C
     if ((e.ctrlKey || e.metaKey) && e.keyCode === 67) {
       e.preventDefault();
-      alert('Kopieren mit Tastenkombination ist deaktiviert.');
+      TSToast.show('Kopieren mit Tastenkombination ist deaktiviert.', 'error');
       return false;
     }
     // Ctrl+X (Cut)

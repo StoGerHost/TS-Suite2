@@ -13,6 +13,8 @@
   <title>TS Suite – Drehtür Konfigurator</title>
 <link rel="stylesheet" href="ts-theme.css">
 <script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
 <script src="config.js"></script>
 <!-- Nur als API eingebunden (kein data-gate) — die Seite bleibt frei nutzbar,
      Login wird erst beim Klick auf "Artikelnummern verwalten" verlangt. -->
@@ -631,7 +633,7 @@ function renderArtikelStatus(){
 // Login wird erst hier, beim Klick auf das 📥-Icon, verlangt.
 var _artikelAdminGeprueft = false;
 async function showArtikelUploadModal(){
-  if(!window.TSAuth){ alert('Login-Modul konnte nicht geladen werden (Internetverbindung prüfen).'); return; }
+  if(!window.TSAuth){ TSToast.show('Login-Modul konnte nicht geladen werden (Internetverbindung prüfen).', 'error'); return; }
   await TSAuth.ready;
   if(!TSAuth.isUnlocked()){
     // Zeigt das Login-Overlay; nach erfolgreichem Login lädt ts-auth.js die
@@ -641,7 +643,7 @@ async function showArtikelUploadModal(){
   }
   const admin = await pruefeIstArtikelAdmin();
   if(!admin){
-    alert('Dieser Bereich ist nur für Admins.');
+    TSToast.show('Dieser Bereich ist nur für Admins.', 'error');
     return;
   }
   _artikelAdminGeprueft = true;
@@ -660,28 +662,28 @@ async function pruefeIstArtikelAdmin(){
 }
 function closeArtikelUploadModal(){ document.getElementById('artikel-upload-overlay').classList.remove('visible'); }
 
-function handleArtikelUpload(evt){
+async function handleArtikelUpload(evt){
   // Defensive Zweitprüfung: das Overlay ist nur nach bestätigtem Admin-Check
   // erreichbar, aber der <input type=file> bleibt technisch im DOM. Ohne
   // bestätigten Check hier abbrechen, statt der Modal-Sichtbarkeit blind zu vertrauen.
-  if(!_artikelAdminGeprueft){ alert('Nicht berechtigt.'); evt.target.value=''; return; }
+  if(!_artikelAdminGeprueft){ TSToast.show('Nicht berechtigt.', 'error'); evt.target.value=''; return; }
   var file=evt.target.files && evt.target.files[0];
   if(!file) return;
   if(!/\.json$/i.test(file.name)){
-    if(!confirm('Die Datei heißt nicht auf ".json" – trotzdem versuchen zu lesen?')){ evt.target.value=''; return; }
+    if(!(await TSConfirm.ask('Die Datei heißt nicht auf ".json" – trotzdem versuchen zu lesen?'))){ evt.target.value=''; return; }
   }
   var reader=new FileReader();
-  reader.onload=function(e){
+  reader.onload=async function(e){
     var data;
     try{ data=JSON.parse(e.target.result); }
-    catch(err){ alert('Datei ist kein gültiges JSON.'); evt.target.value=''; return; }
+    catch(err){ TSToast.show('Datei ist kein gültiges JSON.', 'error'); evt.target.value=''; return; }
     if(!data || typeof data!=='object' || Array.isArray(data)){
-      alert('Erwartet wird ein JSON-Objekt mit Schlüssel/Wert-Paaren (wie artikel.json).'); evt.target.value=''; return;
+      TSToast.show('Erwartet wird ein JSON-Objekt mit Schlüssel/Wert-Paaren (wie artikel.json).', 'error'); evt.target.value=''; return;
     }
     var keys=Object.keys(data);
-    if(!keys.length){ alert('Die Datei enthält keine Einträge.'); evt.target.value=''; return; }
+    if(!keys.length){ TSToast.show('Die Datei enthält keine Einträge.', 'error'); evt.target.value=''; return; }
     var relevant=keys.filter(function(k){ return k.indexOf('drehtuer.')===0; }).length;
-    if(relevant===0 && !confirm('Keine Schlüssel mit Prefix "drehtuer." gefunden ('+keys.length+' Einträge insgesamt). Trotzdem übernehmen?')){
+    if(relevant===0 && !(await TSConfirm.ask('Keine Schlüssel mit Prefix "drehtuer." gefunden ('+keys.length+' Einträge insgesamt). Trotzdem übernehmen?'))){
       evt.target.value=''; return;
     }
     localStorage.setItem(ARTIKEL_STORAGE_KEY, JSON.stringify(data));
@@ -689,16 +691,16 @@ function handleArtikelUpload(evt){
     renderArtikelStatus();
     evt.target.value='';
     if(typeof render==='function') render();
-    alert('Artikelnummern übernommen: '+keys.length+' Einträge. Aktiv auf diesem Gerät, bis zurückgesetzt.');
+    TSToast.show('Artikelnummern übernommen: '+keys.length+' Einträge. Aktiv auf diesem Gerät, bis zurückgesetzt.', 'ok');
   };
-  reader.onerror=function(){ alert('Datei konnte nicht gelesen werden.'); };
+  reader.onerror=function(){ TSToast.show('Datei konnte nicht gelesen werden.', 'error'); };
   reader.readAsText(file,'utf-8');
 }
 
-function resetArtikelOverride(){
+async function resetArtikelOverride(){
   var meta=getArtikelMeta();
-  if(!meta){ alert('Es ist aktuell keine lokale Überschreibung aktiv.'); return; }
-  if(!confirm('Lokale Artikelnummer-Überschreibung auf diesem Gerät löschen? Danach gilt wieder die zentrale artikel.json.')) return;
+  if(!meta){ TSToast.show('Es ist aktuell keine lokale Überschreibung aktiv.'); return; }
+  if(!(await TSConfirm.ask('Lokale Artikelnummer-Überschreibung auf diesem Gerät löschen? Danach gilt wieder die zentrale artikel.json.', {danger:true, confirmLabel:'Löschen'}))) return;
   localStorage.removeItem(ARTIKEL_STORAGE_KEY);
   localStorage.removeItem(ARTIKEL_META_KEY);
   renderArtikelStatus();
@@ -743,9 +745,9 @@ function applyArtikelUpdate(){
       if(banner) banner.classList.add('hidden');
       renderArtikelStatus();
       if(typeof render==='function') render();
-      alert('Aktuelle Artikelnummern übernommen.');
+      TSToast.show('Aktuelle Artikelnummern übernommen.', 'ok');
     })
-    .catch(function(){ alert('Aktualisierung fehlgeschlagen – bitte Seite manuell neu laden.'); });
+    .catch(function(){ TSToast.show('Aktualisierung fehlgeschlagen – bitte Seite manuell neu laden.', 'error'); });
 }
 
 function dismissArtikelUpdateBanner(){
@@ -1726,7 +1728,7 @@ function skipStartCode(){
 }
 
 // ─── PDF Export ────────────────────────────────────────────────────────────────
-function exportPDF(){
+async function exportPDF(){
   // Validierung: Alle Pflichtfelder prüfen
   var pflicht = PFLICHT_AKTUELL();
   var missing = [];
@@ -1736,7 +1738,7 @@ function exportPDF(){
     }
   }
   if(missing.length > 0){
-    alert('Bitte füllen Sie alle Pflichtfelder aus:\n- ' + missing.join('\n- '));
+    await TSNotice.show('Bitte füllen Sie alle Pflichtfelder aus:\n- ' + missing.join('\n- '));
     return;
   }
   
@@ -1895,7 +1897,7 @@ function exportPDF(){
     a.click();
     document.body.removeChild(a);
     setTimeout(function(){ URL.revokeObjectURL(blobUrl); },5000);
-    alert('Druckansicht wurde als Datei heruntergeladen. Öffne die Datei und drucke sie als PDF.');
+    await TSNotice.show('Druckansicht wurde als Datei heruntergeladen. Öffne die Datei und drucke sie als PDF.');
   }
 }
 
@@ -1990,8 +1992,8 @@ function autoload(){
     if(saved){ var p=JSON.parse(saved); _migrateTuerart(p); _migrateEd250pa(p); S=Object.assign({},S,p); S.gpsLoading=false; S.gpsError=''; }
   }catch(e){}
 }
-function resetKonfig(){
-  if(confirm('Aktuelle Konfiguration wirklich löschen und neu starten?')){
+async function resetKonfig(){
+  if(await TSConfirm.ask('Aktuelle Konfiguration wirklich löschen und neu starten?', {danger:true, confirmLabel:'Löschen'})){
     localStorage.removeItem(AUTOSAVE_KEY);
     location.reload();
   }
@@ -2022,7 +2024,7 @@ function saveNewVorlage(){
   var name=inp.value.trim();
   if(!name){ inp.focus(); inp.style.borderColor='#e05a4e'; setTimeout(function(){inp.style.borderColor='';},1500); return; }
   var vl=getVorlagen();
-  if(vl.length>=10){ alert('Maximal 10 Vorlagen – bitte erst eine löschen.'); return; }
+  if(vl.length>=10){ TSToast.show('Maximal 10 Vorlagen – bitte erst eine löschen.', 'error'); return; }
   var tpl={};
   Object.keys(S).forEach(function(k){ if(PROJ_SKIP.indexOf(k)===-1) tpl[k]=S[k]; });
   vl.unshift({name:name,date:new Date().toLocaleDateString('de-DE'),state:tpl});
@@ -2153,7 +2155,7 @@ function fotoCompress(file, cb){
 function fotoAdd(files){
   var list=Array.prototype.slice.call(files||[]);
   var slots=FOTO_MAX-FOTOS.length;
-  if(slots<=0){ alert('Maximal '+FOTO_MAX+' Fotos. Bitte erst eines entfernen.'); return; }
+  if(slots<=0){ TSToast.show('Maximal '+FOTO_MAX+' Fotos. Bitte erst eines entfernen.', 'error'); return; }
   list.slice(0,slots).forEach(function(f){
     if(!f.type||f.type.indexOf('image/')!==0) return;
     fotoCompress(f,function(url){ if(url){ FOTOS.push({name:f.name||'Foto',url:url}); fotoRender(); } });
@@ -2238,8 +2240,8 @@ window.downloadMaLogs = function(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
-window.clearMaLogs = function(){
-  if(confirm('Alle MA-Code Logs wirklich löschen?')){
+window.clearMaLogs = async function(){
+  if(await TSConfirm.ask('Alle MA-Code Logs wirklich löschen?', {danger:true, confirmLabel:'Löschen'})){
     localStorage.removeItem('stober_ma_logs');
   }
 };

@@ -7,6 +7,8 @@
 <title>Arbeitsbericht — Blueprint</title>
 <link rel="stylesheet" href="ts-theme.css">
 <script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
 <script src="config.js"></script>
 <script src="ts-auth.js" data-gate data-title="Arbeitsbericht"></script>
 <style>
@@ -180,6 +182,9 @@
     position:sticky; bottom:0; padding:14px 18px 22px;
     background:linear-gradient(transparent, var(--bg) 30%);
   }
+  /* Zentraler Theme-Umschalter würde sonst den "Bericht erstellen"-Button
+     verdecken - daher höher gesetzt. */
+  #ts-theme-toggle{ bottom:76px; }
   .generate button{
     width:100%; background:var(--amber); color:#1a1208; border:none;
     padding:15px; font-size:14.5px; font-weight:600; border-radius:var(--radius);
@@ -785,7 +790,7 @@ async function handlePdf(file){
   document.getElementById('toggleLieferanschrift').textContent = '+ abweichende Lieferanschrift';
 
   if(!window.pdfjsLib){
-    alert('PDF-Import benötigt einmalig eine Internetverbindung (PDF-Bibliothek konnte nicht geladen werden). Seite mit Netz neu laden und erneut versuchen.');
+    await TSNotice.show('PDF-Import benötigt einmalig eine Internetverbindung (PDF-Bibliothek konnte nicht geladen werden). Seite mit Netz neu laden und erneut versuchen.');
     return;
   }
   try{
@@ -1406,20 +1411,20 @@ async function generateReport(){
         // Egal welcher der drei möglichen Fälle eintritt, IMMER sichtbar machen —
         // vorher verschwand ein Netzwerkfehler (trelloResult.reason) komplett
         // lautlos, weil nur .trello und .warning geprüft wurden.
-        // Zusätzlich per alert(): die Textzeile allein wird zu leicht übersehen/
-        // überschrieben, bevor Zeit zum Lesen bleibt. alert() muss aktiv
-        // weggetippt werden, verschwindet also nicht von selbst.
+        // Zusätzlich per TSNotice: die Textzeile allein wird zu leicht übersehen/
+        // überschrieben, bevor Zeit zum Lesen bleibt. Der Hinweis-Dialog muss
+        // aktiv weggeklickt werden, verschwindet also nicht von selbst.
         if(trelloResult.trello){
           genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · Trello-Rückmeldung gesendet.';
-          alert('✅ Trello-Rückmeldung gesendet.\n\n' + vorgangLabel + ' wurde aktualisiert und auf der Trello-Karte vermerkt.');
+          await TSNotice.show('✅ Trello-Rückmeldung gesendet.\n\n' + vorgangLabel + ' wurde aktualisiert und auf der Trello-Karte vermerkt.');
         } else if(trelloResult.warning){
           genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · gespeichert, Trello-Rückmeldung nicht möglich.';
           console.warn(trelloResult.warning);
-          alert('⚠️ ' + vorgangLabel + ' wurde gespeichert, aber die Trello-Karte konnte nicht aktualisiert werden.\n\n' + trelloResult.warning);
+          await TSNotice.show('⚠️ ' + vorgangLabel + ' wurde gespeichert, aber die Trello-Karte konnte nicht aktualisiert werden.\n\n' + trelloResult.warning);
         } else {
           genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · Trello-Rückmeldung fehlgeschlagen: ' + (trelloResult.reason || trelloResult.error || 'unbekannter Fehler');
           console.error('Trello-Rückmeldung fehlgeschlagen:', trelloResult);
-          alert('❌ Trello-Rückmeldung fehlgeschlagen:\n\n' + (trelloResult.reason || trelloResult.error || 'unbekannter Fehler') + '\n\nDer Bericht selbst wurde trotzdem gespeichert.');
+          await TSNotice.show('❌ Trello-Rückmeldung fehlgeschlagen:\n\n' + (trelloResult.reason || trelloResult.error || 'unbekannter Fehler') + '\n\nDer Bericht selbst wurde trotzdem gespeichert.');
         }
       }
       if(reportData.angebotsnr){
@@ -1433,16 +1438,16 @@ async function generateReport(){
         genStatus.textContent = genStatus.textContent.replace(' · Suche Trello-Karte zu Angebotsnr. …', '');
         if(angebotResult.trello){
           genStatus.textContent += ' · Trello-Karte "' + angebotResult.card_name + '" erledigt markiert.';
-          alert('✅ Trello-Karte gefunden und erledigt markiert:\n\n"' + angebotResult.card_name + '"');
+          await TSNotice.show('✅ Trello-Karte gefunden und erledigt markiert:\n\n"' + angebotResult.card_name + '"');
         } else if(angebotResult.ok){
           // Kein Fehler, aber auch kein eindeutiger Treffer (0 oder mehrere Karten).
           genStatus.textContent += ' · ' + (angebotResult.message || 'Keine eindeutige Trello-Karte gefunden.');
           console.warn(angebotResult.message, angebotResult.karten);
-          alert('ℹ️ ' + (angebotResult.message || 'Keine eindeutige Trello-Karte gefunden.'));
+          await TSNotice.show('ℹ️ ' + (angebotResult.message || 'Keine eindeutige Trello-Karte gefunden.'));
         } else {
           genStatus.textContent += ' · Trello-Suche fehlgeschlagen: ' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler');
           console.error('Trello-Angebot-Suche fehlgeschlagen:', angebotResult);
-          alert('❌ Trello-Suche nach Angebotsnummer fehlgeschlagen:\n\n' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler'));
+          await TSNotice.show('❌ Trello-Suche nach Angebotsnummer fehlgeschlagen:\n\n' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler'));
         }
       }
     } else if(sendResult.reason === 'not-configured'){
@@ -1589,9 +1594,9 @@ async function upsertKontakt(){
   if(!kontakteMap[bauvorhaben.toLowerCase()]){
     const aehnlich = findeAehnlichesBauvorhaben(bauvorhaben);
     if(aehnlich){
-      const uebernehmen = confirm(
+      const uebernehmen = await TSConfirm.ask(
         `Ähnliches Bauvorhaben schon vorhanden:\n"${aehnlich.bauvorhaben}"\n\n` +
-        `OK = dieses verwenden (empfohlen, sonst entsteht ein doppelter Eintrag)\n` +
+        `Ja = dieses verwenden (empfohlen, sonst entsteht ein doppelter Eintrag)\n` +
         `Abbrechen = "${bauvorhaben}" wirklich neu anlegen`
       );
       if(uebernehmen){
@@ -2100,7 +2105,7 @@ document.getElementById('standortToggle').addEventListener('click', function(e){
        Rollback ausgeführt hat: */
     setTimeout(function(){ toggle.checked = neuerZustand; }, 0);
   } else {
-    alert('Falscher Admin-Code – Standort-Funktion wurde nicht geändert.');
+    TSToast.show('Falscher Admin-Code – Standort-Funktion wurde nicht geändert.', 'error');
   }
 });
 function aktualisiereMedienStatus(){
@@ -3260,12 +3265,12 @@ async function checklisteEintragHinzufuegen(){
     identEl.value = ''; bezEl.value = '';
     await ladeChecklistePanel(checklisteAktuellePosId);
   } catch(err){
-    alert('Konnte nicht hinzugefügt werden (evtl. Ident-Nr. schon in der Liste): ' + (err.message || err));
+    TSToast.show('Konnte nicht hinzugefügt werden (evtl. Ident-Nr. schon in der Liste): ' + (err.message || err), 'error');
   }
 }
 
 async function checklisteEintragEntfernen(id){
-  if(!confirm('Diese Anlage aus der Checkliste der Wartungsposition entfernen?')) return;
+  if(!(await TSConfirm.ask('Diese Anlage aus der Checkliste der Wartungsposition entfernen?', {danger:true, confirmLabel:'Entfernen'}))) return;
   try{
     const res = await fetch(`${SUPABASE_URL}/rest/v1/crm_wartungsposition_anlagen?id=eq.${id}`, {
       method: 'DELETE',
@@ -3274,7 +3279,7 @@ async function checklisteEintragEntfernen(id){
     if(!res.ok) throw new Error('HTTP ' + res.status);
     await ladeChecklistePanel(checklisteAktuellePosId);
   } catch(err){
-    alert('Entfernen fehlgeschlagen: ' + (err.message || err));
+    TSToast.show('Entfernen fehlgeschlagen: ' + (err.message || err), 'error');
   }
 }
 
