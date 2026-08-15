@@ -1,0 +1,34 @@
+/* ============================================================
+   TS-Suite · Zentrales Lade-Feedback (ts-loading.css)
+   ------------------------------------------------------------
+   Zeigt an einem Button selbst an, dass eine Aktion (Speichern,
+   Senden, Export, Löschen ...) gerade läuft: Text wird durch
+   einen kleinen Spinner ersetzt, der Button wird währenddessen
+   gesperrt (kein Doppelklick möglich).
+
+   Einbindung (im <head>, nach ts-feedback.css):
+     <link rel="stylesheet" href="ts-loading.css">
+     <script src="ts-loading.js"></script>
+   ============================================================ */
+
+.ts-loading{
+  position:relative;
+  color:transparent !important;
+  pointer-events:none;
+}
+.ts-loading::after{
+  content:"";
+  position:absolute;left:50%;top:50%;
+  width:16px;height:16px;margin:-8px 0 0 -8px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.35);
+  border-top-color:#fff;
+  animation:ts-spin .7s linear infinite;
+}
+/* Auf hellen/leeren Buttons ohne farbigen Hintergrund (z.B. ghost/outline-
+   Buttons) wäre ein weißer Spinner unsichtbar - Farbe an --ts-ink anlehnen. */
+.ts-loading[data-ts-loading-variant="ghost"]::after{
+  border-color:var(--ts-line-30, rgba(120,120,120,.35));
+  border-top-color:var(--ts-ink, #333);
+}
+@keyframes ts-spin{ to{ transform:rotate(360deg); } }

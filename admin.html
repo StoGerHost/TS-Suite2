@@ -11,6 +11,10 @@
 <title>TS Suite Werkzeuge — Admin</title>
 <link rel="stylesheet" href="ts-theme.css">
 <script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
+<link rel="stylesheet" href="ts-loading.css">
+<script src="ts-loading.js"></script>
 <style>
   :root{
     /* Werte verweisen ab jetzt auf die zentralen --ts-*-Tokens aus
@@ -122,7 +126,7 @@
   .src-lokal{background:rgba(58,123,213,.15);color:var(--accent);}
   .src-zentral{background:rgba(94,234,212,.12);color:var(--glow);}
   .src-leer{background:rgba(224,90,78,.14);color:var(--danger);}
-  .src-standard{background:rgba(233,237,242,.08);color:var(--ink-45);}
+  .src-standard{background:color-mix(in srgb, var(--ink) 8%, transparent);color:var(--ink-45);}
 
   .toggle{position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;cursor:pointer;}
   .toggle input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
@@ -237,6 +241,7 @@
     <button class="tab-btn active" data-tab="codes">Tool Mitarbeiter anlegen</button>
     <button class="tab-btn" data-tab="artikel">Artikelnummern</button>
     <button class="tab-btn" data-tab="sichtbarkeit">Sichtbarkeit</button>
+    <button class="tab-btn" data-tab="branding">Firmenlogo</button>
   </div>
 
   <!-- ═══════════ TAB: MITARBEITER (Datenbank) ═══════════ -->
@@ -306,6 +311,29 @@
       <div class="export-row">
         <button class="btn ghost" onclick="exportSichtbarkeit()">Als hersteller-sichtbar.json exportieren</button>
         <button class="btn ghost" onclick="if(confirm('Alle lokalen Sichtbarkeits-Überschreibungen auf diesem Gerät löschen?'))resetSichtbarkeitLocal()">Lokale Änderungen zurücksetzen</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════ TAB: FIRMENLOGO ═══════════ -->
+  <div class="panel" id="panel-branding">
+
+    <div class="card">
+      <h2>Firmenlogo</h2>
+      <p class="hint">Wird oben rechts auf erzeugten Angebots-PDFs eingebunden. Gilt sofort für <b>alle</b> Geräte
+        und alle Personen (liegt zentral im Storage) – nicht nur auf diesem Gerät. Empfohlen: JPG oder PNG,
+        möglichst quer, nicht zu groß (unter 500&nbsp;KB reicht für den Ausdruck völlig).</p>
+      <div id="branding-preview-wrap" style="margin:14px 0;min-height:60px;display:flex;align-items:center;">
+        <span id="branding-preview-empty" class="hint" style="margin:0;">Lädt …</span>
+        <img id="branding-preview-img" style="display:none;max-height:70px;max-width:220px;border-radius:2px;border:1px solid var(--line-30);background:#fff;padding:6px;">
+      </div>
+      <div class="export-row">
+        <label class="btn ghost" style="cursor:pointer;">
+          Logo hochladen …
+          <input type="file" id="branding-file-input" accept="image/jpeg,image/png" style="display:none;" onchange="brandingLogoUpload(this)">
+        </label>
+        <button class="btn ghost" id="branding-reset-btn" onclick="brandingLogoZuruecksetzen(this)">Logo entfernen (Text-Fallback nutzen)</button>
       </div>
     </div>
 
@@ -722,7 +750,76 @@ fetch('hersteller-sichtbar.json',{cache:'no-store'})
   .then(function(json){ SICHT_CENTRAL=json||{}; renderSichtbarkeit(); })
   .catch(function(){ renderSichtbarkeit(); });
 
-// ─── Utils ──────────────────────────────────────────────────────────────
+// ═══════════════════ FIRMENLOGO (Storage, zentral für alle Geräte) ═══════════════════
+// Feste Ablage: ein Objekt pro Mandant unter TENANT.bucketBranding/logo.
+// Ist dort nichts hochgeladen, greift beim PDF-Bauen automatisch der
+// Text-Fallback (TENANT.name) - siehe angebot-generator.html.
+function brandingLogoUrl(){
+  return TENANT.supabaseUrl + '/storage/v1/object/public/' + (TENANT.bucketBranding || 'branding') + '/logo';
+}
+function brandingHeaders(extra){
+  return Object.assign({
+    'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || TENANT.supabaseKey),
+    'apikey': TENANT.supabaseKey
+  }, extra || {});
+}
+function brandingPreviewZeigen(){
+  var img = document.getElementById('branding-preview-img');
+  var empty = document.getElementById('branding-preview-empty');
+  // Cache-Buster, damit nach einem Upload sofort das neue Bild erscheint,
+  // nicht eine evtl. vom Browser zwischengespeicherte alte Version.
+  img.onload = function(){ img.style.display = ''; empty.style.display = 'none'; };
+  img.onerror = function(){ img.style.display = 'none'; empty.style.display = ''; empty.textContent = 'Noch kein Logo hochgeladen - PDFs zeigen bis dahin den Firmennamen als Text.'; };
+  img.src = brandingLogoUrl() + '?t=' + Date.now();
+}
+brandingPreviewZeigen();
+
+async function brandingLogoUpload(input){
+  var file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){
+    TSToast.show('Datei ist größer als 2 MB - bitte kleiner speichern und erneut versuchen.', 'error');
+    input.value = '';
+    return;
+  }
+  var label = input.closest('label');
+  TSLoading.start(label, {ghost:true});
+  try{
+    var res = await fetch(brandingLogoUrl(), {
+      method: 'POST',
+      headers: brandingHeaders({ 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'true' }),
+      body: file
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    brandingPreviewZeigen();
+    TSToast.show('Logo hochgeladen ✓ Gilt ab sofort für alle Geräte.', 'ok');
+  }catch(e){
+    console.error('Logo-Upload fehlgeschlagen:', e);
+    TSToast.show('Hochladen fehlgeschlagen: ' + (e.message || e) + '. Wurde der Storage-Bucket "' + (TENANT.bucketBranding||'branding') + '" in Supabase schon angelegt (public read)?', 'error');
+  } finally {
+    TSLoading.stop(label);
+    input.value = '';
+  }
+}
+
+async function brandingLogoZuruecksetzen(btn){
+  if(!(await TSConfirm.ask('Hochgeladenes Logo entfernen? PDFs zeigen danach wieder den Firmennamen als Text.', {danger:true, confirmLabel:'Entfernen'}))) return;
+  TSLoading.start(btn, {ghost:true});
+  try{
+    var res = await fetch(brandingLogoUrl(), { method: 'DELETE', headers: brandingHeaders() });
+    // 404 zählt hier als Erfolg - dann war ohnehin schon nichts hochgeladen.
+    if(!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+    brandingPreviewZeigen();
+    TSToast.show('Logo entfernt.', 'ok');
+  }catch(e){
+    console.error('Logo entfernen fehlgeschlagen:', e);
+    TSToast.show('Entfernen fehlgeschlagen: ' + (e.message || e), 'error');
+  } finally {
+    TSLoading.stop(btn);
+  }
+}
+
+
 function esc(s){
   return String(s==null?'':s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];

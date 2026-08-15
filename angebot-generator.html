@@ -474,9 +474,10 @@ function angebotPdfErzeugen(){
   var weiter = STATE.angebotId ? Promise.resolve() : angebotSpeichernPromise();
 
   weiter
-    .then(function(){
+    .then(function(){ return ladeLogo(); })
+    .then(function(logo){
       var b = summeNeuBerechnen();
-      var doc = pdfBauen(b);
+      var doc = pdfBauen(b, logo);
       var blob = doc.output('blob');
       var pfad = STATE.kunde.id + '/' + STATE.angebotsnummer + '.pdf';
       return fetch(TENANT.supabaseUrl + '/storage/v1/object/' + TENANT.bucketAngebote + '/' + pfad, {
@@ -540,18 +541,56 @@ function angebotSpeichernPromise(){
   }).then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); });
 }
 
-function pdfBauen(summe){
+// Lädt das Firmenlogo für die PDF-Kopfzeile, in dieser Reihenfolge:
+// 1) zentral in Supabase Storage hochgeladenes Logo (siehe Admin -> Firmenlogo)
+// 2) TENANT.logoDataUrl aus config.js (Werksvorgabe pro Mandant)
+// 3) kein Logo -> pdfBauen() zeichnet dann wie bisher den Firmennamen als Text
+function ladeLogo(){
+  var bucket = TENANT.bucketBranding || 'branding';
+  var url = TENANT.supabaseUrl + '/storage/v1/object/public/' + bucket + '/logo?t=' + Date.now();
+  return fetch(url, {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('kein Logo im Storage'); return r.blob(); })
+    .then(function(blob){
+      return new Promise(function(resolve, reject){
+        var reader = new FileReader();
+        reader.onload = function(){ resolve(reader.result); };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    })
+    .catch(function(){ return TENANT.logoDataUrl || null; })
+    .then(function(dataUrl){
+      if(!dataUrl) return null;
+      return new Promise(function(resolve){
+        var img = new Image();
+        img.onload = function(){ resolve({ dataUrl: dataUrl, w: img.naturalWidth, h: img.naturalHeight }); };
+        img.onerror = function(){ resolve(null); }; // z.B. beschädigte Bilddatei -> Text-Fallback
+        img.src = dataUrl;
+      });
+    });
+}
+
+function pdfBauen(summe, logo){
   var jsPDFCtor = window.jspdf.jsPDF;
   var doc = new jsPDFCtor({ unit: 'mm', format: 'a4' });
   var pageW = 210, margin = 16, usableW = pageW - margin*2;
   var y = 18;
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(15);
-  doc.text(TENANT.name || 'TS-Suite', pageW - margin, y, { align: 'right' });
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  y += 6;
-  doc.text(TENANT.untertitel || '', pageW - margin, y, { align: 'right' });
-  y += 12;
+  if(logo){
+    // Logo statt Textname oben rechts - in eine feste Box eingepasst
+    // (Seitenverhältnis bleibt erhalten, wird nur verkleinert falls nötig).
+    var maxW = 50, maxH = 20;
+    var scale = Math.min(maxW/logo.w, maxH/logo.h, 1);
+    var lw = logo.w*scale, lh = logo.h*scale;
+    var format = /^data:image\/png/i.test(logo.dataUrl) ? 'PNG' : 'JPEG';
+    doc.addImage(logo.dataUrl, format, pageW - margin - lw, 10, lw, lh);
+  } else {
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(TENANT.name || 'TS-Suite', pageW - margin, y, { align: 'right' });
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.text(TENANT.untertitel || '', pageW - margin, y+6, { align: 'right' });
+  }
+  y += 18; // gleicher Abstand wie bisher, egal ob Logo oder Text gezeichnet wurde
 
   doc.setFont('helvetica','bold'); doc.setFontSize(18);
   doc.text('Angebot', margin, y);
@@ -621,7 +660,10 @@ function pdfBauen(summe){
   // Summenblock rechtsbündig
   function summenzeile(label, wert, fett){
     doc.setFont('helvetica', fett?'bold':'normal'); doc.setFontSize(fett?11:9.5);
-    doc.text(label, pageW - margin - 55, y);
+    // Beschriftung rechtsbündig an einem festen Punkt, wächst bei Bedarf nach
+    // links - so kollidiert eine lange/fette Bezeichnung (z.B. "Gesamtsumme
+    // (brutto)") nie mit dem rechts danebenstehenden Betrag.
+    doc.text(label, pageW - margin - 32, y, { align: 'right' });
     doc.text(wert, pageW - margin, y, { align: 'right' });
     y += fett ? 7 : 5.5;
   }
