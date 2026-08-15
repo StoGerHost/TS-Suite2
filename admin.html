@@ -755,7 +755,14 @@ fetch('hersteller-sichtbar.json',{cache:'no-store'})
 // Ist dort nichts hochgeladen, greift beim PDF-Bauen automatisch der
 // Text-Fallback (TENANT.name) - siehe angebot-generator.html.
 function brandingLogoUrl(){
+  // Nur zum ANZEIGEN (öffentlicher Lese-Endpunkt).
   return TENANT.supabaseUrl + '/storage/v1/object/public/' + (TENANT.bucketBranding || 'branding') + '/logo';
+}
+function brandingLogoWriteUrl(){
+  // Zum HOCHLADEN/ERSETZEN/LÖSCHEN - Supabase Storage nutzt dafür einen
+  // anderen Pfad ohne "/public/" (der ist ausschließlich zum Lesen da).
+  // Genau das fehlte vorher und führte zum HTTP 400 beim Hochladen.
+  return TENANT.supabaseUrl + '/storage/v1/object/' + (TENANT.bucketBranding || 'branding') + '/logo';
 }
 function brandingHeaders(extra){
   return Object.assign({
@@ -785,7 +792,7 @@ async function brandingLogoUpload(input){
   var label = input.closest('label');
   TSLoading.start(label, {ghost:true});
   try{
-    var res = await fetch(brandingLogoUrl(), {
+    var res = await fetch(brandingLogoWriteUrl(), {
       method: 'POST',
       headers: brandingHeaders({ 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'true' }),
       body: file
@@ -795,7 +802,7 @@ async function brandingLogoUpload(input){
     TSToast.show('Logo hochgeladen ✓ Gilt ab sofort für alle Geräte.', 'ok');
   }catch(e){
     console.error('Logo-Upload fehlgeschlagen:', e);
-    TSToast.show('Hochladen fehlgeschlagen: ' + (e.message || e) + '. Wurde der Storage-Bucket "' + (TENANT.bucketBranding||'branding') + '" in Supabase schon angelegt (public read)?', 'error');
+    TSToast.show('Hochladen fehlgeschlagen: ' + (e.message || e) + '. Bist du eingeloggt? Nur eingeloggte Nutzer dürfen Logos hochladen.', 'error');
   } finally {
     TSLoading.stop(label);
     input.value = '';
@@ -806,7 +813,7 @@ async function brandingLogoZuruecksetzen(btn){
   if(!(await TSConfirm.ask('Hochgeladenes Logo entfernen? PDFs zeigen danach wieder den Firmennamen als Text.', {danger:true, confirmLabel:'Entfernen'}))) return;
   TSLoading.start(btn, {ghost:true});
   try{
-    var res = await fetch(brandingLogoUrl(), { method: 'DELETE', headers: brandingHeaders() });
+    var res = await fetch(brandingLogoWriteUrl(), { method: 'DELETE', headers: brandingHeaders() });
     // 404 zählt hier als Erfolg - dann war ohnehin schon nichts hochgeladen.
     if(!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
     brandingPreviewZeigen();
