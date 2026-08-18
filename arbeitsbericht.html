@@ -475,6 +475,9 @@
       </div>
     </div>
 
+    <label>VAT-Nummer <span style="color:var(--muted);font-weight:normal;">(optional, aus CRM übernommen)</span></label>
+    <input type="text" id="fVat" placeholder="z. B. VAT0655021">
+
     <label>Techniker</label>
     <div style="display:flex;align-items:center;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 11px;">
       <span id="fTechniker" class="mono" style="flex:1;color:var(--text);">–</span>
@@ -723,6 +726,7 @@ function wendeAuftragAn(daten){
   if(daten.telefon)      document.getElementById('fTelefon').value = daten.telefon;
   if(daten.email)        document.getElementById('fEmail').value = daten.email;
   if(daten.hinweis)      document.getElementById('fHinweis').value = daten.hinweis;
+  if(daten.vat_nummer)   document.getElementById('fVat').value = daten.vat_nummer;
   importierteKundeId = daten.kunde_id || null;
   // Rückwärtskompatibel: alte Links/Auftragsdateien kennen nur
   // wartungsposition_id, neue liefern vorgang_typ + vorgang_id.
@@ -762,6 +766,7 @@ async function handleAuftragsdatei(file){
     email: p.get('email') || null,
     hinweis: p.get('hinweis') || null,
     kunde_id: p.get('kunde_id') || null,
+    vat_nummer: p.get('vat_nummer') || null,
     vorgang_typ: p.get('vorgang_typ') || null,
     vorgang_id: p.get('vorgang_id') || null,
     wartungsposition_id: p.get('wartungsposition_id') || null // Legacy-Fallback
@@ -1187,6 +1192,7 @@ async function generateReport(){
       ['Kunde', val('fKunde')],
       ['Bauvorhaben', val('fBauvorhaben')],
       ['Angebots-/Auftragsnr.', val('fAngebotsnr')],
+      ['VAT-Nummer', val('fVat')],
       ['Datum', val('fDatum')],
       ['Techniker', val('fTechniker')],
     ];
@@ -1339,6 +1345,7 @@ async function generateReport(){
     let vorgang_typ = null, vorgang_id = null;
     if(vorgangWert.startsWith('wartung:')) { vorgang_typ = 'wartungsposition'; vorgang_id = vorgangWert.slice(8); }
     else if(vorgangWert.startsWith('wv:')) { vorgang_typ = 'wiedervorlage'; vorgang_id = vorgangWert.slice(3); }
+    else if(vorgangWert.startsWith('angebot:')) { vorgang_typ = 'angebot'; vorgang_id = vorgangWert.slice(8); }
     const reportData = {
       angebotsnr: val('fAngebotsnr') || null,
       bauvorhaben: val('fBauvorhaben') || null,
@@ -1346,6 +1353,7 @@ async function generateReport(){
       techniker: val('fTechniker') || null,
       vorgang_typ,
       vorgang_id,
+      vat_nummer: val('fVat') || null,
       wartungsposition_id: vorgang_typ === 'wartungsposition' ? vorgang_id : null,
       daten: {
         lieferanschrift: val('fLieferanschrift') || null,
@@ -1709,6 +1717,7 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
 
   let wartungspositionen = [];
   let wiedervorlagen = [];
+  let angebote = [];
 
   try{
     // Positionen hängen nicht direkt am Kunden, sondern über vertrag_id am
@@ -1769,6 +1778,19 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
     console.error('Wiedervorlagen konnten nicht geladen werden:', err);
   }
 
+  try{
+    // Angenommene Angebote, die bereits als Auftrag an Trello übergeben
+    // wurden — analog zu den Wiedervorlagen oben nur die relevanten,
+    // damit die Liste nicht mit alten/offenen Angeboten zugemüllt wird.
+    const angeboteRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_angebote?kunde_id=eq.${kundeId}&status=eq.angenommen&trello_card_id=not.is.null&select=id,bezeichnung,vat_nummer,erstellt_am&order=erstellt_am.desc`,
+      { headers: supabaseHeaders() }
+    );
+    if(angeboteRes.ok) angebote = await angeboteRes.json();
+  } catch(err){
+    console.error('Angebote konnten nicht geladen werden:', err);
+  }
+
   if(wartungspositionen.length){
     const grp = document.createElement('optgroup');
     grp.label = 'Wartungspositionen';
@@ -1793,9 +1815,21 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
     });
     sel.appendChild(grp);
   }
+  if(angebote.length){
+    const grp = document.createElement('optgroup');
+    grp.label = 'Angenommene Angebote';
+    angebote.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = 'angebot:' + a.id;
+      opt.dataset.vat = a.vat_nummer || '';
+      opt.textContent = a.bezeichnung + (a.vat_nummer ? ` · VAT ${a.vat_nummer}` : '');
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
 
   if(vorauswahlTyp && vorauswahlId){
-    const wert = (vorauswahlTyp === 'wartungsposition' ? 'wartung:' : 'wv:') + vorauswahlId;
+    const wert = (vorauswahlTyp === 'wartungsposition' ? 'wartung:' : vorauswahlTyp === 'angebot' ? 'angebot:' : 'wv:') + vorauswahlId;
     if([...sel.options].some(o => o.value === wert)) sel.value = wert;
     if(vorauswahlTyp === 'wartungsposition' && typeof ladeChecklistePanel === 'function'){
       ladeChecklistePanel(vorauswahlId);
@@ -3297,6 +3331,14 @@ document.getElementById('fVorgang').addEventListener('change', (e) => {
     checklisteAktuellePosId = null;
     checklisteAnlagen = [];
     document.getElementById('checklistePanel').style.display = 'none';
+  }
+  // VAT-Nummer des gewählten Angebots übernehmen (überschreibt eine
+  // manuell eingetragene VAT nicht rückstandslos, aber nur, wenn dort noch
+  // nichts stand - manuelle Eingaben bleiben also Vorrang).
+  const gewaehlt = e.target.selectedOptions[0];
+  const vat = gewaehlt && gewaehlt.dataset ? gewaehlt.dataset.vat : '';
+  if(vat && !document.getElementById('fVat').value.trim()){
+    document.getElementById('fVat').value = vat;
   }
 });
 

@@ -699,9 +699,14 @@ async function zeigKundeMaster(id){
               ${a.status==='angenommen'?'✓ Angenommen':a.status==='abgelehnt'?'✕ Abgelehnt':'○ Offen'}
               ${angebotBetragText(a)} · ${datumFmt(a.erstellt_am)}</div>
             ${angebotRabattZeilen(a)}
+            ${a.vat_nummer ? `<div class="datum mono" style="color:var(--dim)">VAT: ${esc(a.vat_nummer)}</div>` : ''}
+            ${a.an_trello_gesendet_am ? `<div class="datum" style="color:var(--tuerkis)">✓ An Trello übergeben · ${datumFmt(a.an_trello_gesendet_am)}</div>` : ''}
           </div>
           ${a.datei_url ? `<a href="${a.datei_url}" target="_blank" rel="noopener"
             style="align-self:center;font-size:1.2rem;text-decoration:none;padding:4px 6px">📎</a>` : ''}
+          ${a.status==='angenommen' ? `<button class="trello-btn ${a.an_trello_gesendet_am ? 'gesendet' : ''}"
+            style="align-self:center" onclick="angebotAnTrello('${a.id}')">
+            ↗ ${a.an_trello_gesendet_am ? 'Erneut senden' : 'An Trello senden'}</button>` : ''}
           <button style="align-self:center;color:var(--blau);font-size:2.4rem;line-height:1;padding:4px 6px"
             onclick="modalAngebotBearbeiten('${a.id}')">✎</button>
         </div>`).join('')
@@ -1020,6 +1025,8 @@ function modalNeuesAngebot(kundeId){
     <input id="agBetrag" type="number" inputmode="decimal" step="0.01">
     <label>Rabatt (%, optional)</label>
     <input id="agRabatt" type="number" inputmode="decimal" step="0.1" min="0" max="100" placeholder="0">
+    <label>VAT-Nummer <span style="color:var(--dim);font-weight:normal;">(optional, verknüpft mit gevis/Trello)</span></label>
+    <input id="agVat" placeholder="z.B. VAT0655021">
     <label>Status</label>
     <select id="agStatus">
       <option value="offen" selected>Offen</option>
@@ -1052,6 +1059,7 @@ async function speichereAngebot(kundeId){
       bezeichnung,
       betrag: $('#agBetrag').value ? parseFloat($('#agBetrag').value.replace(',', '.')) : null,
       rabatt_prozent: $('#agRabatt').value ? parseFloat($('#agRabatt').value.replace(',', '.')) : null,
+      vat_nummer: $('#agVat').value.trim() || null,
       status: $('#agStatus').value,
       datei_url, datei_name
     })});
@@ -1069,6 +1077,8 @@ function modalAngebotBearbeiten(angebotId){
     <input id="agBetrag" type="number" inputmode="decimal" step="0.01" value="${a.betrag != null ? a.betrag : ''}">
     <label>Rabatt (%, optional)</label>
     <input id="agRabatt" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="${a.rabatt_prozent != null ? a.rabatt_prozent : ''}">
+    <label>VAT-Nummer <span style="color:var(--dim);font-weight:normal;">(optional, verknüpft mit gevis/Trello)</span></label>
+    <input id="agVat" value="${esc(a.vat_nummer)}" placeholder="z.B. VAT0655021">
     <label>Status</label>
     <select id="agStatus">
       <option value="offen" ${a.status==='offen'?'selected':''}>Offen</option>
@@ -1105,6 +1115,7 @@ async function speichereAngebotBearbeiten(angebotId){
       bezeichnung,
       betrag: $('#agBetrag').value ? parseFloat($('#agBetrag').value.replace(',', '.')) : null,
       rabatt_prozent: $('#agRabatt').value ? parseFloat($('#agRabatt').value.replace(',', '.')) : null,
+      vat_nummer: $('#agVat').value.trim() || null,
       status: $('#agStatus').value,
       datei_url, datei_name
     })});
@@ -1487,6 +1498,112 @@ async function wvAnTrelloAusfuehren(wvId, gewaehlteBauvorhabenId){
     route();
   }catch(e){ toast('Fehler: ' + e.message.slice(0,80)); }
 }
+/* --- Angenommenes Angebot als Arbeitsauftrag an Trello übergeben ---
+   Gleicher Mechanismus wie oben bei Wiedervorlagen (wvAnTrello*), nur dass
+   ein Angebot nur mit dem Kunden verknüpft ist, nicht mit einem bestimmten
+   Bauvorhaben — bei mehreren Bauvorhaben muss daher genauso nachgefragt
+   werden, welches auf der Trello-Karte stehen soll. */
+async function angebotAnTrello(angebotId){
+  const a = kundeAngeboteDaten.find(x => String(x.id) === String(angebotId));
+  if(!a) return;
+  await holeKontakte();
+  const kandidaten = cache.kontakte.filter(k => String(k.kunde_id) === String(a.kunde_id));
+  if(kandidaten.length > 1){
+    modalBauvorhabenWahlAngebot(angebotId, kandidaten);
+    return;
+  }
+  await angebotAnTrelloAusfuehren(angebotId, null);
+}
+function modalBauvorhabenWahlAngebot(angebotId, kandidaten){
+  modal(`
+    <h2>Welches Bauvorhaben?</h2>
+    <p style="font-size:.85rem;color:var(--dim);margin-top:4px">Dieser Kunde hat mehrere Bauvorhaben —
+      welches soll auf der Trello-Karte und im Auftrag stehen?</p>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-family:inherit;
+        font-size:.9rem;color:var(--text);padding:10px;border:1px solid var(--border);border-radius:10px">
+        <input type="radio" name="bvWahlAngebot" value="" checked style="width:20px;height:20px;min-height:0">
+        Kein bestimmtes Bauvorhaben (allgemein)
+      </label>
+      ${kandidaten.map(k => `
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-family:inherit;
+        font-size:.9rem;color:var(--text);padding:10px;border:1px solid var(--border);border-radius:10px">
+        <input type="radio" name="bvWahlAngebot" value="${k.id}" style="width:20px;height:20px;min-height:0">
+        ${esc(feld(k,'name') || '(ohne Namen)')}
+      </label>`).join('')}
+    </div>
+    <div class="btnzeile">
+      <button class="btn sekundaer" onclick="modalZu()">Abbrechen</button>
+      <button class="btn primaer" onclick="waehleBauvorhabenUndSendeAngebot('${angebotId}')">Weiter</button>
+    </div>`);
+}
+async function waehleBauvorhabenUndSendeAngebot(angebotId){
+  const gewaehlt = document.querySelector('input[name="bvWahlAngebot"]:checked')?.value || null;
+  modalZu();
+  await angebotAnTrelloAusfuehren(angebotId, gewaehlt || null);
+}
+async function angebotAnTrelloAusfuehren(angebotId, gewaehlteBauvorhabenId){
+  const a = kundeAngeboteDaten.find(x => String(x.id) === String(angebotId));
+  if(!a) return;
+  const b = gewaehlteBauvorhabenId ? bauvorhabenVon(gewaehlteBauvorhabenId) : null;
+  const ku = kundeVon(a.kunde_id);
+  const titelTeile = [ku?.name, b ? feld(b,'name') : null, a.bezeichnung, a.vat_nummer].filter(Boolean);
+  const name = titelTeile.join(', ');
+  const telefon = (ku && ku.telefon) || (b && feld(b,'telefon')) || null;
+  const email = (ku && ku.email) || (b && feld(b,'email')) || null;
+  const hinweisText = ['Angebot: ' + a.bezeichnung, angebotBetragText(a).replace(' · ', '') || null,
+    a.vat_nummer ? 'VAT: ' + a.vat_nummer : null].filter(Boolean).join('\n\n');
+  const kontaktZeile = [telefon ? 'Tel: ' + telefon : null, email ? 'E-Mail: ' + email : null].filter(Boolean).join(' · ');
+  const berichtParams = new URLSearchParams();
+  if(ku?.name) berichtParams.set('kunde', ku.name);
+  if(b) berichtParams.set('bauvorhaben', feld(b,'name') || '');
+  if(b && feld(b,'ap')) berichtParams.set('ansprechpartner', feld(b,'ap'));
+  if(telefon) berichtParams.set('telefon', telefon);
+  if(email) berichtParams.set('email', email);
+  if(hinweisText) berichtParams.set('hinweis', hinweisText);
+  if(ku?.id) berichtParams.set('kunde_id', ku.id);
+  if(a.vat_nummer) berichtParams.set('vat_nummer', a.vat_nummer);
+  berichtParams.set('vorgang_typ', 'angebot');
+  berichtParams.set('vorgang_id', angebotId);
+  const berichtQuery = berichtParams.toString().replace(/\(/g, '%28').replace(/\)/g, '%29');
+  const berichtLink = new URL('arbeitsbericht.html', location.href).href + `?${berichtQuery}`;
+  const desc = [hinweisText, kontaktZeile, `[Arbeitsbericht ausgefüllt öffnen](${berichtLink})`].filter(Boolean).join('\n\n');
+  const auftrag = {
+    typ: 'ts-auftrag',
+    version: 1,
+    erstellt_am: new Date().toISOString(),
+    kunde_id: ku ? ku.id : null,
+    kunde: ku ? ku.name : null,
+    kontakt_id: b ? b.id : null,
+    bauvorhaben: b ? (feld(b,'name') || null) : null,
+    ansprechpartner: b ? (feld(b,'ap') || null) : null,
+    telefon,
+    email,
+    vat_nummer: a.vat_nummer || null,
+    hinweis: hinweisText || null
+  };
+  try{
+    const pdfBase64 = auftragPdfBase64(auftrag);
+    const res = await fetch(`${KONFIG.SUPABASE_URL}/functions/v1/create-trello-card`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || KONFIG.SUPABASE_KEY),
+        'apikey': KONFIG.SUPABASE_KEY
+      },
+      body: JSON.stringify({ name, desc, auftrag, pdfBase64 })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    await sb(`${KONFIG.TAB_ANGEBOTE}?id=eq.${angebotId}`, { method:'PATCH', body: JSON.stringify({
+      an_trello_gesendet_am: new Date().toISOString(),
+      trello_card_id: data.id || null
+    })});
+    toast('Trello-Karte angelegt ✓');
+    route();
+  }catch(e){ toast('Fehler: ' + e.message.slice(0,80)); }
+}
+
 async function wvToggle(id, erledigt){
   await sb(`${KONFIG.TAB_WV}?id=eq.${id}`, { method:'PATCH',
     body: JSON.stringify({ erledigt, erledigt_am: erledigt ? new Date().toISOString() : null })});
