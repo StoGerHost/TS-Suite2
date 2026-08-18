@@ -1822,7 +1822,7 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
       const opt = document.createElement('option');
       opt.value = 'angebot:' + a.id;
       opt.dataset.vat = a.vat_nummer || '';
-      opt.textContent = a.bezeichnung + (a.vat_nummer ? ` · VAT ${a.vat_nummer}` : '');
+      opt.textContent = a.bezeichnung + (a.vat_nummer ? ` · ${a.vat_nummer}` : '');
       grp.appendChild(opt);
     });
     sel.appendChild(grp);
