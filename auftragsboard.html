@@ -183,7 +183,11 @@ let MA_FEHLER = null;
 async function ladeMitarbeiter(){
   MA_FEHLER = null;
   try{
-    const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`, { headers: supabaseHeaders() });
+    // cache:'no-store' + Zeitstempel als Cache-Buster: erzwingt eine
+    // wirklich frische Anfrage, unabhängig von zwischengespeicherten
+    // (evtl. alten/fehlgeschlagenen) Antworten auf dieselbe URL.
+    const url = `${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1&_=${Date.now()}`;
+    const res = await fetch(url, { headers: supabaseHeaders(), cache: 'no-store' });
     if(res.ok){
       MA_LISTE = await res.json();
       renderTechnikerFilter();
