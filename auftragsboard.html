@@ -115,6 +115,9 @@ label{display:block;font-size:.75rem;color:var(--dim);margin:12px 0 5px;text-tra
 <div class="toprow">
   <button class="btn primaer" onclick="modalNeuerAuftrag()">+ Neuer Auftrag</button>
   <button class="btn ghost" onclick="ladeAuftraege()">↻ Aktualisieren</button>
+  <select id="technikerFilter" style="flex:1;min-width:140px;max-width:220px;" onchange="renderBoard()">
+    <option value="">Alle Techniker</option>
+  </select>
 </div>
 
 <div class="board" id="board"></div>
@@ -177,9 +180,24 @@ async function ladeKunden(ids){
 }
 async function ladeMitarbeiter(){
   try{
-    const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter`, { headers: supabaseHeaders() });
-    if(res.ok) MA_LISTE = (await res.json()).filter(m => m.aktiv);
+    const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`, { headers: supabaseHeaders() });
+    if(res.ok){
+      MA_LISTE = await res.json();
+      renderTechnikerFilter();
+    } else {
+      console.error('Mitarbeiter laden fehlgeschlagen: HTTP ' + res.status);
+    }
   }catch(e){ console.error('Mitarbeiter laden fehlgeschlagen:', e); }
+}
+
+function renderTechnikerFilter(){
+  const sel = $('#technikerFilter');
+  if(!sel) return;
+  const bisher = sel.value;
+  sel.innerHTML = '<option value="">Alle Techniker</option>' +
+    MA_LISTE.map(m => `<option value="${esc(m.kuerzel)}">${esc(m.name || m.kuerzel)}</option>`).join('') +
+    '<option value="__keiner__">Ohne Zuordnung</option>';
+  if([...sel.options].some(o => o.value === bisher)) sel.value = bisher;
 }
 
 async function ladeAuftraege(){
@@ -208,8 +226,13 @@ async function ladeAuftraege(){
 }
 
 function renderBoard(){
+  const filterWert = $('#technikerFilter') ? $('#technikerFilter').value : '';
+  const gefiltert = !filterWert ? AUFTRAEGE
+    : filterWert === '__keiner__' ? AUFTRAEGE.filter(a => !a._techniker.length)
+    : AUFTRAEGE.filter(a => a._techniker.includes(filterWert));
+
   $('#board').innerHTML = SPALTEN.map(s => {
-    const liste = AUFTRAEGE.filter(a => a.status === s.status);
+    const liste = gefiltert.filter(a => a.status === s.status);
     return `<div class="spalte">
       <div class="spalte__kopf"><span class="spalte__titel">${s.titel}</span><span class="spalte__count">${liste.length}</span></div>
       <div class="spalte__body">
