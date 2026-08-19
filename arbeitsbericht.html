@@ -1173,6 +1173,22 @@ document.getElementById('keinAbnehmer').addEventListener('change', e => {
 document.getElementById('genBtn').addEventListener('click', generateReport);
 
 async function generateReport(){
+  // Prüfung: Wurde für diesen Wartungseinsatz auch ein Wartungsprotokoll
+  // ausgefüllt (Abschnitt "Wartungsgenerator")? Harte Sperre wäre riskant
+  // (es kann Ausnahmefälle geben) - daher Warnung mit Möglichkeit, trotzdem
+  // fortzufahren, statt den Bericht komplett zu blockieren.
+  const vorgangWertCheck = val('fVorgang') || '';
+  if(vorgangWertCheck.startsWith('wartung:')){
+    const hatProtokoll = wgState.instances.some(i => i.mode === 'wartung');
+    if(!hatProtokoll){
+      const weiter = await TSConfirm.ask(
+        'Für diesen Wartungseinsatz wurde noch kein Wartungsprotokoll ausgefüllt (Abschnitt "Wartungsgenerator" weiter oben). Trotzdem als Bericht speichern?',
+        { confirmLabel: 'Trotzdem speichern', cancelLabel: 'Zurück zum Protokoll' }
+      );
+      if(!weiter) return;
+    }
+  }
+
   const genStatus = document.getElementById('genStatus');
   const btn = document.getElementById('genBtn');
   btn.disabled = true;
