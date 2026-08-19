@@ -110,6 +110,7 @@ label{display:block;font-size:.75rem;color:var(--dim);margin:12px 0 5px;text-tra
 <header>
   <h1>Auftragsboard</h1>
   <p>Aufträge, Techniker-Zuordnung und Datei-Anhänge · ergänzt Trello, ersetzt es noch nicht</p>
+  <p id="authDiag" style="margin-top:8px;font:600 .72rem var(--mono);padding:6px 10px;border-radius:8px;display:inline-block;"></p>
 </header>
 
 <div class="toprow">
@@ -451,6 +452,37 @@ async function dateiLoeschen(dokumentId, pfad, btn){
     ladeAuftraege();
   }catch(e){ toast('Löschen fehlgeschlagen: ' + e.message.slice(0,80)); }
 }
+
+function zeigeAuthDiagnose(){
+  const el = $('#authDiag');
+  if(!el) return;
+  const token = window.TSAuth && TSAuth.getToken ? TSAuth.getToken() : undefined;
+  if(!window.TSAuth){
+    el.textContent = '⚠️ ts-auth.js nicht geladen';
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+    return;
+  }
+  if(!token){
+    el.textContent = '⚠️ Kein Token gefunden (TSAuth.getToken() = leer) — Schreibzugriffe werden fehlschlagen';
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+    return;
+  }
+  try{
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    const ablauf = payload.exp ? new Date(payload.exp * 1000) : null;
+    const abgelaufen = ablauf && ablauf < new Date();
+    el.textContent = (abgelaufen ? '⚠️ Token ABGELAUFEN' : '✓ Angemeldet') +
+      ' · Rolle: ' + (payload.role || '?') +
+      ' · ' + (payload.email || '') +
+      (ablauf ? ' · gültig bis ' + ablauf.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '');
+    el.style.background = abgelaufen ? 'rgba(224,93,93,.15)' : 'rgba(93,201,138,.15)';
+    el.style.color = abgelaufen ? 'var(--rot)' : 'var(--gruen)';
+  }catch(e){
+    el.textContent = '⚠️ Token vorhanden, aber nicht lesbar: ' + e.message;
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+  }
+}
+zeigeAuthDiagnose();
 
 ladeMitarbeiter();
 ladeAuftraege();
