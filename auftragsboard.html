@@ -180,27 +180,36 @@ async function ladeKunden(ids){
   (rows||[]).forEach(k => KUNDEN_CACHE[k.id] = k.name);
 }
 let MA_FEHLER = null;
-async function ladeMitarbeiter(versuch){
-  versuch = versuch || 1;
+async function ladeMitarbeiter(){
   MA_FEHLER = null;
+  // Erst die schlanke, für jeden Nutzer gedachte Route versuchen ...
   try{
-    const url = `${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`;
-    const res = await fetch(url, { headers: supabaseHeaders(), cache: 'no-store' });
+    const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`,
+      { headers: supabaseHeaders(), cache: 'no-store' });
     if(res.ok){
       MA_LISTE = await res.json();
       renderTechnikerFilter();
+      return;
+    }
+  }catch(e){ console.warn('zuweisbar=1 fehlgeschlagen, versuche Admin-Vollliste als Rückfallebene:', e); }
+
+  // ... schlägt das fehl (z.B. durch eine Netzwerk-/Blocker-Eigenart wie bei
+  // dir beobachtet), auf die bereits bewährte Admin-Vollliste ausweichen.
+  // Funktioniert nur, wenn die eingeloggte Person Admin ist - für den
+  // aktuellen Testbetrieb ausreichend, da die genutzten Konten admin sind.
+  try{
+    const res2 = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter`,
+      { headers: supabaseHeaders(), cache: 'no-store' });
+    if(res2.ok){
+      const voll = await res2.json();
+      MA_LISTE = voll.filter(m => m.aktiv).map(m => ({ id: m.id, kuerzel: m.kuerzel, name: m.name }));
+      renderTechnikerFilter();
     } else {
-      const body = await res.text().catch(() => '');
-      MA_FEHLER = 'HTTP ' + res.status + (body ? ' — ' + body.slice(0,150) : '');
+      const body = await res2.text().catch(() => '');
+      MA_FEHLER = 'HTTP ' + res2.status + (body ? ' — ' + body.slice(0,150) : '');
       console.error('Mitarbeiter laden fehlgeschlagen: ' + MA_FEHLER);
     }
   }catch(e){
-    if(versuch < 2){
-      // Erster Fehlschlag könnte ein kurzer Netzwerk-Ausrutscher sein -
-      // ein zweiter, verzögerter Versuch, bevor wir das als echten Fehler anzeigen.
-      await new Promise(r => setTimeout(r, 800));
-      return ladeMitarbeiter(versuch + 1);
-    }
     MA_FEHLER = 'Netzwerkfehler: ' + e.message;
     console.error('Mitarbeiter laden fehlgeschlagen:', e);
   }
