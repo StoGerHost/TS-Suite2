@@ -22,6 +22,13 @@
      (z. B. ZuKo-Kabelplan), die bei einem Themewechsel neu
      gezeichnet werden müssen.
 
+   Iframe-Verhalten (z.B. kunden-center.html):
+     Läuft die Seite in einem <iframe> (window.self !== window.top),
+     wird KEIN eigener Umschalt-Button gebaut - die einbettende Hülle
+     stellt genau einen Button für alle eingebetteten Tools bereit.
+     Ein Wechsel dort wird per localStorage-"storage"-Event automatisch
+     an alle bereits geladenen Iframes weitergereicht (kein Reload nötig).
+
    Migrationshinweis für bestehende Tools:
      Diese Datei kollidiert mit nichts Bestehendem (eigene
      --ts-*-Variablen, eigener Button, eigener localStorage-Key
@@ -44,6 +51,9 @@
   var LEGACY_KEY = 'tuersuite_theme';
   var DEFAULT_THEME = 'dark'; // bewusst fest, nicht nach OS-Einstellung –
                                // entspricht dem bisherigen Look der meisten Tools
+  var inIframe = (function () {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  })();
 
   function readStored() {
     try {
@@ -79,9 +89,28 @@
       localStorage.setItem(KEY, theme);
     } catch (e) { /* ignore */ }
 
+    nudgeRepaint();
+
     document.dispatchEvent(new CustomEvent('tstheme:change', {
       detail: { theme: theme }
     }));
+  }
+
+  // WebKit-Darstellungsfehler: position:sticky/fixed-Elemente mit
+  // color-mix()-Hintergrund (z.B. Backbars, untere Tab-Leisten, Fußleisten)
+  // werden bei einer reinen CSS-Custom-Property-Änderung (data-theme wechselt,
+  // --ts-bg etc. ändern sich) manchmal nicht neu gezeichnet, obwohl der Wert
+  // korrekt ist - sichtbar z.B. als "hängengebliebene" dunkle Kopf-/Fußleiste
+  // nach dem Umschalten auf Hell. Kurzes Anstoßen einer Compositing-Eigenschaft
+  // erzwingt zuverlässig ein Neuzeichnen.
+  function nudgeRepaint() {
+    var els = document.querySelectorAll(
+      '.ts-backbar, nav, header, footer, footer.toolbar, .summary-bar, #ts-toast, .toast'
+    );
+    els.forEach(function (el) {
+      el.style.transform = 'translateZ(0)';
+      requestAnimationFrame(function () { el.style.transform = ''; });
+    });
   }
 
   // Theme SOFORT setzen (synchron, vor DOMContentLoaded), damit die Seite
@@ -116,11 +145,25 @@
     render();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', buildToggle);
-  } else {
-    buildToggle();
+  // In Iframes keinen eigenen Button bauen - die einbettende Hülle stellt
+  // bereits einen für alle eingebetteten Tools gemeinsam bereit.
+  if (!inIframe) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', buildToggle);
+    } else {
+      buildToggle();
+    }
   }
+
+  // Wechselt jemand das Theme in einem anderen, gleichzeitig offenen Fenster/
+  // Tab/Iframe derselben Seite, kommt hier ein "storage"-Event an (Browser-
+  // Standardverhalten, kein Zutun nötig) - so bleiben z.B. mehrere in
+  // kunden-center.html eingebettete Tools ohne Neuladen synchron.
+  window.addEventListener('storage', function (e) {
+    if (e.key === KEY && (e.newValue === 'dark' || e.newValue === 'light')) {
+      apply(e.newValue, { animate: true });
+    }
+  });
 
   window.TSTheme = {
     get: function () {
