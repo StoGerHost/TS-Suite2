@@ -179,16 +179,20 @@ async function ladeKunden(ids){
   const rows = await sb(`kunden?id=in.(${fehlend.join(',')})&select=id,name`);
   (rows||[]).forEach(k => KUNDEN_CACHE[k.id] = k.name);
 }
+let MA_FEHLER = null;
 async function ladeMitarbeiter(){
+  MA_FEHLER = null;
   try{
     const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`, { headers: supabaseHeaders() });
     if(res.ok){
       MA_LISTE = await res.json();
       renderTechnikerFilter();
     } else {
-      console.error('Mitarbeiter laden fehlgeschlagen: HTTP ' + res.status);
+      const body = await res.text().catch(() => '');
+      MA_FEHLER = 'HTTP ' + res.status + (body ? ' — ' + body.slice(0,150) : '');
+      console.error('Mitarbeiter laden fehlgeschlagen: ' + MA_FEHLER);
     }
-  }catch(e){ console.error('Mitarbeiter laden fehlgeschlagen:', e); }
+  }catch(e){ MA_FEHLER = 'Netzwerkfehler: ' + e.message; console.error('Mitarbeiter laden fehlgeschlagen:', e); }
 }
 
 function renderTechnikerFilter(){
@@ -327,7 +331,7 @@ async function auftragOeffnen(id){
           <input type="checkbox" value="${m.id}" data-kuerzel="${esc(m.kuerzel||'')}" data-name="${esc(m.name||'')}"
             ${zugeordnetIds.has(m.id) ? 'checked' : ''} onchange="technikerAendern('${id}', this)">
           ${esc(m.name || m.kuerzel || m.email)}
-        </label>`).join('') : '<div class="leer">Keine Mitarbeiter geladen.</div>'}
+        </label>`).join('') : `<div class="leer">${MA_FEHLER ? 'Fehler: ' + esc(MA_FEHLER) : 'Keine Mitarbeiter geladen.'}</div>`}
     </div>
 
     <div class="eyebrow">Dateien</div>
