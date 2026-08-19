@@ -248,10 +248,27 @@ function renderBoard(){
   }).join('');
 }
 
+// Baut denselben vorausgefüllten Arbeitsbericht-Link wie beim "An Trello
+// senden" im CRM - inklusive vorgang_typ=angebot, damit die Status-
+// Automatik greift, wenn darüber ein Bericht gespeichert wird (nur möglich,
+// wenn der Auftrag aus einem Angebot entstanden ist).
+function berichtLinkFuerAuftrag(a){
+  const params = new URLSearchParams();
+  const kundeName = KUNDEN_CACHE[a.kunde_id];
+  if(kundeName) params.set('kunde', kundeName);
+  if(a.vat_nummer) params.set('vat_nummer', a.vat_nummer);
+  if(a.kunde_id) params.set('kunde_id', a.kunde_id);
+  if(a.angebot_id){
+    params.set('vorgang_typ', 'angebot');
+    params.set('vorgang_id', a.angebot_id);
+  }
+  return 'arbeitsbericht.html?' + params.toString();
+}
+
 function karteHtml(a){
   return `<div class="karte" onclick="auftragOeffnen('${a.id}')">
     <div class="karte__zeile1">
-      <span class="karte__nr">${esc(a.nummer||'—')}</span>
+      <span class="karte__nr">${esc(a.nummer||'—')}${a.status_automatik===false ? ' · ⏸' : ''}</span>
       <span class="karte__ampel" style="background:${AMPEL_FARBE[a._ampel]||'var(--dim)'}" title="Doku-Status: ${a._ampel}"></span>
     </div>
     <div class="karte__titel">${esc(a.bezeichnung)}</div>
@@ -260,6 +277,9 @@ function karteHtml(a){
       <span class="chip">${ART_LABEL[a.art]||a.art}</span>
       ${a._techniker.length ? a._techniker.map(k => `<span class="chip">${esc(k)}</span>`).join('') : ''}
       ${a._dateien ? `<span class="chip datei">📎 ${a._dateien}</span>` : ''}
+      <a href="${berichtLinkFuerAuftrag(a)}" onclick="event.stopPropagation()"
+        class="chip" style="text-decoration:none;background:rgba(93,201,138,.15);color:var(--gruen);">
+        📝 Arbeitsbericht ↗</a>
     </div>
   </div>`;
 }
@@ -311,13 +331,20 @@ async function auftragOeffnen(id){
   modal(`
     <h2>${esc(a.nummer)}</h2>
     <div class="sub">${esc(KUNDEN_CACHE[a.kunde_id] || '')}</div>
+    <a href="${berichtLinkFuerAuftrag(a)}" class="btn ghost" style="display:block;text-align:center;text-decoration:none;margin-top:10px;">
+      📝 Arbeitsbericht dazu öffnen ↗</a>
 
     <label>Bezeichnung</label>
     <input id="adBez" value="${esc(a.bezeichnung)}">
 
     <label>Status</label>
-    <select id="adStatus">${SPALTEN.map(s => `<option value="${s.status}" ${a.status===s.status?'selected':''}>${s.titel}</option>`).join('')}
+    <select id="adStatus" onchange="if(this.value!=='${a.status}') document.getElementById('adAutomatik').checked=false;">${SPALTEN.map(s => `<option value="${s.status}" ${a.status===s.status?'selected':''}>${s.titel}</option>`).join('')}
       <option value="storniert" ${a.status==='storniert'?'selected':''}>Storniert</option></select>
+    <label class="mitarbeiter-item" style="margin-top:8px;">
+      <input type="checkbox" id="adAutomatik" ${a.status_automatik ? 'checked' : ''} style="width:20px;height:20px;min-height:0;">
+      Automatisch auf "Erledigt" setzen, sobald Bericht (und bei Wartung Protokoll) vorliegt
+    </label>
+    ${!a.status_automatik ? '<div class="sub" style="margin-top:2px;">⏸ Automatik ist aus, weil der Status zuletzt manuell geändert wurde.</div>' : ''}
 
     <label>VAT-Nummer</label>
     <input id="adVat" value="${esc(a.vat_nummer)}" placeholder="optional">
@@ -366,6 +393,7 @@ async function auftragSpeichern(id, btn){
     await sb(`crm_auftrag?id=eq.${id}`, { method:'PATCH', body: JSON.stringify({
       bezeichnung: $('#adBez').value.trim(),
       status: $('#adStatus').value,
+      status_automatik: $('#adAutomatik').checked,
       vat_nummer: $('#adVat').value.trim() || null,
       notiz: $('#adNotiz').value.trim() || null
     })});
