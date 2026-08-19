@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Auftragsboard">
+<title>Blueprint · Auftragsboard</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
+<link rel="stylesheet" href="ts-loading.css">
+<script src="ts-loading.js"></script>
+<script src="config.js"></script>
+<script src="ts-auth.js" data-gate data-title="Auftragsboard"></script>
+<style>
+:root{
+  --bg:var(--ts-bg, #0a0a0c); --panel:var(--ts-surface, #131318); --panel2:var(--ts-surface-hover, #191921); --border:var(--ts-line-30, #26262e);
+  --blau:var(--ts-accent, #3a7bd5); --tuerkis:var(--ts-glow, #5eead4); --text:var(--ts-ink, #e8e8ec); --dim:var(--ts-muted, #8b8b96);
+  --rot:var(--ts-danger, #e05d5d); --gelb:var(--ts-warn, #e0b45d); --gruen:var(--ts-ok, #5dc98a);
+  --mono:var(--ts-font-mono, ui-monospace,'SF Mono','Cascadia Mono',Consolas,monospace);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;min-height:100dvh;}
+.ts-backbar{position:sticky;top:0;z-index:9999;display:flex;align-items:center;gap:10px;
+  background:var(--bg);color:var(--text);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  font:600 12px/1.4 var(--mono);letter-spacing:.03em;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.ts-backbar__link{color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+@media(hover:hover){ .ts-backbar__link:hover{color:var(--blau);} }
+.ts-backbar__slash{color:var(--dim);}
+.ts-backbar__current{color:var(--blau);font-weight:700;}
+
+header{padding:16px 16px 10px;}
+header h1{font-size:1.3rem;}
+header p{font-size:.8rem;color:var(--dim);margin-top:2px;}
+.toprow{display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap;align-items:center;}
+.btn{padding:11px 16px;border-radius:10px;border:1px solid var(--border);background:var(--panel2);color:var(--text);
+  font:600 .85rem inherit;cursor:pointer;min-height:44px;touch-action:manipulation;}
+.btn.primaer{background:var(--blau);color:#fff;border-color:var(--blau);}
+.btn.ghost{background:transparent;color:var(--dim);}
+.btn.gefahr{background:transparent;color:var(--rot);border-color:rgba(224,93,93,.4);}
+.btn.small{padding:8px 12px;font-size:.75rem;min-height:36px;}
+select,input,textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--border);
+  border-radius:10px;padding:11px 12px;width:100%;min-height:44px;}
+textarea{min-height:70px;resize:vertical;}
+label{display:block;font-size:.75rem;color:var(--dim);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em;}
+
+.board{display:flex;gap:12px;overflow-x:auto;padding:0 16px 24px;-webkit-overflow-scrolling:touch;}
+.spalte{flex:0 0 82vw;max-width:320px;background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  display:flex;flex-direction:column;max-height:calc(100dvh - 190px);}
+@media(min-width:900px){.spalte{flex:1 1 0;max-width:none;}}
+.spalte__kopf{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.spalte__titel{font-weight:700;font-size:.85rem;}
+.spalte__count{font:600 .7rem var(--mono);color:var(--dim);background:var(--panel2);border-radius:20px;padding:2px 9px;}
+.spalte__body{padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1;}
+
+.karte{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;cursor:pointer;
+  display:flex;flex-direction:column;gap:5px;}
+.karte:active{border-color:var(--blau);}
+.karte__zeile1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.karte__nr{font:600 .68rem var(--mono);color:var(--dim);}
+.karte__ampel{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.karte__titel{font-weight:700;font-size:.88rem;line-height:1.3;}
+.karte__kunde{font-size:.78rem;color:var(--dim);}
+.karte__meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.chip{font:600 .65rem var(--mono);padding:2px 8px;border-radius:20px;background:rgba(58,123,213,.15);color:var(--blau);}
+.chip.datei{background:rgba(224,180,93,.15);color:var(--gelb);}
+.leer{color:var(--dim);font-size:.78rem;text-align:center;padding:20px 8px;}
+
+/* Modal */
+.modalbg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:flex-end;justify-content:center;}
+@media(min-width:700px){.modalbg{align-items:center;}}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:18px 18px 0 0;max-width:520px;width:100%;
+  max-height:92dvh;overflow-y:auto;padding:20px 18px calc(24px + env(safe-area-inset-bottom));}
+@media(min-width:700px){.modal{border-radius:18px;}}
+.modal h2{font-size:1.05rem;margin-bottom:2px;}
+.modal .sub{font-size:.78rem;color:var(--dim);margin-bottom:14px;}
+.griff{width:44px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 14px;}
+.btnzeile{display:flex;gap:8px;margin-top:16px;}
+.btnzeile .btn{flex:1;}
+.mitarbeiter-liste{display:flex;flex-direction:column;gap:6px;margin-top:4px;}
+.mitarbeiter-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);
+  border-radius:10px;font-size:.85rem;}
+.mitarbeiter-item input{width:20px;height:20px;min-height:0;flex-shrink:0;}
+.datei-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;
+  font-size:.8rem;margin-top:6px;}
+.datei-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.datei-item button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:1rem;padding:4px;}
+.eyebrow{font:600 .68rem var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin:16px 0 6px;}
+.eyebrow:first-of-type{margin-top:0;}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel);color:var(--text);
+  border:1px solid var(--blau);padding:11px 20px;border-radius:10px;font-weight:600;font-size:.85rem;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99999;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+
+<div class="ts-backbar">
+  <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
+  <span class="ts-backbar__slash" aria-hidden="true">/</span>
+  <span class="ts-backbar__current">Auftragsboard</span>
+</div>
+
+<header>
+  <h1>Auftragsboard</h1>
+  <p>Aufträge, Techniker-Zuordnung und Datei-Anhänge · ergänzt Trello, ersetzt es noch nicht</p>
+  <p id="authDiag" style="margin-top:8px;font:600 .72rem var(--mono);padding:6px 10px;border-radius:8px;display:inline-block;"></p>
+</header>
+
+<div class="toprow">
+  <button class="btn primaer" onclick="modalNeuerAuftrag()">+ Neuer Auftrag</button>
+  <button class="btn ghost" onclick="ladeAuftraege()">↻ Aktualisieren</button>
+  <select id="technikerFilter" style="flex:1;min-width:140px;max-width:220px;" onchange="renderBoard()">
+    <option value="">Alle Techniker</option>
+  </select>
+</div>
+
+<div class="board" id="board"></div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SPALTEN = [
+  {status:'offen', titel:'Offen'},
+  {status:'terminiert', titel:'Terminiert'},
+  {status:'in_arbeit', titel:'In Arbeit'},
+  {status:'erledigt', titel:'Erledigt'},
+  {status:'abgerechnet', titel:'Abgerechnet'}
+];
+const ART_LABEL = {
+  montage:'Montage', serviceanforderung:'Serviceanforderung',
+  wartung_vertrag:'Wartung (Vertrag)', wartung_ohne_vertrag:'Wartung',
+  beratung_aufmass:'Beratung/Aufmaß'
+};
+const AMPEL_FARBE = {gruen:'var(--gruen)', rot:'var(--rot)'};
+
+function $(sel){ return document.querySelector(sel); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function supabaseHeaders(extra){
+  return Object.assign({
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || TENANT.supabaseKey),
+    'apikey': TENANT.supabaseKey,
+    'Prefer': 'return=representation'
+  }, extra || {});
+}
+async function sb(path, opts){
+  const res = await fetch(`${TENANT.supabaseUrl}/rest/v1/${path}`, Object.assign({headers: supabaseHeaders()}, opts||{}));
+  if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('HTTP ' + res.status + ' ' + t.slice(0,120)); }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+function modal(html){
+  $('#modalRoot').innerHTML = `<div class="modalbg" onclick="if(event.target===this)modalZu()">
+    <div class="modal"><div class="griff"></div>${html}</div></div>`;
+}
+function modalZu(){ $('#modalRoot').innerHTML = ''; }
+
+/* ================= DATEN LADEN ================= */
+let AUFTRAEGE = [];
+let KUNDEN_CACHE = {};
+let MA_LISTE = [];
+
+async function ladeKunden(ids){
+  const fehlend = ids.filter(id => id != null && !KUNDEN_CACHE[id]);
+  if(!fehlend.length) return;
+  const rows = await sb(`kunden?id=in.(${fehlend.join(',')})&select=id,name`);
+  (rows||[]).forEach(k => KUNDEN_CACHE[k.id] = k.name);
+}
+let MA_FEHLER = null;
+async function ladeMitarbeiter(){
+  MA_FEHLER = null;
+  // Läuft über den normalen, nachweislich zuverlässigen REST-Weg (sb())
+  // statt über die Edge Function /functions/v1/mitarbeiter - auf manchen
+  // Geräten schlagen Edge-Function-Aufrufe aus ungeklärtem Grund fehl,
+  // während normale Datenbank-Anfragen einwandfrei funktionieren.
+  try{
+    const rows = await sb('v_mitarbeiter_zuweisbar?select=id,kuerzel,name');
+    MA_LISTE = rows || [];
+    renderTechnikerFilter();
+  }catch(e){
+    MA_FEHLER = 'Fehler: ' + e.message;
+    console.error('Mitarbeiter laden fehlgeschlagen:', e);
+  }
+}
+
+function renderTechnikerFilter(){
+  const sel = $('#technikerFilter');
+  if(!sel) return;
+  const bisher = sel.value;
+  sel.innerHTML = '<option value="">Alle Techniker</option>' +
+    MA_LISTE.map(m => `<option value="${esc(m.kuerzel)}">${esc(m.name || m.kuerzel)}</option>`).join('') +
+    '<option value="__keiner__">Ohne Zuordnung</option>';
+  if([...sel.options].some(o => o.value === bisher)) sel.value = bisher;
+}
+
+async function ladeAuftraege(){
+  $('#board').innerHTML = SPALTEN.map(s => `
+    <div class="spalte"><div class="spalte__kopf"><span class="spalte__titel">${s.titel}</span></div>
+    <div class="spalte__body"><div class="leer">Lädt …</div></div></div>`).join('');
+  try{
+    const [auftraege, ampeln, zuordnungen, dateien] = await Promise.all([
+      sb('crm_auftrag?select=*&order=erstellt_am.desc'),
+      sb('v_auftrag_doku_status?select=auftrag_id,ampel'),
+      sb('crm_auftrag_zuordnung?select=auftrag_id,mitarbeiter_kuerzel'),
+      sb('crm_auftrag_dokument?select=auftrag_id')
+    ]);
+    AUFTRAEGE = auftraege || [];
+    const ampelMap = {}; (ampeln||[]).forEach(a => ampelMap[a.auftrag_id] = a.ampel);
+    const zuordnungMap = {}; (zuordnungen||[]).forEach(z => (zuordnungMap[z.auftrag_id] = zuordnungMap[z.auftrag_id]||[]).push(z.mitarbeiter_kuerzel));
+    const dateiMap = {}; (dateien||[]).forEach(d => dateiMap[d.auftrag_id] = (dateiMap[d.auftrag_id]||0) + 1);
+    AUFTRAEGE.forEach(a => { a._ampel = ampelMap[a.id] || 'rot'; a._techniker = zuordnungMap[a.id] || []; a._dateien = dateiMap[a.id] || 0; });
+
+    await ladeKunden([...new Set(AUFTRAEGE.map(a => a.kunde_id))]);
+    renderBoard();
+  }catch(e){
+    console.error(e);
+    $('#board').innerHTML = `<div class="leer" style="padding:40px 16px;">Laden fehlgeschlagen: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderBoard(){
+  const filterWert = $('#technikerFilter') ? $('#technikerFilter').value : '';
+  const gefiltert = !filterWert ? AUFTRAEGE
+    : filterWert === '__keiner__' ? AUFTRAEGE.filter(a => !a._techniker.length)
+    : AUFTRAEGE.filter(a => a._techniker.includes(filterWert));
+
+  $('#board').innerHTML = SPALTEN.map(s => {
+    const liste = gefiltert.filter(a => a.status === s.status);
+    return `<div class="spalte">
+      <div class="spalte__kopf"><span class="spalte__titel">${s.titel}</span><span class="spalte__count">${liste.length}</span></div>
+      <div class="spalte__body">
+        ${liste.length ? liste.map(karteHtml).join('') : '<div class="leer">Keine Aufträge</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function karteHtml(a){
+  return `<div class="karte" onclick="auftragOeffnen('${a.id}')">
+    <div class="karte__zeile1">
+      <span class="karte__nr">${esc(a.nummer||'—')}</span>
+      <span class="karte__ampel" style="background:${AMPEL_FARBE[a._ampel]||'var(--dim)'}" title="Doku-Status: ${a._ampel}"></span>
+    </div>
+    <div class="karte__titel">${esc(a.bezeichnung)}</div>
+    <div class="karte__kunde">${esc(KUNDEN_CACHE[a.kunde_id] || 'Kunde #'+a.kunde_id)}</div>
+    <div class="karte__meta">
+      <span class="chip">${ART_LABEL[a.art]||a.art}</span>
+      ${a._techniker.length ? a._techniker.map(k => `<span class="chip">${esc(k)}</span>`).join('') : ''}
+      ${a._dateien ? `<span class="chip datei">📎 ${a._dateien}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+/* ================= NEUER AUFTRAG ================= */
+async function modalNeuerAuftrag(){
+  const kunden = await sb('kunden?select=id,name&order=name.asc');
+  modal(`
+    <h2>Neuer Auftrag</h2>
+    <div class="sub">Wird direkt auf "Offen" gesetzt.</div>
+    <label>Kunde</label>
+    <select id="naKunde">${(kunden||[]).map(k => `<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select>
+    <label>Bezeichnung</label>
+    <input id="naBez" placeholder="z. B. Wartung Haupteingang">
+    <label>Art</label>
+    <select id="naArt">${Object.entries(ART_LABEL).map(([k,v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+    <label>VAT-Nummer (optional)</label>
+    <input id="naVat" placeholder="z. B. VAT0655021">
+    <div class="btnzeile">
+      <button class="btn ghost" onclick="modalZu()">Abbrechen</button>
+      <button class="btn primaer" onclick="speichereNeuerAuftrag(this)">Anlegen</button>
+    </div>`);
+}
+async function speichereNeuerAuftrag(btn){
+  const bezeichnung = $('#naBez').value.trim();
+  if(!bezeichnung){ toast('Bezeichnung fehlt noch.'); return; }
+  TSLoading.start(btn);
+  try{
+    await sb('crm_auftrag', { method:'POST', body: JSON.stringify({
+      kunde_id: $('#naKunde').value,
+      bezeichnung,
+      art: $('#naArt').value,
+      vat_nummer: $('#naVat').value.trim() || null,
+      erstellt_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || 'Auftragsboard'
+    })});
+    modalZu(); toast('Auftrag angelegt ✓'); ladeAuftraege();
+  }catch(e){ TSLoading.stop(btn); toast('Fehler: ' + e.message.slice(0,80)); }
+}
+
+/* ================= AUFTRAG-DETAIL ================= */
+async function auftragOeffnen(id){
+  const a = AUFTRAEGE.find(x => x.id === id);
+  if(!a) return;
+  if(!MA_LISTE.length) await ladeMitarbeiter();
+  const zugeordnet = await sb(`crm_auftrag_zuordnung?auftrag_id=eq.${id}&select=mitarbeiter_id`);
+  const zugeordnetIds = new Set((zugeordnet||[]).map(z => z.mitarbeiter_id));
+  const dateien = await sb(`crm_auftrag_dokument?auftrag_id=eq.${id}&select=*&order=hochgeladen_am.desc`);
+
+  modal(`
+    <h2>${esc(a.nummer)}</h2>
+    <div class="sub">${esc(KUNDEN_CACHE[a.kunde_id] || '')}</div>
+
+    <label>Bezeichnung</label>
+    <input id="adBez" value="${esc(a.bezeichnung)}">
+
+    <label>Status</label>
+    <select id="adStatus">${SPALTEN.map(s => `<option value="${s.status}" ${a.status===s.status?'selected':''}>${s.titel}</option>`).join('')}
+      <option value="storniert" ${a.status==='storniert'?'selected':''}>Storniert</option></select>
+
+    <label>VAT-Nummer</label>
+    <input id="adVat" value="${esc(a.vat_nummer)}" placeholder="optional">
+
+    <label>Notiz</label>
+    <textarea id="adNotiz" placeholder="optional">${esc(a.notiz)}</textarea>
+
+    <div class="eyebrow">Techniker zugeordnet</div>
+    <div class="mitarbeiter-liste">
+      ${MA_LISTE.length ? MA_LISTE.map(m => `
+        <label class="mitarbeiter-item">
+          <input type="checkbox" value="${m.id}" data-kuerzel="${esc(m.kuerzel||'')}" data-name="${esc(m.name||'')}"
+            ${zugeordnetIds.has(m.id) ? 'checked' : ''} onchange="technikerAendern('${id}', this)">
+          ${esc(m.name || m.kuerzel || m.email)}
+        </label>`).join('') : `<div class="leer">${MA_FEHLER ? 'Fehler: ' + esc(MA_FEHLER) : 'Keine Mitarbeiter geladen.'}</div>`}
+    </div>
+
+    <div class="eyebrow">Dateien</div>
+    <div id="adDateien">
+      ${dateien && dateien.length ? dateien.map(dateiHtml).join('') : '<div class="leer">Noch keine Dateien.</div>'}
+    </div>
+    <label class="btn ghost" style="display:block;text-align:center;margin-top:8px;cursor:pointer;">
+      + Datei hochladen
+      <input type="file" id="adFileInput" style="display:none;" onchange="dateiHochladen('${id}', this)">
+    </label>
+
+    <div class="btnzeile">
+      <button class="btn ghost" onclick="modalZu()">Schließen</button>
+      <button class="btn primaer" onclick="auftragSpeichern('${id}', this)">Speichern</button>
+    </div>
+    <button class="btn gefahr" style="width:100%;margin-top:8px;" onclick="auftragLoeschen('${id}', this)">🗑 Auftrag löschen</button>
+  `);
+}
+
+function dateiHtml(d){
+  return `<div class="datei-item" data-dokument-id="${d.id}">
+    <span class="name">📎 ${esc(d.dateiname)}</span>
+    <button onclick="dateiHerunterladen('${esc(d.storage_pfad)}','${esc(d.dateiname)}')" title="Herunterladen">⬇</button>
+    <button onclick="dateiLoeschen('${d.id}','${esc(d.storage_pfad)}', this)" title="Löschen">✕</button>
+  </div>`;
+}
+
+async function auftragSpeichern(id, btn){
+  TSLoading.start(btn);
+  try{
+    await sb(`crm_auftrag?id=eq.${id}`, { method:'PATCH', body: JSON.stringify({
+      bezeichnung: $('#adBez').value.trim(),
+      status: $('#adStatus').value,
+      vat_nummer: $('#adVat').value.trim() || null,
+      notiz: $('#adNotiz').value.trim() || null
+    })});
+    modalZu(); toast('Gespeichert ✓'); ladeAuftraege();
+  }catch(e){ TSLoading.stop(btn); toast('Fehler: ' + e.message.slice(0,80)); }
+}
+
+async function auftragLoeschen(id, btn){
+  if(!(await TSConfirm.ask('Auftrag wirklich löschen? Zugeordnete Techniker und Dateien werden mit entfernt.', {danger:true, confirmLabel:'Löschen'}))) return;
+  TSLoading.start(btn, {ghost:true});
+  try{
+    await sb(`crm_auftrag?id=eq.${id}`, { method:'DELETE' });
+    modalZu(); toast('Auftrag gelöscht'); ladeAuftraege();
+  }catch(e){ TSLoading.stop(btn); toast('Fehler: ' + e.message.slice(0,80)); }
+}
+
+async function technikerAendern(auftragId, checkbox){
+  const mitarbeiterId = checkbox.value;
+  try{
+    if(checkbox.checked){
+      await sb('crm_auftrag_zuordnung', { method:'POST', body: JSON.stringify({
+        auftrag_id: auftragId, mitarbeiter_id: mitarbeiterId,
+        mitarbeiter_kuerzel: checkbox.dataset.kuerzel || null,
+        mitarbeiter_name: checkbox.dataset.name || null
+      })});
+    } else {
+      await sb(`crm_auftrag_zuordnung?auftrag_id=eq.${auftragId}&mitarbeiter_id=eq.${mitarbeiterId}`, { method:'DELETE' });
+    }
+  }catch(e){
+    checkbox.checked = !checkbox.checked;
+    toast('Änderung fehlgeschlagen: ' + e.message.slice(0,60));
+  }
+}
+
+/* ================= DATEIEN ================= */
+function auftragDateiWriteUrl(pfad){
+  return `${TENANT.supabaseUrl}/storage/v1/object/${TENANT.bucketAuftragDateien}/${pfad}`;
+}
+async function dateiHochladen(auftragId, input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 15*1024*1024){ toast('Datei größer als 15 MB.'); input.value=''; return; }
+  const label = input.closest('label');
+  TSLoading.start(label, {ghost:true});
+  const sicherName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const pfad = `${auftragId}/${Date.now()}-${sicherName}`;
+  try{
+    const up = await fetch(auftragDateiWriteUrl(pfad), {
+      method:'POST',
+      headers: supabaseHeaders({ 'Content-Type': file.type || 'application/octet-stream' }),
+      body: file
+    });
+    if(!up.ok) throw new Error('HTTP ' + up.status);
+    await sb('crm_auftrag_dokument', { method:'POST', body: JSON.stringify({
+      auftrag_id: auftragId, dateiname: file.name, storage_pfad: pfad,
+      content_type: file.type || null, groesse_bytes: file.size,
+      hochgeladen_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || null
+    })});
+    toast('Datei hochgeladen ✓');
+    auftragOeffnen(auftragId);
+    ladeAuftraege();
+  }catch(e){
+    toast('Hochladen fehlgeschlagen: ' + e.message.slice(0,80));
+  } finally {
+    TSLoading.stop(label);
+    input.value = '';
+  }
+}
+async function dateiHerunterladen(pfad, dateiname){
+  try{
+    const res = await fetch(auftragDateiWriteUrl(pfad), { headers: supabaseHeaders() });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = dateiname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){ toast('Herunterladen fehlgeschlagen: ' + e.message.slice(0,80)); }
+}
+async function dateiLoeschen(dokumentId, pfad, btn){
+  if(!(await TSConfirm.ask('Diese Datei löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
+  TSLoading.start(btn.closest('.datei-item'));
+  try{
+    await fetch(auftragDateiWriteUrl(pfad), { method:'DELETE', headers: supabaseHeaders() });
+    await sb(`crm_auftrag_dokument?id=eq.${dokumentId}`, { method:'DELETE' });
+    btn.closest('.datei-item').remove();
+    toast('Datei gelöscht');
+    ladeAuftraege();
+  }catch(e){ toast('Löschen fehlgeschlagen: ' + e.message.slice(0,80)); }
+}
+
+function zeigeAuthDiagnose(){
+  const el = $('#authDiag');
+  if(!el) return;
+  const token = window.TSAuth && TSAuth.getToken ? TSAuth.getToken() : undefined;
+  if(!window.TSAuth){
+    el.textContent = '⚠️ ts-auth.js nicht geladen';
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+    return;
+  }
+  if(!token){
+    el.textContent = '⚠️ Kein Token gefunden (TSAuth.getToken() = leer) — Schreibzugriffe werden fehlschlagen';
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+    return;
+  }
+  try{
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    const ablauf = payload.exp ? new Date(payload.exp * 1000) : null;
+    const abgelaufen = ablauf && ablauf < new Date();
+    el.textContent = (abgelaufen ? '⚠️ Token ABGELAUFEN' : '✓ Angemeldet') +
+      ' · Rolle: ' + (payload.role || '?') +
+      ' · ' + (payload.email || '') +
+      (ablauf ? ' · gültig bis ' + ablauf.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : '');
+    el.style.background = abgelaufen ? 'rgba(224,93,93,.15)' : 'rgba(93,201,138,.15)';
+    el.style.color = abgelaufen ? 'var(--rot)' : 'var(--gruen)';
+  }catch(e){
+    el.textContent = '⚠️ Token vorhanden, aber nicht lesbar: ' + e.message;
+    el.style.background = 'rgba(224,93,93,.15)'; el.style.color = 'var(--rot)';
+  }
+}
+zeigeAuthDiagnose();
+
+ladeMitarbeiter();
+ladeAuftraege();
+</script>
+</body>
+</html>
