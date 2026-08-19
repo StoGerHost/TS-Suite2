@@ -180,13 +180,11 @@ async function ladeKunden(ids){
   (rows||[]).forEach(k => KUNDEN_CACHE[k.id] = k.name);
 }
 let MA_FEHLER = null;
-async function ladeMitarbeiter(){
+async function ladeMitarbeiter(versuch){
+  versuch = versuch || 1;
   MA_FEHLER = null;
   try{
-    // cache:'no-store' + Zeitstempel als Cache-Buster: erzwingt eine
-    // wirklich frische Anfrage, unabhängig von zwischengespeicherten
-    // (evtl. alten/fehlgeschlagenen) Antworten auf dieselbe URL.
-    const url = `${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1&_=${Date.now()}`;
+    const url = `${TENANT.supabaseUrl}/functions/v1/mitarbeiter?zuweisbar=1`;
     const res = await fetch(url, { headers: supabaseHeaders(), cache: 'no-store' });
     if(res.ok){
       MA_LISTE = await res.json();
@@ -196,7 +194,16 @@ async function ladeMitarbeiter(){
       MA_FEHLER = 'HTTP ' + res.status + (body ? ' — ' + body.slice(0,150) : '');
       console.error('Mitarbeiter laden fehlgeschlagen: ' + MA_FEHLER);
     }
-  }catch(e){ MA_FEHLER = 'Netzwerkfehler: ' + e.message; console.error('Mitarbeiter laden fehlgeschlagen:', e); }
+  }catch(e){
+    if(versuch < 2){
+      // Erster Fehlschlag könnte ein kurzer Netzwerk-Ausrutscher sein -
+      // ein zweiter, verzögerter Versuch, bevor wir das als echten Fehler anzeigen.
+      await new Promise(r => setTimeout(r, 800));
+      return ladeMitarbeiter(versuch + 1);
+    }
+    MA_FEHLER = 'Netzwerkfehler: ' + e.message;
+    console.error('Mitarbeiter laden fehlgeschlagen:', e);
+  }
 }
 
 function renderTechnikerFilter(){
