@@ -261,7 +261,14 @@ function berichtLinkFuerAuftrag(a){
   if(a.angebot_id){
     params.set('vorgang_typ', 'angebot');
     params.set('vorgang_id', a.angebot_id);
+  } else {
+    // Kein Angebot als Herkunft (z.B. direkt über "+ Neuer Auftrag" angelegt) -
+    // Bericht verknüpft sich stattdessen direkt mit dem Auftrag selbst.
+    params.set('vorgang_typ', 'auftrag');
+    params.set('vorgang_id', a.id);
   }
+  // Nach dem Speichern automatisch zurück zum Board springen.
+  params.set('rueck', 'auftragsboard.html');
   return 'arbeitsbericht.html?' + params.toString();
 }
 

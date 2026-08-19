@@ -755,8 +755,10 @@ async function handleAuftragsdatei(file){
 }
 /* Direkter Link aus dem CRM/von der Trello-Karte: Felder kommen als
    URL-Parameter mit, z.B. ?kunde=...&bauvorhaben=...&kunde_id=... */
+let RUECKSPRUNG_ZIEL = null;
 (function ausUrlUebernehmen(){
   const p = new URLSearchParams(location.search);
+  RUECKSPRUNG_ZIEL = p.get('rueck') || null;
   if(!p.has('bauvorhaben') && !p.has('kunde')) return;
   wendeAuftragAn({
     kunde: p.get('kunde') || null,
@@ -1362,6 +1364,7 @@ async function generateReport(){
     if(vorgangWert.startsWith('wartung:')) { vorgang_typ = 'wartungsposition'; vorgang_id = vorgangWert.slice(8); }
     else if(vorgangWert.startsWith('wv:')) { vorgang_typ = 'wiedervorlage'; vorgang_id = vorgangWert.slice(3); }
     else if(vorgangWert.startsWith('angebot:')) { vorgang_typ = 'angebot'; vorgang_id = vorgangWert.slice(8); }
+    else if(vorgangWert.startsWith('auftrag:')) { vorgang_typ = 'auftrag'; vorgang_id = vorgangWert.slice(8); }
     const reportData = {
       angebotsnr: val('fAngebotsnr') || null,
       bauvorhaben: val('fBauvorhaben') || null,
@@ -1473,6 +1476,11 @@ async function generateReport(){
           console.error('Trello-Angebot-Suche fehlgeschlagen:', angebotResult);
           await TSNotice.show('❌ Trello-Suche nach Angebotsnummer fehlgeschlagen:\n\n' + (angebotResult.reason || angebotResult.error || 'unbekannter Fehler'));
         }
+      }
+      if(RUECKSPRUNG_ZIEL){
+        genStatus.textContent += ' · Zurück zum Auftragsboard …';
+        location.href = RUECKSPRUNG_ZIEL;
+        return;
       }
     } else if(sendResult.reason === 'not-configured'){
       genStatus.textContent = 'Bericht lokal gespeichert: ' + filename + ' (Server noch nicht eingerichtet)';
@@ -1734,6 +1742,7 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
   let wartungspositionen = [];
   let wiedervorlagen = [];
   let angebote = [];
+  let auftraegeDirekt = [];
 
   try{
     // Positionen hängen nicht direkt am Kunden, sondern über vertrag_id am
@@ -1807,6 +1816,19 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
     console.error('Angebote konnten nicht geladen werden:', err);
   }
 
+  try{
+    // Direkt im Auftragsboard angelegte Aufträge ohne Angebot-Herkunft
+    // (z.B. über "+ Neuer Auftrag") - für diese gibt es sonst keine
+    // Verknüpfungsmöglichkeit zwischen Bericht und Auftrag.
+    const auftraegeRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/crm_auftrag?kunde_id=eq.${kundeId}&angebot_id=is.null&status=in.(offen,terminiert,in_arbeit)&select=id,nummer,bezeichnung,vat_nummer&order=erstellt_am.desc`,
+      { headers: supabaseHeaders() }
+    );
+    if(auftraegeRes.ok) auftraegeDirekt = await auftraegeRes.json();
+  } catch(err){
+    console.error('Aufträge konnten nicht geladen werden:', err);
+  }
+
   if(wartungspositionen.length){
     const grp = document.createElement('optgroup');
     grp.label = 'Wartungspositionen';
@@ -1843,9 +1865,24 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
     });
     sel.appendChild(grp);
   }
+  if(auftraegeDirekt.length){
+    const grp = document.createElement('optgroup');
+    grp.label = 'Offene Aufträge';
+    auftraegeDirekt.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = 'auftrag:' + a.id;
+      opt.dataset.vat = a.vat_nummer || '';
+      opt.textContent = (a.nummer ? a.nummer + ' · ' : '') + a.bezeichnung + (a.vat_nummer ? ` · ${a.vat_nummer}` : '');
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
 
   if(vorauswahlTyp && vorauswahlId){
-    const wert = (vorauswahlTyp === 'wartungsposition' ? 'wartung:' : vorauswahlTyp === 'angebot' ? 'angebot:' : 'wv:') + vorauswahlId;
+    const wert = (vorauswahlTyp === 'wartungsposition' ? 'wartung:'
+      : vorauswahlTyp === 'angebot' ? 'angebot:'
+      : vorauswahlTyp === 'auftrag' ? 'auftrag:'
+      : 'wv:') + vorauswahlId;
     if([...sel.options].some(o => o.value === wert)) sel.value = wert;
     if(vorauswahlTyp === 'wartungsposition' && typeof ladeChecklistePanel === 'function'){
       ladeChecklistePanel(vorauswahlId);
