@@ -64,6 +64,7 @@
   <button class="tab-btn active" data-tab="crm">CRM</button>
   <button class="tab-btn" data-tab="angebot">Angebote</button>
   <button class="tab-btn" data-tab="berichte">Berichte</button>
+  <button class="tab-btn" data-tab="auftragsboard">Aufträge</button>
 </div>
 
 <div class="frame-wrap">
@@ -76,6 +77,9 @@
   <div class="frame-panel" id="panel-berichte">
     <div class="frame-empty" id="empty-berichte">Noch nicht geöffnet.</div>
   </div>
+  <div class="frame-panel" id="panel-auftragsboard">
+    <div class="frame-empty" id="empty-auftragsboard">Noch nicht geöffnet.</div>
+  </div>
 </div>
 
 <script>
@@ -86,9 +90,10 @@
 const TOOL_SRC = {
   crm: 'crm.html',
   angebot: 'angebot-generator.html',
-  berichte: 'uebersicht.html'
+  berichte: 'uebersicht.html',
+  auftragsboard: 'auftragsboard.html'
 };
-const geladen = { crm: false, angebot: false, berichte: false };
+const geladen = { crm: false, angebot: false, berichte: false, auftragsboard: false };
 
 function ladeTab(tab, extraQuery){
   const panel = document.getElementById('panel-' + tab);
