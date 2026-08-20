@@ -1444,6 +1444,10 @@ async function generateReport(){
         if(trelloResult.trello){
           genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · Trello-Rückmeldung gesendet.';
           await TSNotice.show('✅ Trello-Rückmeldung gesendet.\n\n' + vorgangLabel + ' wurde aktualisiert und auf der Trello-Karte vermerkt.');
+        } else if(trelloResult.ok && trelloResult.message){
+          // Kein Fehler - nur keine Trello-Karte hinterlegt (z.B. ein direkt
+          // im Auftragsboard angelegter Auftrag, der nie an Trello ging).
+          genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · ' + trelloResult.message;
         } else if(trelloResult.warning){
           genStatus.textContent = genStatus.textContent.replace(' · Sende Trello-Rückmeldung …', '') + ' · gespeichert, Trello-Rückmeldung nicht möglich.';
           console.warn(trelloResult.warning);
