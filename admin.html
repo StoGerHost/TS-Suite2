@@ -231,7 +231,7 @@
   <span style="font-size:18px;flex-shrink:0">🔄</span>
   <div style="flex:1"><div style="color:#fff;font-weight:700;font-size:13px">Neue Artikelnummern verfügbar</div>
   <div style="color:rgba(255,255,255,.85);font-size:12px">Auf dem Server liegt eine aktuellere <span class="mono">artikel.json</span></div></div>
-  <button class="btn" onclick="applyArtikelUpdate()">Übernehmen</button>
+  <button class="btn" onclick="applyArtikelUpdate(this)">Übernehmen</button>
   <button class="btn" onclick="dismissArtikelUpdateBanner()" style="margin-left:0">✕</button>
 </div>
 
@@ -261,7 +261,8 @@
       </div>
       <div class="row" style="margin-top:8px">
         <select id="ma-rolle">
-          <option value="user" selected>Rolle: User</option>
+          <option value="techniker" selected>Rolle: Techniker</option>
+          <option value="aussendienst">Rolle: Außendienst</option>
           <option value="admin">Rolle: Admin</option>
         </select>
         <button class="btn" id="ma-add-btn" onclick="maAnlegen()">+ Anlegen</button>
@@ -272,7 +273,8 @@
     <div class="card">
       <h2>Mitarbeiter (Datenbank)</h2>
       <p class="hint">Konten samt Kürzel. Deaktivierte können sich nicht mehr anmelden und
-        erscheinen nicht mehr in den Konfiguratoren.</p>
+        erscheinen nicht mehr in den Konfiguratoren.<br>
+        <b>Techniker</b> können im Auftragsboard Aufträgen zugeordnet werden, <b>Außendienst</b> bewusst nicht.</p>
       <table id="tbl-ma"><thead><tr><th>Kürzel</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th></th></tr></thead><tbody></tbody></table>
       <p class="empty" id="ma-empty" style="display:none">Laden fehlgeschlagen oder keine Mitarbeiter vorhanden.</p>
       <div class="export-row">
@@ -293,7 +295,7 @@
       <div id="artikel-groups"></div>
       <div class="export-row">
         <button class="btn ghost" onclick="exportArtikel()">Als artikel.json exportieren</button>
-        <button class="btn ghost" onclick="if(confirm('Alle lokalen Artikelnummer-Überschreibungen auf diesem Gerät löschen?'))resetArtikelLocal()">Lokale Änderungen zurücksetzen</button>
+        <button class="btn ghost" onclick="(async()=>{ if(await TSConfirm.ask('Alle lokalen Artikelnummer-Überschreibungen auf diesem Gerät löschen?', {danger:true, confirmLabel:'Löschen'})) resetArtikelLocal(); })()">Lokale Änderungen zurücksetzen</button>
       </div>
     </div>
 
@@ -310,7 +312,7 @@
       <table id="tbl-sichtbarkeit"><thead><tr><th>Hersteller</th><th>Quelle</th><th>Sichtbar</th><th></th></tr></thead><tbody></tbody></table>
       <div class="export-row">
         <button class="btn ghost" onclick="exportSichtbarkeit()">Als hersteller-sichtbar.json exportieren</button>
-        <button class="btn ghost" onclick="if(confirm('Alle lokalen Sichtbarkeits-Überschreibungen auf diesem Gerät löschen?'))resetSichtbarkeitLocal()">Lokale Änderungen zurücksetzen</button>
+        <button class="btn ghost" onclick="(async()=>{ if(await TSConfirm.ask('Alle lokalen Sichtbarkeits-Überschreibungen auf diesem Gerät löschen?', {danger:true, confirmLabel:'Löschen'})) resetSichtbarkeitLocal(); })()">Lokale Änderungen zurücksetzen</button>
       </div>
     </div>
 
@@ -406,8 +408,10 @@ function renderMitarbeiter(){
     var tr = document.createElement('tr');
     if(!m.aktiv) tr.style.opacity = '.45';
     var rolleSelect = '<select class="small" onchange="maRolleAendern(\'' + m.id + '\', this.value, this)" style="' +
-      (m.rolle === 'admin' ? 'border-color:var(--accent);color:var(--accent);font-weight:700;' : '') + '">' +
-      '<option value="user"' + (m.rolle !== 'admin' ? ' selected' : '') + '>User</option>' +
+      (m.rolle === 'admin' ? 'border-color:var(--accent);color:var(--accent);font-weight:700;' :
+       m.rolle === 'aussendienst' ? 'border-color:var(--danger);color:var(--danger);' : '') + '">' +
+      '<option value="techniker"' + (m.rolle === 'techniker' ? ' selected' : '') + '>Techniker</option>' +
+      '<option value="aussendienst"' + (m.rolle === 'aussendienst' ? ' selected' : '') + '>Außendienst</option>' +
       '<option value="admin"' + (m.rolle === 'admin' ? ' selected' : '') + '>Admin</option>' +
       '</select>';
     tr.innerHTML = '<td class="mono">' + esc(m.kuerzel || '—') + '</td>' +
@@ -417,8 +421,8 @@ function renderMitarbeiter(){
       '<td style="text-align:right;white-space:nowrap">' +
         '<button class="btn ghost small" onclick="maBearbeiten(\'' + m.id + '\')">Ändern</button> ' +
         (m.aktiv
-          ? '<button class="btn danger small" onclick="maAktiv(\'' + m.id + '\', false)">Deaktivieren</button>'
-          : '<button class="btn small" onclick="maAktiv(\'' + m.id + '\', true)">Aktivieren</button>') +
+          ? '<button class="btn danger small" onclick="maAktiv(this,\'' + m.id + '\', false)">Deaktivieren</button>'
+          : '<button class="btn small" onclick="maAktiv(this,\'' + m.id + '\', true)">Aktivieren</button>') +
       '</td>';
     tb.appendChild(tr);
   });
@@ -443,20 +447,20 @@ function maAnlegen(){
   var name  = document.getElementById('ma-name').value.trim();
   var rolle = document.getElementById('ma-rolle').value;
   if(!email || !pw || !code || !name){ toast('Bitte alle vier Felder ausfüllen'); return; }
-  var btn = document.getElementById('ma-add-btn'); btn.disabled = true;
+  var btn = document.getElementById('ma-add-btn'); TSLoading.start(btn);
   maStatus('Lege an ...');
   fetch(MA_FN_URL, { method:'POST', headers: maHeaders(),
     body: JSON.stringify({ email: email, password: pw, kuerzel: code, name: name, rolle: rolle }) })
     .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
     .then(function(res){
-      btn.disabled = false;
+      TSLoading.stop(btn);
       if(!res.ok){ maStatus(''); toast(res.j.error || 'Anlegen fehlgeschlagen'); return; }
       ['ma-email','ma-pw','ma-code','ma-name'].forEach(function(id){ document.getElementById(id).value = ''; });
       document.getElementById('ma-rolle').value = 'user';
       maStatus('Angelegt — Zugangsdaten dem Mitarbeiter mitteilen.');
       ladeMitarbeiter();
     })
-    .catch(function(){ btn.disabled = false; maStatus(''); toast('Netzwerkfehler'); });
+    .catch(function(){ TSLoading.stop(btn); maStatus(''); toast('Netzwerkfehler'); });
 }
 function maBearbeiten(id){
   var m = MA_LISTE.find(function(x){ return x.id === id; });
@@ -468,12 +472,13 @@ function maBearbeiten(id){
     .then(function(r){ if(!r.ok) throw 0; ladeMitarbeiter(); toast('Gespeichert'); })
     .catch(function(){ toast('Speichern fehlgeschlagen'); });
 }
-function maAktiv(id, aktiv){
-  if(!aktiv && !confirm('Mitarbeiter deaktivieren? Er kann sich dann nicht mehr anmelden.')) return;
+async function maAktiv(btn, id, aktiv){
+  if(!aktiv && !(await TSConfirm.ask('Mitarbeiter deaktivieren? Er kann sich dann nicht mehr anmelden.', {danger:true, confirmLabel:'Deaktivieren'}))) return;
+  TSLoading.start(btn);
   fetch(MA_FN_URL, { method:'PATCH', headers: maHeaders(),
     body: JSON.stringify({ id: id, aktiv: aktiv }) })
     .then(function(r){ if(!r.ok) throw 0; ladeMitarbeiter(); toast(aktiv ? 'Aktiviert' : 'Deaktiviert'); })
-    .catch(function(){ toast('Änderung fehlgeschlagen'); });
+    .catch(function(){ TSLoading.stop(btn); toast('Änderung fehlgeschlagen'); });
 }
 function exportCodes(){
   var merged = {};
@@ -647,9 +652,10 @@ function checkArtikelUpdate(){
     .catch(function(){});
 }
 
-function applyArtikelUpdate(){
+function applyArtikelUpdate(btn){
   var banner=document.getElementById('artikel-update-banner');
   var newTag=banner ? banner.dataset.newTag : null;
+  TSLoading.start(btn);
   fetch('artikel.json',{cache:'no-store'})
     .then(function(r){ if(!r.ok) throw new Error('fetch failed'); return r.json(); })
     .then(function(json){
@@ -659,7 +665,7 @@ function applyArtikelUpdate(){
       renderArtikel();
       toast('Aktuelle Artikelnummern übernommen');
     })
-    .catch(function(){ toast('Aktualisierung fehlgeschlagen'); });
+    .catch(function(){ TSLoading.stop(btn); toast('Aktualisierung fehlgeschlagen'); });
 }
 
 function dismissArtikelUpdateBanner(){
