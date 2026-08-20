@@ -705,12 +705,16 @@ async function zeigKundeMaster(id){
             ${angebotRabattZeilen(a)}
             ${a.vat_nummer ? `<div class="datum mono" style="color:var(--dim)">VAT: ${esc(a.vat_nummer)}</div>` : ''}
             ${a.an_trello_gesendet_am ? `<div class="datum" style="color:var(--tuerkis)">✓ An Trello übergeben · ${datumFmt(a.an_trello_gesendet_am)}</div>` : ''}
+            ${a.auftrag_erstellt_am ? `<div class="datum" style="color:var(--tuerkis)">✓ Im Auftragsboard · ${datumFmt(a.auftrag_erstellt_am)}</div>` : ''}
           </div>
           ${a.datei_url ? `<a href="${a.datei_url}" target="_blank" rel="noopener"
             style="align-self:center;font-size:1.2rem;text-decoration:none;padding:4px 6px">📎</a>` : ''}
           ${a.status==='angenommen' ? `<button class="trello-btn ${a.an_trello_gesendet_am ? 'gesendet' : ''}"
             style="align-self:center" onclick="angebotAnTrello('${a.id}')">
             ↗ ${a.an_trello_gesendet_am ? 'Erneut senden' : 'An Trello senden'}</button>` : ''}
+          ${a.status==='angenommen' ? `<button class="trello-btn ${a.auftrag_erstellt_am ? 'gesendet' : ''}"
+            style="align-self:center" ${a.auftrag_erstellt_am ? 'disabled' : ''} onclick="angebotInsAuftragsboard('${a.id}', this)">
+            📋 ${a.auftrag_erstellt_am ? 'Im Auftragsboard' : 'Ins Auftragsboard'}</button>` : ''}
           <button style="align-self:center;color:var(--blau);font-size:2.4rem;line-height:1;padding:4px 6px"
             onclick="modalAngebotBearbeiten('${a.id}')">✎</button>
         </div>`).join('')
@@ -1610,24 +1614,50 @@ async function angebotAnTrelloAusfuehren(angebotId, gewaehlteBauvorhabenId){
       an_trello_gesendet_am: new Date().toISOString(),
       trello_card_id: data.id || null
     })});
-    // Parallel auch im neuen Auftragsboard anlegen (Übergangszeit: beide
-    // Systeme laufen nebeneinander). Ein Fehler hier darf die bereits
-    // erfolgreich angelegte Trello-Karte nicht ungeschehen machen, daher
-    // eigener, stiller try/catch statt den äußeren Fehlerpfad zu nutzen.
-    try{
-      await sb('crm_auftrag', { method:'POST', body: JSON.stringify({
-        kunde_id: a.kunde_id,
-        art: /wartung/i.test(a.bezeichnung) ? 'wartung_ohne_vertrag' : 'montage',
-        bezeichnung: a.bezeichnung,
-        vat_nummer: a.vat_nummer || null,
-        angebot_id: a.id,
-        trello_card_id: data.id || null,
-        erstellt_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || 'CRM (aus Angebot)'
-      })});
-    }catch(auftragErr){ console.error('Auftrag im Board anlegen fehlgeschlagen:', auftragErr); }
+    // Parallel auch im Auftragsboard anlegen (überspringt sich selbst,
+    // falls über den eigenständigen "Ins Auftragsboard"-Button schon einer
+    // existiert). Ein Fehler hier darf die bereits erfolgreich angelegte
+    // Trello-Karte nicht ungeschehen machen, daher eigener, stiller
+    // try/catch statt den äußeren Fehlerpfad zu nutzen.
+    try{ await angebotErstelleAuftragImBoard(Object.assign({}, a, {trello_card_id: data.id || null})); }
+    catch(auftragErr){ console.error('Auftrag im Board anlegen fehlgeschlagen:', auftragErr); }
     toast('Trello-Karte angelegt ✓');
     route();
   }catch(e){ toast('Fehler: ' + e.message.slice(0,80)); }
+}
+
+// Gemeinsame, duplikat-sichere Anlage im Auftragsboard - genutzt sowohl vom
+// "An Trello senden"-Button (als Nebeneffekt) als auch vom eigenständigen
+// "Ins Auftragsboard"-Button. Prüft immer erst live in der Datenbank nach
+// (nicht nur am lokal zwischengespeicherten Angebot), damit ein zweiter
+// Klick oder ein zweites offenes Browser-Fenster keinen Auftrag verdoppelt.
+async function angebotErstelleAuftragImBoard(a){
+  const vorhandene = await sb(`crm_auftrag?angebot_id=eq.${a.id}&select=id&limit=1`);
+  if(vorhandene && vorhandene.length) return vorhandene[0];
+  const [neu] = await sb('crm_auftrag', { method:'POST', body: JSON.stringify({
+    kunde_id: a.kunde_id,
+    art: /wartung/i.test(a.bezeichnung) ? 'wartung_ohne_vertrag' : 'montage',
+    bezeichnung: a.bezeichnung,
+    vat_nummer: a.vat_nummer || null,
+    angebot_id: a.id,
+    trello_card_id: a.trello_card_id || null,
+    erstellt_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || 'CRM (aus Angebot)'
+  })});
+  await sb(`${KONFIG.TAB_ANGEBOTE}?id=eq.${a.id}`, { method:'PATCH', body: JSON.stringify({
+    auftrag_erstellt_am: new Date().toISOString()
+  })});
+  return neu;
+}
+
+async function angebotInsAuftragsboard(angebotId, btn){
+  const a = kundeAngeboteDaten.find(x => String(x.id) === String(angebotId));
+  if(!a) return;
+  TSLoading.start(btn);
+  try{
+    await angebotErstelleAuftragImBoard(a);
+    toast('Im Auftragsboard angelegt ✓');
+    route();
+  }catch(e){ TSLoading.stop(btn); toast('Fehler: ' + e.message.slice(0,80)); }
 }
 
 async function wvToggle(id, erledigt){
