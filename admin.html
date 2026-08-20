@@ -422,7 +422,8 @@ function renderMitarbeiter(){
         '<button class="btn ghost small" onclick="maBearbeiten(\'' + m.id + '\')">Ändern</button> ' +
         (m.aktiv
           ? '<button class="btn danger small" onclick="maAktiv(this,\'' + m.id + '\', false)">Deaktivieren</button>'
-          : '<button class="btn small" onclick="maAktiv(this,\'' + m.id + '\', true)">Aktivieren</button>') +
+          : '<button class="btn small" onclick="maAktiv(this,\'' + m.id + '\', true)">Aktivieren</button> ' +
+            '<button class="btn danger small" onclick="maLoeschen(this,\'' + m.id + '\',\'' + esc((m.name||m.email||'').replace(/'/g,"\\'")) + '\')">Löschen</button>') +
       '</td>';
     tb.appendChild(tr);
   });
@@ -479,6 +480,19 @@ async function maAktiv(btn, id, aktiv){
     body: JSON.stringify({ id: id, aktiv: aktiv }) })
     .then(function(r){ if(!r.ok) throw 0; ladeMitarbeiter(); toast(aktiv ? 'Aktiviert' : 'Deaktiviert'); })
     .catch(function(){ TSLoading.stop(btn); toast('Änderung fehlgeschlagen'); });
+}
+async function maLoeschen(btn, id, name){
+  if(!(await TSConfirm.ask('"' + name + '" endgültig löschen? Das Login-Konto ist danach unwiderruflich weg. Vergangene Auftragszuordnungen bleiben mit Namen/Kürzel sichtbar, verweisen aber nicht mehr auf ein aktives Konto.', {danger:true, confirmLabel:'Endgültig löschen'}))) return;
+  TSLoading.start(btn, {ghost:true});
+  fetch(MA_FN_URL, { method:'DELETE', headers: maHeaders(),
+    body: JSON.stringify({ id: id }) })
+    .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, j: j }; }); })
+    .then(function(res){
+      if(!res.ok){ TSLoading.stop(btn); toast(res.j.error || 'Löschen fehlgeschlagen'); return; }
+      ladeMitarbeiter();
+      toast('Gelöscht');
+    })
+    .catch(function(){ TSLoading.stop(btn); toast('Netzwerkfehler'); });
 }
 function exportCodes(){
   var merged = {};
