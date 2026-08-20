@@ -149,7 +149,7 @@ main{max-width:760px;margin:0 auto;padding:14px 14px 24px}
 .chip button{color:var(--rot);margin-left:6px;padding:0}
 
 /* Wiedervorlagen */
-.wv{display:flex;align-items:flex-start;gap:12px;padding:12px 4px;
+.wv{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 12px;padding:12px 4px;
   border-bottom:1px solid var(--border)}
 .wv:last-child{border-bottom:none}
 .wv .box{width:26px;height:26px;min-width:26px;border:2px solid var(--dim);
@@ -697,7 +697,7 @@ async function zeigKundeMaster(id){
         <button class="plus" onclick="modalNeuesAngebot('${ku.id}')">＋</button></div>
       ${angebote.length ? angebote.map(a => `
         <div class="wv">
-          <div style="flex:1">
+          <div style="flex:1 1 200px;min-width:0">
             <div class="txt">${esc(a.bezeichnung)}</div>
             <div class="datum" style="color:${a.status==='angenommen'?'var(--gruen)':a.status==='abgelehnt'?'var(--rot)':'var(--gelb)'}">
               ${a.status==='angenommen'?'✓ Angenommen':a.status==='abgelehnt'?'✕ Abgelehnt':'○ Offen'}
