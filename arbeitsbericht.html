@@ -364,11 +364,11 @@
 <div id="adminModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.88);z-index:20;align-items:center;justify-content:center;padding:20px;">
   <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 18px;max-width:420px;width:100%;max-height:85vh;overflow:auto;">
     <p class="card-title" style="margin-bottom:14px;">Techniker-Verwaltung</p>
-    <div id="techList" style="margin-bottom:14px;"></div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
-      <input type="text" id="newTechName" placeholder="Name neuer Techniker" style="flex:1;">
-      <button class="icon-btn" id="addTechBtn" style="width:44px;color:var(--ok);border-color:var(--ok);">+</button>
+    <div style="font-size:11.5px; color:var(--muted); margin-bottom:10px; line-height:1.4;">
+      Liste kommt live aus der Mitarbeiter-Datenbank. Neue Mitarbeiter oder Änderungen bitte in der Admin-Oberfläche pflegen — hier nur Anzeige.
     </div>
+    <div id="techList" style="margin-bottom:10px;"></div>
+    <button class="icon-btn" id="reloadTechBtn" style="width:100%;margin-bottom:14px;">↻ Liste neu laden</button>
     <div style="border-top:1px solid var(--line);padding:14px 0;">
       <label style="display:flex; align-items:center; gap:8px; margin:0; color:var(--text); font-size:14px; cursor:pointer;">
         <input type="checkbox" id="bilderSpeichernToggle" style="width:17px;height:17px;accent-color:var(--amber);">
@@ -384,7 +384,7 @@
         Standort beim Absenden mit übertragen
       </label>
       <div style="font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.4;">
-        Standardmäßig aktiv. Fragt beim Absenden eines Berichts den aktuellen GPS-Standort ab und speichert ihn mit. Der Browser fragt dafür explizit um Erlaubnis. Ausschalten und Wiedereinschalten erfordern jeweils den Admin-Code. 
+        Standardmäßig aktiv. Fragt beim Absenden eines Berichts den aktuellen GPS-Standort ab und speichert ihn mit. Der Browser fragt dafür explizit um Erlaubnis. Kann nur von Admins geändert werden — bei Nicht-Admins ist der Schalter gesperrt.
       </div>
     </div>
     <div style="border-top:1px solid var(--line);padding-top:14px;">
@@ -431,11 +431,11 @@
     <input type="file" id="auftragInput" accept="application/json,.json" style="display:none">
     <div class="pdf-status" id="auftragStatus"></div>
 
-    <label>Kunde</label>
+    <label>Kunde *</label>
     <input type="text" id="fKunde" placeholder="z. B. Stadt Karlsruhe" list="kundenListe" autocomplete="off">
     <datalist id="kundenListe"></datalist>
 
-    <label>Bauvorhaben</label>
+    <label>Bauvorhaben *</label>
     <input type="text" id="fBauvorhaben" placeholder="z. B. Karlsburg BA3 BS-Sanierung">
 
     <label>Zugehöriger Vorgang <span style="color:var(--muted);font-weight:normal;">(optional)</span></label>
@@ -470,7 +470,7 @@
         <input type="text" id="fAngebotsnr" placeholder="i-2026-XXXXX">
       </div>
       <div>
-        <label>Datum</label>
+        <label>Datum *</label>
         <input type="date" id="fDatum">
       </div>
     </div>
@@ -486,14 +486,14 @@
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">02</span> Zeiterfassung</p>
+    <p class="card-title"><span class="n">02</span> Zeiterfassung *</p>
     <div id="technikerZeitBlocks"></div>
     <button class="add-btn" id="addTechnikerBlock">+ Weiterer Techniker auf der Baustelle</button>
     <div class="zeit-total" id="zeitTotal">Gesamt: 0,0 Std.</div>
   </div>
 
   <div class="card">
-    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung</p>
+    <p class="card-title"><span class="n">03</span> Tätigkeitsbeschreibung *</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button type="button" class="add-btn" id="openWartungGen" style="flex:1;text-align:center;">+ Wartungs-Generator verwenden</button>
     </div>
@@ -610,6 +610,7 @@
 </div>
 
 <div class="generate">
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">* Pflichtfeld</div>
   <button id="genBtn">Bericht als PDF erzeugen</button>
   <div class="gen-status" id="genStatus"></div>
 </div>
@@ -1074,7 +1075,7 @@ function updateTotal(){
 
 document.getElementById('addTechnikerBlock').addEventListener('click', () => {
   const used = zeitBlocks.map(b => b.name);
-  const available = getTechListe().filter(t => !used.includes(t));
+  const available = TECH_LISTE.filter(t => !used.includes(t));
   const sel = document.getElementById('extraTechSelect');
   if(!available.length){
     sel.innerHTML = '<option disabled>Alle Techniker bereits hinzugefügt</option>';
@@ -1102,11 +1103,47 @@ let photos = [];
 
 function addPhotos(fileList){
   Array.from(fileList).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
+    komprimiereBild(file).then(dataUrl => {
       const id = Date.now() + Math.random();
-      photos.push({id, dataUrl: e.target.result});
+      photos.push({id, dataUrl});
       renderThumbs();
+    }).catch(err => {
+      console.error('Foto konnte nicht verarbeitet werden:', err);
+    });
+  });
+}
+// Kamerafotos moderner Smartphones sind oft 5-15 MB — unkomprimiert als
+// data:-URL übernommen belastet das unnötig lokalen Speicher, Autosave und
+// den späteren Upload. Verkleinert auf max. 1920px lange Kante, JPEG ~82%.
+// Bei jedem Fehler (z.B. exotisches Dateiformat) wird das Originalbild
+// unverändert übernommen, statt das Foto ganz zu verlieren.
+function komprimiereBild(file, maxDim, qualitaet){
+  maxDim = maxDim || 1920;
+  qualitaet = qualitaet || 0.82;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = e => {
+      const original = e.target.result;
+      const img = new Image();
+      img.onerror = () => resolve(original);
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        try{
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', qualitaet));
+        }catch(err){
+          resolve(original);
+        }
+      };
+      img.src = original;
     };
     reader.readAsDataURL(file);
   });
@@ -1174,7 +1211,66 @@ document.getElementById('keinAbnehmer').addEventListener('change', e => {
 /* ---------- PDF Bericht generieren ---------- */
 document.getElementById('genBtn').addEventListener('click', generateReport);
 
+// ─── Pflichtfelder: ohne diese ist ein Arbeitsbericht wertlos bzw. nicht
+// zuordenbar. Wird vor JEDEM Speichern/PDF-Erzeugen geprüft — vorher konnte
+// ein komplett leeres Formular abgeschickt werden und landete trotzdem in
+// der Datenbank. ───────────────────────────────────────────────────────────
+const PFLICHTFELDER = [
+  {id:'fKunde', label:'Kunde'},
+  {id:'fBauvorhaben', label:'Bauvorhaben'},
+  {id:'fDatum', label:'Datum'},
+  {id:'fTaetigkeit', label:'Tätigkeitsbeschreibung'}
+];
+function pruefePflichtfelder(){
+  const fehlend = [];
+  PFLICHTFELDER.forEach(f => {
+    const el = document.getElementById(f.id);
+    const leer = !el || !el.value || !el.value.trim();
+    if(el) el.style.borderColor = leer ? '#e05a4e' : '';
+    if(leer) fehlend.push(f);
+  });
+  return fehlend;
+}
+PFLICHTFELDER.forEach(f => {
+  const el = document.getElementById(f.id);
+  if(el) el.addEventListener('input', () => { el.style.borderColor = ''; });
+});
+
 async function generateReport(){
+  // Pflichtfelder + Arbeitszeit + Unterschrift + E-Mail-Format prüfen, BEVOR
+  // irgendetwas gespeichert oder ein PDF erzeugt wird.
+  const fehlend = pruefePflichtfelder();
+  const keinAbnehmerJetzt = document.getElementById('keinAbnehmer').checked;
+  const unterschriftFehlt = !keinAbnehmerJetzt && !hasSig;
+  const arbeitszeitFehlt = !zeitBlocks.some(block =>
+    (block.rows || []).some(r => r.datum && (parseFloat((r.stunden || '').toString().replace(',', '.')) > 0))
+  );
+  const emailWertCheck = val('fEmail').trim();
+  const emailUngueltig = !!emailWertCheck && !EMAIL_REGEX.test(emailWertCheck);
+
+  if(fehlend.length || unterschriftFehlt || arbeitszeitFehlt || emailUngueltig){
+    const teile = fehlend.map(f => f.label);
+    if(arbeitszeitFehlt) teile.push('Arbeitszeit (mindestens ein Datum mit Stunden erfassen)');
+    if(emailUngueltig) teile.push('E-Mail-Adresse (ungültiges Format)');
+    if(unterschriftFehlt) teile.push('Unterschrift (oder „Kein Abnehmer vor Ort" ankreuzen)');
+    await TSNotice.show('Bitte ergänzen, bevor der Bericht erstellt wird:\n\n• ' + teile.join('\n• '), {title:'Formular unvollständig'});
+    if(fehlend.length){
+      const erstesFeld = document.getElementById(fehlend[0].id);
+      erstesFeld.focus();
+      erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    } else if(arbeitszeitFehlt){
+      const zeitSektion = document.getElementById('technikerZeitBlocks');
+      if(zeitSektion) zeitSektion.scrollIntoView({behavior:'smooth', block:'center'});
+    } else if(emailUngueltig){
+      const emailFeld = document.getElementById('fEmail');
+      emailFeld.focus();
+      emailFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      document.getElementById('keinAbnehmer').scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    return;
+  }
+
   // Prüfung: Wurde für diesen Wartungseinsatz auch ein Wartungsprotokoll
   // ausgefüllt (Abschnitt "Wartungsgenerator")? Harte Sperre wäre riskant
   // (es kann Ausnahmefälle geben) - daher Warnung mit Möglichkeit, trotzdem
@@ -2125,15 +2221,29 @@ document.getElementById('toggleLieferanschrift').addEventListener('click', () =>
 });
 
 /* ---------- Techniker-Verwaltung ---------- */
-const LS_LISTE = 'ts_techniker_liste';
+// Liste kommt jetzt live aus der echten Mitarbeiter-Datenbank (dieselbe, die
+// auch admin.html verwaltet), nicht mehr aus einer festen Liste in config.js.
+// Mit lokalem Cache-Fallback, falls beim Öffnen kein Netz besteht. Auswahl
+// pro Gerät bleibt wie gehabt in localStorage (LS_AKTUELL) gespeichert.
 const LS_AKTUELL = 'ts_techniker_aktuell';
-const DEFAULT_TECHNIKER = TENANT.techniker.slice();
+const TECH_CACHE_KEY = 'ts_techniker_db_cache';
+let TECH_LISTE = [];
 
-function getTechListe(){
-  const raw = localStorage.getItem(LS_LISTE);
-  return raw ? JSON.parse(raw) : DEFAULT_TECHNIKER.slice();
+async function ladeTechnikerListe(){
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/mitarbeiter?public=1`);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const daten = await res.json(); // { kuerzel: name, ... } — nur aktive Mitarbeiter
+    const namen = Object.values(daten).filter(Boolean).sort((a,b) => a.localeCompare(b,'de'));
+    TECH_LISTE = namen;
+    try{ localStorage.setItem(TECH_CACHE_KEY, JSON.stringify(namen)); }catch(e){}
+  }catch(err){
+    console.error('Technikerliste konnte nicht geladen werden, nutze letzten Cache-Stand:', err);
+    try{ TECH_LISTE = JSON.parse(localStorage.getItem(TECH_CACHE_KEY) || '[]'); }catch(e){ TECH_LISTE = []; }
+  }
+  return TECH_LISTE;
 }
-function saveTechListe(list){ localStorage.setItem(LS_LISTE, JSON.stringify(list)); }
+
 function getAktuellerTech(){ return localStorage.getItem(LS_AKTUELL) || ''; }
 function setAktuellerTech(name){
   localStorage.setItem(LS_AKTUELL, name);
@@ -2146,9 +2256,12 @@ function setAktuellerTech(name){
 const techModal = document.getElementById('techModal');
 const adminModal = document.getElementById('adminModal');
 
-function openTechModal(){
+async function openTechModal(){
   const sel = document.getElementById('techSelect');
-  sel.innerHTML = getTechListe().map(t => `<option value="${t}">${t}</option>`).join('');
+  if(!TECH_LISTE.length) await ladeTechnikerListe();
+  sel.innerHTML = TECH_LISTE.length
+    ? TECH_LISTE.map(t => `<option value="${t}">${t}</option>`).join('')
+    : '<option value="" disabled selected>Keine Mitarbeiter geladen — Internetverbindung prüfen</option>';
   techModal.style.display = 'flex';
 }
 document.getElementById('techConfirm').addEventListener('click', () => {
@@ -2162,7 +2275,8 @@ document.getElementById('switchTechBtn').addEventListener('click', () => {
 });
 
 /* Ersteinrichtung: Gerät kennt noch keinen Techniker */
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await ladeTechnikerListe();
   const current = getAktuellerTech();
   if(current){
     document.getElementById('fTechniker').textContent = current;
@@ -2172,32 +2286,42 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+/* ---------- Admin-Rolle (schützt sicherheitsrelevante Einstellungen) ---------- */
+let meineRolle = null; // null = noch nicht geprüft
+async function pruefeMeineRolle(){
+  if(meineRolle) return meineRolle;
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/mitarbeiter?me=1`, { headers: supabaseHeaders() });
+    const ich = await res.json().catch(() => null);
+    meineRolle = (ich && ich.rolle) || 'unbekannt';
+  } catch(err){
+    console.error('Rollenprüfung fehlgeschlagen:', err);
+    meineRolle = 'unbekannt'; // im Zweifel gesperrt, nicht offen
+  }
+  return meineRolle;
+}
+function aktualisiereStandortSperre(){
+  const toggle = document.getElementById('standortToggle');
+  const gesperrt = meineRolle !== 'admin';
+  toggle.disabled = gesperrt;
+  toggle.closest('label').style.opacity = gesperrt ? '.5' : '1';
+  toggle.closest('label').style.cursor = gesperrt ? 'not-allowed' : 'pointer';
+}
+
 /* ---------- Admin-Panel ---------- */
 document.getElementById('adminBtn').addEventListener('click', () => {
   renderTechList();
   document.getElementById('bilderSpeichernToggle').checked = localStorage.getItem('ts_bilder_speichern') === '1';
   document.getElementById('standortToggle').checked = standortIstAktiv();
   adminModal.style.display = 'flex';
+  aktualisiereStandortSperre(); // sofort mit letztem bekannten Stand sperren, dann live nachschärfen
+  pruefeMeineRolle().then(aktualisiereStandortSperre);
 });
-/* GPS-Schalter ist zusätzlich zum Login mit dem Admin-Code geschützt. */
-document.getElementById('standortToggle').addEventListener('click', function(e){
-  e.preventDefault(); // Häkchen erst nach korrektem Code setzen
-  const toggle = this;
-  /* Wichtig: nicht this.checked auswerten — das ist während des Klicks
-     bereits umgeschaltet und wird durch preventDefault() nach dem
-     Handler wieder zurückgesetzt. Quelle der Wahrheit ist localStorage. */
-  const neuerZustand = !standortIstAktiv();
-  const eingabe = prompt('Admin-Code zum Ändern der Standort-Funktion:');
-  if(eingabe === null) return; // abgebrochen
-  if(eingabe === TENANT.adminCode){
-    localStorage.setItem('ts_standort_uebertragen', neuerZustand ? '1' : '0');
-    aktualisiereStandortHinweis();
-    /* Häkchen erst setzen, nachdem der Browser das preventDefault-
-       Rollback ausgeführt hat: */
-    setTimeout(function(){ toggle.checked = neuerZustand; }, 0);
-  } else {
-    TSToast.show('Falscher Admin-Code – Standort-Funktion wurde nicht geändert.', 'error');
-  }
+/* GPS-Schalter: disabled-Attribut verhindert jede Bedienung durch Nicht-Admins
+   bereits auf DOM-Ebene — kein Admin-Code-Prompt mehr nötig. */
+document.getElementById('standortToggle').addEventListener('change', function(){
+  localStorage.setItem('ts_standort_uebertragen', this.checked ? '1' : '0');
+  aktualisiereStandortHinweis();
 });
 function aktualisiereMedienStatus(){
   const an = localStorage.getItem('ts_bilder_speichern') === '1';
@@ -2216,30 +2340,12 @@ document.getElementById('closeAdmin').addEventListener('click', () => adminModal
 
 function renderTechList(){
   const listEl = document.getElementById('techList');
-  const listArr = getTechListe();
-  listEl.innerHTML = listArr.map((name, i) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);">
-      <span>${name}</span>
-      <button class="icon-btn rmTech" data-i="${i}" style="width:30px;height:30px;font-size:14px;">×</button>
-    </div>
-  `).join('');
-  listEl.querySelectorAll('.rmTech').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const i = parseInt(btn.dataset.i);
-      const arr = getTechListe();
-      arr.splice(i, 1);
-      saveTechListe(arr);
-      renderTechList();
-    });
-  });
+  listEl.innerHTML = TECH_LISTE.length
+    ? TECH_LISTE.map(name => `<div style="padding:6px 0;border-bottom:1px solid var(--line);">${name}</div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;">Keine Mitarbeiter geladen.</div>';
 }
-document.getElementById('addTechBtn').addEventListener('click', () => {
-  const input = document.getElementById('newTechName');
-  const name = input.value.trim();
-  if(!name) return;
-  const arr = getTechListe();
-  if(!arr.includes(name)){ arr.push(name); saveTechListe(arr); }
-  input.value = '';
+document.getElementById('reloadTechBtn').addEventListener('click', async () => {
+  await ladeTechnikerListe();
   renderTechList();
 });
 
