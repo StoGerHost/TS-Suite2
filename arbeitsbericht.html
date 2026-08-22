@@ -716,6 +716,11 @@ const auftragBtn = document.getElementById('auftragBtn');
 const auftragInput = document.getElementById('auftragInput');
 const auftragStatus = document.getElementById('auftragStatus');
 let importierteKundeId = null; // gilt als sicher, solange Kunde/Bauvorhaben nicht von Hand geändert werden
+// Direkter Auftrag-Link (per ID, z.B. vom Auftragsboard) hängt NICHT vom
+// genauen Wortlaut in Kunde/Bauvorhaben ab — eine Tippfehler-Korrektur dort
+// soll diese Verknüpfung deshalb nicht stillschweigend aufheben, anders als
+// bei einer über den Kundennamen gesuchten Verknüpfung.
+let direkterAuftragAktiv = false;
 
 auftragBtn.addEventListener('click', () => auftragInput.click());
 auftragInput.addEventListener('change', e => { if(e.target.files[0]) handleAuftragsdatei(e.target.files[0]); });
@@ -781,13 +786,23 @@ let RUECKSPRUNG_ZIEL = null;
   history.replaceState(null, '', location.pathname); // URL wieder sauber, Werte bleiben im Formular
 })();
 /* Manuelle Korrektur nach dem Laden hebt die sichere Zuordnung wieder auf,
-   dann greift beim Speichern wieder der normale Namensabgleich. */
+   dann greift beim Speichern wieder der normale Namensabgleich. Eine direkte
+   Auftrags-Verknüpfung (per ID) bleibt davon unberührt — die hängt nicht am
+   genauen Wortlaut von Kunde/Bauvorhaben, eine Tippfehler-Korrektur dort
+   darf sie nicht stillschweigend aufheben. */
 function setzeVorgangAuswahlZurueck(){
   document.getElementById('fVorgang').innerHTML =
     '<option value="">– kein Vorgang / nicht zutreffend –</option>';
+  direkterAuftragAktiv = false;
 }
-document.getElementById('fKunde').addEventListener('input', () => { importierteKundeId = null; setzeVorgangAuswahlZurueck(); });
-document.getElementById('fBauvorhaben').addEventListener('input', () => { importierteKundeId = null; setzeVorgangAuswahlZurueck(); });
+document.getElementById('fKunde').addEventListener('input', () => {
+  if(direkterAuftragAktiv) return;
+  importierteKundeId = null; setzeVorgangAuswahlZurueck();
+});
+document.getElementById('fBauvorhaben').addEventListener('input', () => {
+  if(direkterAuftragAktiv) return;
+  importierteKundeId = null; setzeVorgangAuswahlZurueck();
+});
 
 async function handlePdf(file){
   pdfStatus.textContent = 'Lese PDF ...';
@@ -1865,6 +1880,7 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
           sel.appendChild(opt);
           sel.value = opt.value;
           direktAuftragId = a.id;
+          direkterAuftragAktiv = true;
         }
       }
     }catch(err){
