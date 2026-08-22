@@ -760,7 +760,11 @@ let RUECKSPRUNG_ZIEL = null;
 (function ausUrlUebernehmen(){
   const p = new URLSearchParams(location.search);
   RUECKSPRUNG_ZIEL = p.get('rueck') || null;
-  if(!p.has('bauvorhaben') && !p.has('kunde')) return;
+  // Auch ohne Kunde/Bauvorhaben in der URL weiterverarbeiten, wenn wenigstens
+  // ein Vorgang (z.B. Auftrag ohne verknüpften Kunden) mitgegeben wurde —
+  // sonst gingen vorgang_typ/vorgang_id in genau diesem Fall stillschweigend
+  // verloren und der Bericht ließ sich nie mit dem Auftrag verknüpfen.
+  if(!p.has('bauvorhaben') && !p.has('kunde') && !p.has('vorgang_typ')) return;
   wendeAuftragAn({
     kunde: p.get('kunde') || null,
     bauvorhaben: p.get('bauvorhaben') || null,
@@ -1837,6 +1841,37 @@ function autofillKontaktFuerBauvorhaben(){
 async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
   const sel = document.getElementById('fVorgang');
   sel.innerHTML = '<option value="">– kein Vorgang / nicht zutreffend –</option>';
+
+  // Direkter Auftrag-Deep-Link (z.B. "Arbeitsbericht dazu öffnen" im Auftragsboard)
+  // funktioniert auch ohne bekannten Kunden — die Auftrags-ID steht schon fest,
+  // muss nicht erst über eine kundenbezogene Suche gefunden werden. Ohne diesen
+  // Block ging vorgang_typ/vorgang_id bei einem Auftrag ohne verknüpften Kunden
+  // stillschweigend verloren.
+  let direktAuftragId = null;
+  if(vorauswahlTyp === 'auftrag' && vorauswahlId && SUPABASE_CONFIGURED){
+    try{
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/crm_auftrag?id=eq.${vorauswahlId}&select=id,nummer,bezeichnung,vat_nummer`,
+        { headers: supabaseHeaders() }
+      );
+      if(res.ok){
+        const rows = await res.json();
+        if(rows.length){
+          const a = rows[0];
+          const opt = document.createElement('option');
+          opt.value = 'auftrag:' + a.id;
+          opt.dataset.vat = a.vat_nummer || '';
+          opt.textContent = (a.nummer ? a.nummer + ' · ' : '') + a.bezeichnung + (a.vat_nummer ? ` · ${a.vat_nummer}` : '');
+          sel.appendChild(opt);
+          sel.value = opt.value;
+          direktAuftragId = a.id;
+        }
+      }
+    }catch(err){
+      console.error('Direkt verlinkter Auftrag konnte nicht geladen werden:', err);
+    }
+  }
+
   if(!kundeId || !SUPABASE_CONFIGURED) return;
 
   let wartungspositionen = [];
@@ -1966,16 +2001,19 @@ async function ladeVorgaengeFuerKunde(kundeId, vorauswahlTyp, vorauswahlId){
     sel.appendChild(grp);
   }
   if(auftraegeDirekt.length){
-    const grp = document.createElement('optgroup');
-    grp.label = 'Offene Aufträge';
-    auftraegeDirekt.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = 'auftrag:' + a.id;
-      opt.dataset.vat = a.vat_nummer || '';
-      opt.textContent = (a.nummer ? a.nummer + ' · ' : '') + a.bezeichnung + (a.vat_nummer ? ` · ${a.vat_nummer}` : '');
-      grp.appendChild(opt);
-    });
-    sel.appendChild(grp);
+    const gefiltert = auftraegeDirekt.filter(a => a.id !== direktAuftragId);
+    if(gefiltert.length){
+      const grp = document.createElement('optgroup');
+      grp.label = 'Offene Aufträge';
+      gefiltert.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = 'auftrag:' + a.id;
+        opt.dataset.vat = a.vat_nummer || '';
+        opt.textContent = (a.nummer ? a.nummer + ' · ' : '') + a.bezeichnung + (a.vat_nummer ? ` · ${a.vat_nummer}` : '');
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
   }
 
   if(vorauswahlTyp && vorauswahlId){

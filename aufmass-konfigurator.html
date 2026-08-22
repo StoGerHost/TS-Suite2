@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Türblatt Aufmaß – Aufnahmeprotokoll</title>
 <script src="config.js"></script>
+<script src="ts-warnung.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="manifest" href="data:application/json,{%22name%22:%22Aufma%C3%9Fprotokoll%22,%22short_name%22:%22Aufma%C3%9F%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23F2F4F7%22,%22theme_color%22:%22%23001B43%22}">
@@ -14,13 +15,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Aufmaß">
-<link rel="stylesheet" href="ts-theme.css">
-<script src="ts-theme.js"></script>
 <style>
-  /* Eigener Umschalt-Button dieses Tools kollidiert räumlich mit der
-     bestehenden Floating-Action-Leiste unten rechts (E-Mail/PDF-Export) -
-     zentralen Button daher etwas höher setzen. */
-  #ts-theme-toggle{ bottom: 84px; }
   :root {
     --bg:            #0a0a0c;
     --surface:       #111318;
@@ -93,6 +88,7 @@
   .doc-header h1 { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; color: var(--accent); }
   .doc-header p { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .hdr-stripe { height: 3px; background: linear-gradient(90deg, var(--accent) 0%, var(--border-strong) 50%, var(--border) 100%); }
+  #theme-toggle{position:fixed;bottom:16px;right:16px;z-index:300;background:var(--surface);color:var(--text);border:1.5px solid var(--border-strong);border-radius:20px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
   .header-ids { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; padding-bottom: 14px; }
   .id-field { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); font-weight: 600; }
   .id-field input {
@@ -599,17 +595,17 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:var(--bg);color:var(--text);padding:10px 16px;
+    background:#0a0a0c;color:#e9edf2;padding:10px 16px;
     padding-top:calc(10px + env(safe-area-inset-top,0px));
     padding-left:calc(16px + env(safe-area-inset-left,0px));
     padding-right:calc(16px + env(safe-area-inset-right,0px));
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid var(--border-strong);}
-  .ts-backbar__link{color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
+  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  .ts-backbar__link:hover{color:var(--accent);}
-  .ts-backbar__slash{color:var(--muted);}
-  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ts-backbar__link:hover{color:#3a7bd5;}
+  .ts-backbar__slash{color:rgba(233,237,242,.35);}
+  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;
     padding-top:calc(8px + env(safe-area-inset-top,0px));gap:8px;}}
 </style>
@@ -770,7 +766,7 @@
       </div>
       <div class="field-row">
         <span class="field-label">Kunde / Auftraggeber</span>
-        <input class="field-input" type="text" placeholder="Firma oder Privatperson">
+        <input class="field-input" id="field-kunde" type="text" placeholder="Firma oder Privatperson">
       </div>
       <div class="field-row">
         <span class="field-label">Ansprechpartner</span>
@@ -1314,11 +1310,19 @@
 </div>
 
 <script>
+(function(){
+  var KEY='tuersuite_theme';
+  document.documentElement.setAttribute('data-theme', localStorage.getItem(KEY) || 'dark');
+})();
+</script>
+
+<script>
 // ── TOP-LEVEL VARIABLE DECLARATIONS (hoisted to avoid TDZ errors) ──
 const AUTOSAVE_KEY = 'aufmass_autosave_v1';
 const AUTOSAVE_META_KEY = 'aufmass_autosave_meta';
 let autosaveTimer = null;
 let pendingRestore = null;
+let pendingRestoreDoorCount = 1;
 let doorPanels = [];
 let activeDoorIndex = 0;
 let deferredInstallPrompt = null;
@@ -1388,8 +1392,9 @@ let verifiedEmployeeCode = '';
 // DIN L: Band links  → rotateY positiv  (Griffseite schwingt von Betrachter weg nach rechts)
 // DIN R: Band rechts → rotateY negativ  (Griffseite schwingt von Betrachter weg nach links)
 
-function animateDoor(side, open) {
-  const svgEl = document.getElementById(side === 'L' ? 'svg-din-l' : 'svg-din-r');
+function animateDoor(side, open, pref) {
+  pref = pref || '';
+  const svgEl = document.getElementById(pref + (side === 'L' ? 'svg-din-l' : 'svg-din-r'));
   if (!svgEl) return;
 
   const startProg = parseFloat(svgEl.dataset.prog || '0');
@@ -1428,21 +1433,24 @@ function animateDoor(side, open) {
   requestAnimationFrame(step);
 }
 
-function selectDIN(side) {
-  const cardL = document.getElementById('din-l');
-  const cardR = document.getElementById('din-r');
+function selectDIN(side, pref) {
+  pref = pref || '';
+  const cardL = document.getElementById(pref + 'din-l');
+  const cardR = document.getElementById(pref + 'din-r');
+  if (!cardL || !cardR) return; // Tür-Panel (noch) nicht vorhanden
   const wasSelected = (side === 'L' ? cardL : cardR).classList.contains('selected');
 
   cardL.classList.toggle('selected', side === 'L');
   cardR.classList.toggle('selected', side === 'R');
-  document.getElementById('r-din-' + side.toLowerCase()).checked = true;
+  const radio = document.getElementById(pref + 'r-din-' + side.toLowerCase());
+  if (radio) radio.checked = true;
 
   if (side === 'L') {
-    animateDoor('L', !wasSelected);
-    animateDoor('R', false);
+    animateDoor('L', !wasSelected, pref);
+    animateDoor('R', false, pref);
   } else {
-    animateDoor('R', !wasSelected);
-    animateDoor('L', false);
+    animateDoor('R', !wasSelected, pref);
+    animateDoor('L', false, pref);
   }
 }
 
@@ -1460,18 +1468,20 @@ function loadFoto(event, slot) {
 }
 
 // ── SKETCH UPLOAD ─────────────────────────────────────
-function loadSketch(event) {
+function loadSketch(event, pref) {
+  pref = pref || '';
   const file = event.target.files[0];
   if (!file) return;
   const url = URL.createObjectURL(file);
-  const area = document.getElementById('sketchArea');
+  const area = document.getElementById(pref + 'sketchArea');
+  if (!area) return;
   area.style.backgroundImage = `url(${url})`;
   area.style.backgroundSize = 'contain';
   area.style.backgroundRepeat = 'no-repeat';
   area.style.backgroundPosition = 'center';
   area.querySelector('.sketch-hint').style.display = 'none';
   // An uploaded photo replaces any existing freehand sketch on this canvas
-  clearSketch();
+  clearSketch(pref);
 }
 
 // ── FREEHAND DRAWING (Apple Pencil / Stylus / Finger / Mouse) ──────────
@@ -1586,61 +1596,71 @@ function clearCanvas(state) {
   state.hasInk = false;
 }
 
-function clearSketch() {
-  clearCanvas(drawCanvases['sketchCanvas']);
-  const area = document.getElementById('sketchArea');
+function clearSketch(pref) {
+  pref = pref || '';
+  clearCanvas(drawCanvases[pref + 'sketchCanvas']);
+  const area = document.getElementById(pref + 'sketchArea');
+  if (!area) return;
   // Clear any uploaded background image too
   area.style.backgroundImage = '';
-  area.querySelector('.sketch-hint').style.display = '';
-}
-
-function clearSignature(id) {
-  clearCanvas(drawCanvases[id]);
-}
-
-function clearLgSketch() {
-  clearCanvas(drawCanvases['lgSketchCanvas']);
-  const hint = document.querySelector('.lg-sketch-hint');
+  const hint = area.querySelector('.sketch-hint');
   if (hint) hint.style.display = '';
 }
 
-// Hide the sketch hint as soon as the user starts drawing
-function initSketchHintToggle() {
-  const sketchState = drawCanvases['sketchCanvas'];
-  const hint = document.querySelector('#sketchArea .sketch-hint');
-  if (!sketchState || !hint) return;
-  const canvas = sketchState.canvas;
-  canvas.addEventListener('pointerdown', () => { hint.style.display = 'none'; });
+function clearSignature(id, pref) {
+  pref = pref || '';
+  clearCanvas(drawCanvases[pref + id]);
 }
 
-// Hide the Lichtausschnitt/Lüftungsgitter sketch hint once drawing starts
-function initLgSketchHintToggle() {
-  const state = drawCanvases['lgSketchCanvas'];
-  const hint = document.querySelector('.lg-sketch-hint');
-  if (!state || !hint) return;
-  state.canvas.addEventListener('pointerdown', () => { hint.style.display = 'none'; });
+function clearLgSketch(pref) {
+  pref = pref || '';
+  clearCanvas(drawCanvases[pref + 'lgSketchCanvas']);
+  // .lg-sketch-hint hat kein eigenes id-Attribut (wird beim Klonen nicht
+  // präfixiert) — deshalb relativ über das schon präfixierte Canvas suchen,
+  // statt global document.querySelector (das träfe immer Tür 1).
+  const canvas = document.getElementById(pref + 'lgSketchCanvas');
+  const hint = canvas && canvas.closest('.lg-sketch-wrap')?.querySelector('.lg-sketch-hint');
+  if (hint) hint.style.display = '';
 }
 
-// Initialize all drawing canvases
-function initDrawCanvases() {
-  setupDrawCanvas(document.getElementById('sketchCanvas'));
-  setupDrawCanvas(document.getElementById('signCanvas1'));
-  setupDrawCanvas(document.getElementById('signCanvas2'));
-  setupDrawCanvas(document.getElementById('lgSketchCanvas'));
-  initSketchHintToggle();
-  initLgSketchHintToggle();
+// Initialisiert alle vier Zeichenflächen (Skizze, 2x Unterschrift, Lichtausschnitt/
+// Lüftungsgitter-Skizze) für EIN Tür-Panel. Wird beim Laden für Tür 1 (pref='')
+// aufgerufen und in addNewDoor() für jede neu angelegte Tür erneut — vorher wurden
+// die Canvas-Elemente bei Tür 2/3 einfach komplett entfernt statt neu initialisiert,
+// wodurch sich dort weder Skizze noch Kundenunterschrift erfassen ließen.
+function initDoorCanvases(panel, pref) {
+  pref = pref || '';
+  [pref + 'sketchCanvas', pref + 'signCanvas1', pref + 'signCanvas2', pref + 'lgSketchCanvas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) setupDrawCanvas(el);
+  });
+  // Hinweistexte ausblenden, sobald der Nutzer zu zeichnen beginnt — über das
+  // jeweilige Panel gescopt (.sketch-hint/.lg-sketch-hint haben kein eigenes
+  // id-Attribut und werden beim Klonen nicht präfixiert).
+  const sketchState = drawCanvases[pref + 'sketchCanvas'];
+  const sketchHint = panel && panel.querySelector('.sketch-hint');
+  if (sketchState && sketchHint) {
+    sketchState.canvas.addEventListener('pointerdown', () => { sketchHint.style.display = 'none'; });
+  }
+  const lgState = drawCanvases[pref + 'lgSketchCanvas'];
+  const lgHint = panel && panel.querySelector('.lg-sketch-hint');
+  if (lgState && lgHint) {
+    lgState.canvas.addEventListener('pointerdown', () => { lgHint.style.display = 'none'; });
+  }
 }
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initDrawCanvases);
+  document.addEventListener('DOMContentLoaded', () => initDoorCanvases(document.getElementById('main-form'), ''));
 } else {
-  initDrawCanvases();
+  initDoorCanvases(document.getElementById('main-form'), '');
 }
 
 // ── GPS LOKALISIERUNG ─────────────────────────────────
-function getGPS() {
-  const btn = document.getElementById('gps-btn');
-  const status = document.getElementById('gps-status');
-  const adresse = document.getElementById('field-adresse');
+function getGPS(pref) {
+  pref = pref || '';
+  const btn = document.getElementById(pref + 'gps-btn');
+  const status = document.getElementById(pref + 'gps-status');
+  const adresse = document.getElementById(pref + 'field-adresse');
+  if (!btn || !status || !adresse) return; // Tür-Panel (noch) nicht vorhanden
 
   if (!navigator.geolocation) {
     status.textContent = '⚠ GPS nicht verfügbar in diesem Browser.';
@@ -2569,7 +2589,45 @@ function drawAbschlussSectionNative(pdf, section, sectionNumber, pageW, pageH, m
   return cursorY;
 }
 
+// Grunddaten des Protokolls — ohne die ist ein Aufmaß nicht zuordenbar bzw.
+// nicht aussagekräftig. Wird VOR jedem PDF-Export geprüft; vorher liess sich
+// ein komplett leeres oder halb ausgefülltes Protokoll exportieren.
+const AUFMASS_PFLICHTFELDER = [
+  {id:'field-projekt', label:'Projekt / Bauvorhaben'},
+  {id:'field-kunde', label:'Kunde / Auftraggeber'},
+  {id:'field-adresse', label:'Baustellen-Adresse'},
+  {id:'field-datum', label:'Datum'},
+  {id:'field-aufgenommen', label:'Aufgenommen von'},
+];
+function pruefeAufmassPflichtfelder(){
+  const fehlend = [];
+  AUFMASS_PFLICHTFELDER.forEach(f => {
+    const el = document.getElementById(f.id);
+    const leer = !el || !el.value || !el.value.trim();
+    if(el) el.style.borderColor = leer ? '#e05a4e' : '';
+    if(leer) fehlend.push(f);
+  });
+  return fehlend;
+}
+AUFMASS_PFLICHTFELDER.forEach(f => {
+  const el = document.getElementById(f.id);
+  if(el) el.addEventListener('input', () => { el.style.borderColor = ''; });
+});
+
 async function exportPDF(mode = 'save') {
+  const fehlendeFelder = pruefeAufmassPflichtfelder();
+  if(fehlendeFelder.length){
+    if(window.zeigeWarnung){
+      zeigeWarnung('Bitte ergänzen, bevor das Protokoll exportiert wird:\n\n• ' + fehlendeFelder.map(f=>f.label).join('\n• '), {titel:'Angaben unvollständig'});
+    } else {
+      alert('Bitte ausfüllen: ' + fehlendeFelder.map(f=>f.label).join(', '));
+    }
+    const erstesFeld = document.getElementById(fehlendeFelder[0].id);
+    erstesFeld.focus();
+    erstesFeld.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
   const overlay = document.getElementById('export-overlay');
   overlay.classList.add('active');
 
@@ -3127,6 +3185,7 @@ function checkForAutosave() {
         : `💾 Nicht gespeicherte Eingaben gefunden – zum Wiederherstellen klicken`;
     }
     pendingRestore = raw;
+    pendingRestoreDoorCount = meta.doorCount || 1;
     banner.classList.add('visible', 'restore');
   } catch(e) {}
 }
@@ -3134,6 +3193,11 @@ function checkForAutosave() {
 function restoreAutosave() {
   if (!pendingRestore) return;
   try {
+    // Fehlende Türpanels nachbauen, sonst passen die gespeicherten Index-Keys
+    // (id + '_' + i) nicht mehr zu den aktuell im DOM vorhandenen Feldern.
+    while (doorPanels.length < pendingRestoreDoorCount) {
+      addNewDoor();
+    }
     const data = JSON.parse(pendingRestore);
     const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea');
     const checks = document.querySelectorAll('input[type="checkbox"], input[type="radio"]');
@@ -3145,6 +3209,9 @@ function restoreAutosave() {
       const key = (el.id || el.name || '') + '_chk_' + i;
       if (data[key] !== undefined) el.checked = data[key];
     });
+    if (typeof data['__activeDoorTab'] === 'number') {
+      switchDoor(Math.min(data['__activeDoorTab'], doorPanels.length - 1));
+    }
   } catch(e) {}
   dismissAutosave();
   updateFilenamePreview();
@@ -3190,21 +3257,18 @@ function switchDoor(idx) {
 
 function addNewDoor() {
   const doorNum = doorPanels.length + 1;
+  const pref = 'door' + doorNum + '_';
   const mainForm = document.getElementById('main-form');
-  // Deep clone
+  // Deep clone — Canvas-Elemente bleiben jetzt erhalten (ihr Zeicheninhalt wird beim
+  // Klonen ohnehin nie mitkopiert, nur ihre leere Struktur — die brauchen wir aber,
+  // um für diese Tür überhaupt eine Skizzen-/Unterschriftenerfassung zu haben).
   const newPanel = mainForm.cloneNode(true);
   newPanel.id = 'main-form-door-' + doorNum;
   newPanel.classList.remove('active');
   newPanel.setAttribute('data-door-index', doorPanels.length);
 
-  // Completely remove all canvas elements from clone (they can't be cloned with state)
-  newPanel.querySelectorAll('canvas').forEach(c => c.remove());
-
-  // Remove draw toolbars and sign buttons that reference canvas functions
-  newPanel.querySelectorAll('.draw-toolbar, .sign-clear-btn').forEach(el => el.remove());
-
   // Clear door-specific fields (keep project/address/client)
-  const keepIds = ['field-projekt', 'field-adresse', 'field-datum', 'field-aufgenommen'];
+  const keepIds = ['field-projekt', 'field-kunde', 'field-adresse', 'field-datum', 'field-aufgenommen'];
   newPanel.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(el => {
     if (!keepIds.includes(el.id)) el.value = '';
   });
@@ -3214,6 +3278,9 @@ function addNewDoor() {
   newPanel.querySelectorAll('.din-card').forEach(c => c.classList.remove('selected'));
   newPanel.querySelectorAll('[id="multidoor-block"]').forEach(b => { b.style.display = 'none'; });
   newPanel.querySelectorAll('[id="multidoor-list"]').forEach(l => { l.innerHTML = ''; });
+  // Skizzenfläche zurücksetzen (falls aus Tür 1 mitgeklont mit Hintergrundbild o.ä.)
+  newPanel.querySelectorAll('.sketch-hint, .lg-sketch-hint').forEach(el => { el.style.display = ''; });
+  newPanel.querySelectorAll('[id$="sketchArea"]').forEach(el => { el.style.backgroundImage = ''; });
 
   // Fix duplicate IDs - prefix with door number
   newPanel.querySelectorAll('[id]').forEach(el => {
@@ -3221,7 +3288,7 @@ function addNewDoor() {
   });
 
   // Sync project fields from door 0
-  const syncFields = ['field-projekt', 'field-adresse', 'field-datum', 'field-aufgenommen'];
+  const syncFields = ['field-projekt', 'field-kunde', 'field-adresse', 'field-datum', 'field-aufgenommen'];
   syncFields.forEach(fid => {
     const src = document.getElementById(fid);
     const dst = newPanel.querySelector('[id$="_' + fid + '"]') || newPanel.querySelector('#door' + doorNum + '_' + fid);
@@ -3232,18 +3299,38 @@ function addNewDoor() {
   const posInput = newPanel.querySelector('.header-ids .id-field:last-child input');
   if (posInput) posInput.value = String(doorNum).padStart(2, '0');
 
-  // Fix DIN card onclick handlers (they use hardcoded 'din-l'/'din-r' IDs)
+  // ─── Geklonte Bedienelemente korrekt auf DIESE Tür verdrahten ───────────────
+  // Vorher: DIN-Karten und GPS-Button behielten wörtlich dieselben onclick-Strings
+  // wie Tür 1 (z.B. onclick="selectDIN('L')") und trafen dadurch immer Tür-1-Felder.
+  // Die DIN-Karten wurden deshalb notdürftig deaktiviert (onclick=null), der
+  // GPS-Button gar nicht behandelt. Jetzt bekommen alle betroffenen Elemente einen
+  // an ihr Tür-Präfix gebundenen Handler statt eines für alle Türen gleichen.
   const dinL = newPanel.querySelector('[id$="_din-l"]');
   const dinR = newPanel.querySelector('[id$="_din-r"]');
-  if (dinL) dinL.onclick = null;
-  if (dinR) dinR.onclick = null;
+  if (dinL) dinL.onclick = () => selectDIN('L', pref);
+  if (dinR) dinR.onclick = () => selectDIN('R', pref);
 
-  // Fix GPS button
   const gpsBtn = newPanel.querySelector('[id$="_gps-btn"]');
-  if (gpsBtn) gpsBtn.disabled = false;
+  if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.onclick = () => getGPS(pref); }
+
+  const sketchFileInput = newPanel.querySelector('[id$="_sketchFile"]');
+  if (sketchFileInput) sketchFileInput.onchange = (ev) => loadSketch(ev, pref);
+  newPanel.querySelectorAll('.draw-toolbar button').forEach(btn => {
+    if (/Skizze als Bild laden/.test(btn.textContent)) btn.onclick = () => document.getElementById(pref + 'sketchFile').click();
+    if (/Skizze löschen/.test(btn.textContent)) btn.onclick = () => clearSketch(pref);
+    if (/Zeichnung löschen/.test(btn.textContent)) btn.onclick = () => clearLgSketch(pref);
+  });
+  newPanel.querySelectorAll('.sign-clear-btn').forEach((btn, i) => {
+    btn.onclick = () => clearSignature('signCanvas' + (i + 1), pref);
+  });
 
   mainForm.parentNode.insertBefore(newPanel, mainForm.nextSibling);
   doorPanels.push(newPanel);
+
+  // Zeichenflächen dieser Tür initialisieren (Skizze, 2x Unterschrift, Lichtausschnitt) —
+  // vorher wurden die Canvas-Elemente hier einfach komplett entfernt. Erst NACH dem
+  // Einfügen ins DOM, damit getBoundingClientRect() beim ersten Resize echte Maße liefert.
+  initDoorCanvases(newPanel, pref);
 
   const newIdx = doorPanels.length - 1;
   updateDoorTabs();
@@ -3291,11 +3378,14 @@ function updateDoorTabs() {
 }
 
 // ── MASSKONTROLLE / PLAUSIBILITÄTSPRÜFUNG ────────────
-function checkMassPlausibility() {
-  const allInputs = document.querySelectorAll('.mass-input');
+function checkMassPlausibility(panel) {
+  panel = panel || document.getElementById('main-form');
+  if (!panel) return;
   // Find Türblatt-Breite (first mass-input in Türblatt group) and Rohmaß-Breite
-  const tuerblattGroup = document.querySelector('.mass-group:first-child');
-  const zargenGroup = document.querySelector('.mass-group:nth-child(3)');
+  // — gescopt auf das jeweilige Tür-Panel, sonst wurde hier immer Tür 1 geprüft,
+  // egal in welcher Tür man gerade tippt.
+  const tuerblattGroup = panel.querySelector('.mass-group:first-child');
+  const zargenGroup = panel.querySelector('.mass-group:nth-child(3)');
   if (!tuerblattGroup || !zargenGroup) return;
 
   const bInputs = tuerblattGroup.querySelectorAll('.mass-input');
@@ -3303,7 +3393,7 @@ function checkMassPlausibility() {
 
   const tuerB = parseFloat(bInputs[0]?.value);
   const rohB = parseFloat(zInputs[4]?.value); // Rohmaß Breite
-  const warn = document.getElementById('val-mass-warn');
+  const warn = panel.querySelector('[id$="val-mass-warn"]');
   if (warn && !isNaN(tuerB) && !isNaN(rohB) && tuerB > rohB) {
     warn.classList.add('visible');
     bInputs[0]?.classList.add('warn');
@@ -3316,7 +3406,7 @@ function checkMassPlausibility() {
 // Attach validation on input events
 document.addEventListener('input', (e) => {
   if (e.target.classList.contains('mass-input')) {
-    checkMassPlausibility();
+    checkMassPlausibility(e.target.closest('.door-panel'));
   }
   updateFilenamePreview();
 });

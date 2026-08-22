@@ -841,7 +841,7 @@ function attachSystemeHandlers(){
     btn.addEventListener('click', async ()=>{
       if(!(await TSConfirm.ask('System wirklich löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
-      await saveSysteme(); renderSysteme(); fillSystemSelect();
+      await saveSysteme(); renderSysteme();
     });
   });
   list.querySelectorAll('[data-action="add-bauteil"]').forEach(btn=>{
@@ -854,6 +854,8 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-bauteil"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const sys = findSys(btn.dataset.sys);
+      const b = sys?.bauteile.find(x=>x.id===btn.dataset.bauteil);
+      if(!(await TSConfirm.ask('Bauteil "' + (b?.name||'') + '" wirklich entfernen? Alle zugehörigen Klemmen gehen dabei mit verloren.', {danger:true, confirmLabel:'Entfernen'}))) return;
       sys.bauteile = sys.bauteile.filter(b=>b.id!==btn.dataset.bauteil);
       await saveSysteme(); renderSysteme();
     });
@@ -868,6 +870,7 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-klemme"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const b = findBauteil(btn.dataset.sys, btn.dataset.bauteil);
+      if(!(await TSConfirm.ask('Klemme wirklich entfernen?', {danger:true, confirmLabel:'Entfernen'}))) return;
       b.klemmen = b.klemmen.filter(k=>k.id!==btn.dataset.klemme);
       await saveSysteme(); renderSysteme();
     });
@@ -1649,7 +1652,6 @@ function renderSchema(){
 
   html += `<g class="node quelle"><rect x="${quelle.x}" y="${quelle.y-quelle.h/2}" width="${quelle.w}" height="${quelle.h}"></rect>
     <text x="${quelle.x+quelle.w/2}" y="${quelle.y+5}" text-anchor="middle">${quelle.label}</text></g>`;
-  html += `<text class="wlabel" x="${quelle.x}" y="${quelle.y-quelle.h/2-8}" text-anchor="start" style="fill:var(--bp-power);font-style:italic;">← Dropdown</text>`;
 
   html += `<g class="node steuerung"><rect x="${steuerung.x}" y="${steuerung.y-steuerung.h/2}" width="${steuerung.w}" height="${steuerung.h}"></rect>
     <text x="${steuerung.x+steuerung.w/2}" y="${steuerung.y+5}" text-anchor="middle">${steuerung.label}</text></g>`;

@@ -430,9 +430,35 @@ async function technikerAendern(auftragId, checkbox){
     } else {
       await sb(`crm_auftrag_zuordnung?auftrag_id=eq.${auftragId}&mitarbeiter_id=eq.${mitarbeiterId}`, { method:'DELETE' });
     }
+    // Die Zuweisung kann per Datenbank-Trigger den Status automatisch verändert
+    // haben (z.B. offen -> terminiert). Das noch offene Formular zeigt aber
+    // weiterhin den Stand von vor der Zuweisung — ohne dieses Nachziehen würde
+    // ein anschließendes "Speichern" die automatische Änderung mit dem
+    // veralteten Dropdown-Wert wieder überschreiben.
+    await aktualisiereStatusFelderImModal(auftragId);
   }catch(e){
     checkbox.checked = !checkbox.checked;
     toast('Änderung fehlgeschlagen: ' + e.message.slice(0,60));
+  }
+}
+
+async function aktualisiereStatusFelderImModal(auftragId){
+  try{
+    const rows = await sb(`crm_auftrag?id=eq.${auftragId}&select=status,status_automatik`);
+    const aktuell = rows && rows[0];
+    if(!aktuell) return;
+    const statusSel = document.getElementById('adStatus');
+    const automatikChk = document.getElementById('adAutomatik');
+    if(statusSel && statusSel.value !== aktuell.status){
+      statusSel.value = aktuell.status;
+      toast('Status automatisch auf "' + (SPALTEN.find(s => s.status===aktuell.status)?.titel || aktuell.status) + '" gesetzt');
+    }
+    // Vergleichsbasis für die "Automatik ausschalten bei manueller Änderung"-Prüfung
+    // im onchange-Handler ebenfalls auf den neuen Stand bringen.
+    if(statusSel) statusSel.setAttribute('onchange', `if(this.value!=='${aktuell.status}') document.getElementById('adAutomatik').checked=false;`);
+    if(automatikChk) automatikChk.checked = aktuell.status_automatik;
+  }catch(e){
+    console.error('Status-Aktualisierung im Modal fehlgeschlagen:', e);
   }
 }
 

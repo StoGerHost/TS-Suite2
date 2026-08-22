@@ -21,6 +21,8 @@
 .ts-backbar__current{color:var(--ts-accent, #3a7bd5);font-weight:700;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- Gemeinsame PDF-Layout-Funktion, auch von arbeitsbericht.html genutzt -->
+<script src="ts-pdf-arbeitsbericht.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -194,6 +196,25 @@
 const SUPABASE_URL = TENANT.supabaseUrl;
 const SUPABASE_ANON_KEY = TENANT.supabaseKey;
 
+// Fund aus dem Prüfbericht: Fehlende/nicht ladbare Bilder (Fotos, Unterschrift)
+// zeigten bisher nur das Browser-Standard-Fehlersymbol. Ersetzt es durch ein
+// zum Design passendes, gestaltetes Platzhalter-Icon.
+function bildFehler(img){
+  img.onerror = null; // Endlosschleife vermeiden, falls auch das Platzhalterbild fehlschlägt
+  img.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<rect width="100" height="100" fill="#161a22"/>' +
+    '<g stroke="#4a5568" stroke-width="4" stroke-linecap="round">' +
+    '<rect x="18" y="24" width="64" height="52" rx="4" fill="none"/>' +
+    '<circle cx="36" cy="42" r="5" fill="#4a5568" stroke="none"/>' +
+    '<path d="M18 66 L40 48 L58 62 L70 52 L82 64" fill="none"/>' +
+    '</g></svg>'
+  );
+  img.style.objectFit = 'contain';
+  img.style.background = '#161a22';
+  img.title = 'Bild konnte nicht geladen werden';
+}
+
 /* Materialposition anzeigen — alt (String) und neu ({bezeichnung, menge}) */
 function matAnzeige(m){
   if(typeof m === 'string') return m;
@@ -205,13 +226,18 @@ function supabaseHeaders(){
   return { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + t };
 }
 
-/* Anmeldung übernimmt ts-auth.js (Supabase Auth). Ist eine Sitzung
-   vorhanden, wird die App direkt angezeigt — sonst blockt das Gate. */
-if(window.TSAuth && TSAuth.isUnlocked()){
+/* Anmeldung übernimmt ts-auth.js (Supabase Auth). Wartet auf TSAuth.ready,
+   damit ein zwar vorhandener, aber bereits abgelaufener Token nicht erst
+   Daten lädt und dann mit 401 fehlschlägt — ts-auth.js hat den Token bis
+   dahin schon geprüft und ggf. entfernt (dann zeigt es selbst das Gate). */
+(async function warteAufAnmeldung(){
+  if(!window.TSAuth) return; // ts-auth.js nicht geladen — Gate bleibt sichtbar
+  await TSAuth.ready;
+  if(!TSAuth.isUnlocked()) return; // Login-Overlay von ts-auth.js übernimmt das
   document.getElementById('appContent').style.display = 'block';
   ladeBerichte();
   pruefeDbStatus();
-}
+})();
 
 /* ---------- DB-Status-Ampel ---------- */
 async function pruefeDbStatus(){
@@ -456,13 +482,13 @@ function renderDetail(b){
       ${d.kein_abnehmer_vor_ort
         ? 'Unterschriftsberechtigter nicht vor Ort'
         : `${esc(d.kundenname) || 'kein Name erfasst'}${d.abnehmer_funktion ? ' — ' + esc(d.abnehmer_funktion) : ''}
-           ${d.unterschrift_url ? `<br><img src="${esc(d.unterschrift_url)}" style="max-width:220px;background:#fff;border-radius:2px;margin-top:8px;">` : `<br><span style="color:var(--muted);font-size:12px;">Keine Unterschrift in der Datenbank gespeichert (Speichern-Schalter war aus).</span>`}`}
+           ${d.unterschrift_url ? `<br><img src="${esc(d.unterschrift_url)}" onerror="bildFehler(this)" style="max-width:220px;background:#fff;border-radius:2px;margin-top:8px;">` : `<br><span style="color:var(--muted);font-size:12px;">Keine Unterschrift in der Datenbank gespeichert (Speichern-Schalter war aus).</span>`}`}
     </div>
 
     <p class="section-label">Fotos</p>
     ${(d.foto_urls && d.foto_urls.length) ? `
       <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(90px,1fr)); gap:8px;">
-        ${d.foto_urls.map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:2px; border:1px solid var(--line);"></a>`).join('')}
+        ${d.foto_urls.map(u => `<a href="${esc(u)}" target="_blank"><img src="${esc(u)}" onerror="bildFehler(this)" style="width:100%; aspect-ratio:1; object-fit:cover; border-radius:2px; border:1px solid var(--line);"></a>`).join('')}
       </div>
     ` : '<div style="font-size:12.5px; color:var(--muted);">Keine Fotos in der Datenbank gespeichert (Speichern-Schalter war aus, oder es wurden keine Fotos aufgenommen).</div>'}
 
@@ -493,144 +519,59 @@ async function bildAlsDataUrl(url){
 }
 
 async function erzeugePdf(b){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:'mm', format:'a4'});
-  const margin = 16, pageW = 210;
-  let y = 20;
   const d = b.daten || {};
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(16);
-  doc.text('Arbeitsbericht', margin, y); y += 10;
+  // ─── Unterschrift und Fotos vorab laden ─────────────────────────────────
+  // Die gemeinsame Layout-Funktion (ts-pdf-arbeitsbericht.js) ist bewusst rein
+  // synchron und bekommt hier bereits fertige data:-URLs übergeben — anders als
+  // arbeitsbericht.html (Kamera-Fotos/Canvas-Unterschrift schon im Speicher)
+  // müssen wir sie hier erst aus Supabase Storage nachladen.
+  let unterschriftDataUrl = null, unterschriftLadefehler = false;
+  if(!d.kein_abnehmer_vor_ort && d.unterschrift_url){
+    try{ unterschriftDataUrl = await bildAlsDataUrl(d.unterschrift_url); }
+    catch(err){ console.error('Unterschrift konnte nicht geladen werden:', err); unterschriftLadefehler = true; }
+  }
 
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  const felder = [
-    ['Kunde', b.kunde],
-    ['Bauvorhaben', b.bauvorhaben],
-    ['Angebots-/Auftragsnr.', b.angebotsnr],
-    ['Erstellt am', b.created_at ? new Date(b.created_at).toLocaleString('de-DE') : '-'],
-    ['Techniker', b.techniker],
+  const fotoDataUrls = [];
+  let fotoFehlerAnzahl = 0;
+  for(const url of (d.foto_urls || [])){
+    try{
+      const data = await bildAlsDataUrl(url);
+      fotoDataUrls.push({dataUrl: data, format: formatAusDataUrl(data)});
+    } catch(err){
+      console.error('Foto konnte nicht geladen werden:', url, err);
+      fotoFehlerAnzahl++;
+    }
+  }
+
+  const materialZeilen = [
+    ...((d.material_checkliste || []).map(m => '• ' + matAnzeige(m))),
+    ...(d.material_freitext ? d.material_freitext.split('\n').filter(Boolean) : [])
   ];
-  felder.forEach(([label, value]) => {
-    doc.setFont('helvetica','bold'); doc.text(label + ':', margin, y);
-    doc.setFont('helvetica','normal'); doc.text(value || '-', margin + 55, y);
-    y += 6.5;
+
+  erzeugeArbeitsberichtPdf({
+    kunde: b.kunde,
+    bauvorhaben: b.bauvorhaben,
+    angebotsnr: b.angebotsnr,
+    datumLabel: 'Erstellt am',
+    datumWert: b.created_at ? new Date(b.created_at).toLocaleString('de-DE') : null,
+    techniker: b.techniker,
+    lieferanschrift: d.lieferanschrift,
+    zeiterfassung: d.zeiterfassung || [],
+    taetigkeit: d.taetigkeit,
+    status: d.status,
+    internerBericht: d.interner_bericht,
+    hinweis: d.hinweis,
+    materialZeilen,
+    keinAbnehmerVorOrt: d.kein_abnehmer_vor_ort,
+    unterschriftDataUrl,
+    unterschriftLadefehler,
+    kundenname: d.kundenname,
+    abnehmerFunktion: d.abnehmer_funktion,
+    fotoDataUrls,
+    fotoFehlerAnzahl,
+    dateiname: `Arbeitsbericht_${(b.angebotsnr || 'ohne-nr').replace(/[^a-zA-Z0-9\-]/g,'')}_neu.pdf`
   });
-  if(d.lieferanschrift){
-    doc.setFont('helvetica','bold'); doc.text('Lieferanschrift:', margin, y);
-    doc.setFont('helvetica','normal');
-    const lines = doc.splitTextToSize(d.lieferanschrift, pageW - margin - 55 - margin);
-    doc.text(lines, margin + 55, y);
-    y += Math.max(6.5, lines.length * 5);
-  }
-  y += 4;
-
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Zeiterfassung', margin, y); y += 7;
-  doc.setFontSize(10);
-  (d.zeiterfassung || []).forEach(z => {
-    doc.setFont('helvetica','bold');
-    doc.text(z.techniker + (z.primary ? ' (Gerät)' : ''), margin, y); y += 5.5;
-    doc.setFont('helvetica','normal');
-    (z.tage || []).forEach(t => {
-      const std = parseFloat((t.stunden||'').toString().replace(',','.')) || 0;
-      const datumFmt = t.datum ? t.datum.split('-').reverse().join('.') : '-';
-      doc.text(`  ${datumFmt}   ${std.toString().replace('.',',')} Std.${t.wegepauschale ? '  ·  Wegepauschale' : ''}`, margin, y);
-      y += 5.5;
-    });
-  });
-  y += 6;
-
-  if(y > 250){ doc.addPage(); y = 20; }
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Tätigkeitsbeschreibung', margin, y); y += 7;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  const taetLines = doc.splitTextToSize(d.taetigkeit || '-', pageW - margin*2);
-  doc.text(taetLines, margin, y); y += taetLines.length * 5 + 6;
-  doc.setFont('helvetica','bold');
-  doc.text('Status: ' + (d.status === 'fortgesetzt' ? 'Arbeiten werden fortgesetzt' : 'Arbeiten beendet'), margin, y);
-  y += 10;
-
-  if(d.interner_bericht){
-    if(y > 250){ doc.addPage(); y = 20; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    doc.text('Interner Bericht (nicht für den Kunden)', margin, y); y += 7;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    const ibLines = doc.splitTextToSize(d.interner_bericht, pageW - margin*2);
-    doc.text(ibLines, margin, y); y += ibLines.length * 5 + 8;
-  }
-
-  if(d.hinweis){
-    if(y > 250){ doc.addPage(); y = 20; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    doc.text('Hinweis', margin, y); y += 7;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    const hLines = doc.splitTextToSize(d.hinweis, pageW - margin*2);
-    doc.text(hLines, margin, y); y += hLines.length * 5 + 8;
-  }
-
-  if(y > 250){ doc.addPage(); y = 20; }
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Materialverbrauch', margin, y); y += 7;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  const matBlocks = [...((d.material_checkliste || []).map(m => '• ' + matAnzeige(m)))];
-  if(d.material_freitext) matBlocks.push(...d.material_freitext.split('\n').filter(Boolean));
-  const matLines = doc.splitTextToSize(matBlocks.length ? matBlocks.join('\n') : '-', pageW - margin*2);
-  doc.text(matLines, margin, y); y += matLines.length * 5 + 8;
-
-  if(y > 250){ doc.addPage(); y = 20; }
-  doc.setFont('helvetica','bold'); doc.setFontSize(12);
-  doc.text('Kundenunterschrift', margin, y); y += 7;
-  doc.setFont('helvetica','normal'); doc.setFontSize(10);
-  if(d.kein_abnehmer_vor_ort){
-    doc.setFont('helvetica','italic');
-    doc.text('Unterschriftsberechtigter nicht vor Ort', margin, y);
-    y += 10;
-  } else {
-    if(d.unterschrift_url){
-      try{
-        const sigData = await bildAlsDataUrl(d.unterschrift_url);
-        doc.addImage(sigData, 'PNG', margin, y, 70, 32);
-        y += 36;
-      } catch(err){
-        console.error('Unterschrift konnte nicht geladen werden:', err);
-        doc.text('(Unterschrift konnte nicht geladen werden)', margin, y); y += 8;
-      }
-    } else {
-      doc.text('(Unterschrift nicht in der Datenbank gespeichert)', margin, y, {maxWidth: pageW - margin*2});
-      y += 10;
-    }
-    doc.text('Name: ' + (d.kundenname || '-'), margin, y); y += 6;
-    if(d.abnehmer_funktion){ doc.text('Funktion: ' + d.abnehmer_funktion, margin, y); y += 6; }
-  }
-
-  if(d.foto_urls && d.foto_urls.length){
-    if(y > 230){ doc.addPage(); y = 20; }
-    doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    doc.text('Fotos', margin, y); y += 7;
-    let x = margin;
-    const imgW = 55, imgH = 55, gap = 6;
-    let fehlerAnzahl = 0;
-    for(const url of d.foto_urls){
-      if(x + imgW > pageW - margin){ x = margin; y += imgH + gap; }
-      if(y + imgH > 280){ doc.addPage(); y = 20; x = margin; }
-      try{
-        const data = await bildAlsDataUrl(url);
-        doc.addImage(data, formatAusDataUrl(data), x, y, imgW, imgH);
-      } catch(err){
-        console.error('Foto konnte nicht geladen werden:', url, err);
-        fehlerAnzahl++;
-      }
-      x += imgW + gap;
-    }
-    if(fehlerAnzahl){
-      y += imgH + 10;
-      doc.setFont('helvetica','italic'); doc.setFontSize(9);
-      doc.text(`${fehlerAnzahl} von ${d.foto_urls.length} Foto(s) konnten nicht geladen werden.`, margin, y);
-    }
-  }
-
-  const filename = `Arbeitsbericht_${(b.angebotsnr || 'ohne-nr').replace(/[^a-zA-Z0-9\-]/g,'')}_neu.pdf`;
-  doc.save(filename);
 }
 </script>
 </body>

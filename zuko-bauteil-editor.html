@@ -7,33 +7,30 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ZuKo Bauteil-Editor</title>
-<link rel="stylesheet" href="ts-theme.css">
-<script src="ts-theme.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Blueprint-Palette, jetzt an den zentralen Hell/Dunkel-Umschalter
-       angeschlossen (--ts-*), Fallback ist der bisherige Dunkelwert. */
-    --ink:var(--ts-ink, #e9edf2);
-    --ink-soft:var(--ts-ink-60, #9aa5b0);
-    --paper:var(--ts-bg, #0a0a0c);
-    --card:var(--ts-surface, #111318);
-    --line:var(--ts-line-25, rgba(58,123,213,.25));
-    --accent:var(--ts-accent, #3a7bd5);
+    /* Blueprint-Palette (dunkel), an den Rest der Suite angeglichen */
+    --ink:#e9edf2;
+    --ink-soft:#9aa5b0;
+    --paper:#0a0a0c;
+    --card:#111318;
+    --line:rgba(58,123,213,.25);
+    --accent:#3a7bd5;
     --accent-dark:#7fb3f0;
-    --ok:var(--ts-ok, #3ecf8e);
-    --warn:var(--ts-danger, #e05a4e);
-    --warn-bg:color-mix(in srgb, var(--warn) 15%, var(--card));
-    --muted:var(--ts-muted, #8b95a0);
-    --chip-bg:color-mix(in srgb, var(--ink) 8%, transparent);
-    --glow:var(--ts-glow, #5eead4);
+    --ok:#3ecf8e;
+    --warn:#e05a4e;
+    --warn-bg:rgba(224,90,78,.15);
+    --muted:#8b95a0;
+    --chip-bg:rgba(233,237,242,.08);
+    --glow:#5eead4;
 
     /* Bestehende Blueprint-Variablennamen auf die neue Palette gemappt,
        damit der gesamte restliche CSS-/SVG-Code unverändert bleibt. */
     --bp-bg:var(--paper); --bp-grid:var(--line); --bp-line:var(--ink); --bp-line-dim:var(--line);
     --bp-power:var(--accent); --bp-data:var(--ok); --bp-safety:var(--warn); --bp-signal:var(--ink-soft);
     --bp-power-plus:#e05a4e; --bp-power-gnd:var(--ink); --bp-wire-data:#d4a92f;
-    --bp-panel:var(--card); --bp-panel2:var(--ts-surface-hover, #161a22);
+    --bp-panel:var(--card); --bp-panel2:#161a22;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -183,14 +180,14 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:var(--paper);color:var(--ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid var(--line);}
-  .ts-backbar__link{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
+  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
-  .ts-backbar__slash{color:var(--ink-soft);}
-  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
+  .ts-backbar__slash{color:rgba(233,237,242,.35);}
+  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
@@ -610,7 +607,7 @@ function attachSystemeHandlers(){
     btn.addEventListener('click', async ()=>{
       if(!confirm('System wirklich löschen?')) return;
       systeme = systeme.filter(s=>s.id!==btn.dataset.sys);
-      await saveSysteme(); renderSysteme(); fillSystemSelect();
+      await saveSysteme(); renderSysteme();
     });
   });
   list.querySelectorAll('[data-action="add-bauteil"]').forEach(btn=>{
@@ -623,6 +620,8 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-bauteil"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const sys = findSys(btn.dataset.sys);
+      const b = sys?.bauteile.find(x=>x.id===btn.dataset.bauteil);
+      if(!confirm('Bauteil "' + (b?.name||'') + '" wirklich entfernen? Alle zugehörigen Klemmen gehen dabei mit verloren.')) return;
       sys.bauteile = sys.bauteile.filter(b=>b.id!==btn.dataset.bauteil);
       await saveSysteme(); renderSysteme();
     });
@@ -637,6 +636,7 @@ function attachSystemeHandlers(){
   list.querySelectorAll('[data-action="del-klemme"]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const b = findBauteil(btn.dataset.sys, btn.dataset.bauteil);
+      if(!confirm('Klemme wirklich entfernen?')) return;
       b.klemmen = b.klemmen.filter(k=>k.id!==btn.dataset.klemme);
       await saveSysteme(); renderSysteme();
     });
@@ -658,7 +658,24 @@ function attachSystemeHandlers(){
         const b = findBauteil(sysId, bId);
         const row = inp.closest('tr');
         const k = b.klemmen.find(k=>k.id===row.dataset.klemme);
-        k[inp.dataset.field] = inp.value;
+        const feld = inp.dataset.field;
+        const neuerWert = inp.value.trim();
+
+        if(feld==='nr'){
+          if(!neuerWert){
+            alert('Klemmennummer darf nicht leer sein.');
+            inp.value = k.nr; // vorherigen Wert wiederherstellen
+            return;
+          }
+          const doppelt = b.klemmen.some(other => other.id!==k.id && other.nr.trim()===neuerWert);
+          if(doppelt){
+            alert('Klemmennummer "' + neuerWert + '" wird in diesem Bauteil bereits verwendet — Nummern müssen je Bauteil eindeutig sein.');
+            inp.value = k.nr; // vorherigen Wert wiederherstellen
+            return;
+          }
+        }
+
+        k[feld] = feld==='nr' ? neuerWert : inp.value;
         await saveSysteme();
       });
     });
@@ -693,6 +710,24 @@ document.getElementById('btn-import-trigger').addEventListener('click', ()=>{
   document.getElementById('file-import').click();
 });
 
+// Prüft, ob ein importiertes Objekt die erwartete Form hat (Hersteller/Modell als
+// Text, Bauteile als Array mit Name+Klemmen, jede Klemme mit Nr.+Bezeichnung) —
+// vorher wurde jedes Objekt aus der Import-Datei ungeprüft übernommen, ein falsch
+// geformtes Objekt hätte spätere Funktionen (z.B. sys.bauteile.forEach) zum
+// Absturz gebracht.
+function systemStrukturGueltig(sys){
+  if(!sys || typeof sys!=='object' || Array.isArray(sys)) return false;
+  if(typeof sys.hersteller!=='string' || !sys.hersteller.trim()) return false;
+  if(typeof sys.modell!=='string' || !sys.modell.trim()) return false;
+  if(!Array.isArray(sys.bauteile)) return false;
+  return sys.bauteile.every(b =>
+    b && typeof b==='object' &&
+    typeof b.name==='string' &&
+    Array.isArray(b.klemmen) &&
+    b.klemmen.every(k => k && typeof k==='object' && typeof k.nr==='string' && typeof k.bezeichnung==='string')
+  );
+}
+
 document.getElementById('file-import').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -701,15 +736,21 @@ document.getElementById('file-import').addEventListener('change', async (e)=>{
     const text = await file.text();
     const imported = JSON.parse(text);
     if(!Array.isArray(imported)) throw new Error('Kein gültiges Bibliotheks-Format.');
-    let added = 0, skipped = 0;
+    let added = 0, skipped = 0, ungueltig = 0;
     imported.forEach(sys=>{
+      if(!systemStrukturGueltig(sys)){ ungueltig++; return; }
+      // Frische IDs vergeben, damit importierte Objekte nie mit bestehenden
+      // System-/Bauteil-/Klemmen-IDs kollidieren.
+      sys.id = uid();
+      sys.bauteile.forEach(b=>{ b.id = uid(); b.klemmen.forEach(k=>{ k.id = uid(); }); });
       const exists = systeme.some(s => s.hersteller === sys.hersteller && s.modell === sys.modell);
       if(exists){ skipped++; }
       else { systeme.push(sys); added++; }
     });
     await saveSysteme();
     renderSysteme();
-    ioStatus.textContent = `Import: ${added} System(e) hinzugefügt, ${skipped} bereits vorhanden (übersprungen, um Duplikate zu vermeiden).`;
+    ioStatus.textContent = `Import: ${added} System(e) hinzugefügt, ${skipped} bereits vorhanden (übersprungen)` +
+      (ungueltig ? `, ${ungueltig} übersprungen (ungültiges Format).` : '.');
     ioStatus.classList.add('ok');
   }catch(err){
     ioStatus.textContent = 'Import fehlgeschlagen: ' + err.message;
