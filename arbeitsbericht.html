@@ -3146,7 +3146,7 @@ async function wgLadeVorjahr(instId){
    Grundlage für "Letzte Wartung laden" bei künftigen Terminen. Läuft
    still im Hintergrund beim PDF-Export; ein Fehlschlag hier darf das
    bereits erzeugte PDF nicht entwerten, daher nur Best-Effort. */
-async function wgSpeicherProtokolleInDb(wartungInstances){
+async function wgSpeicherProtokolleInDb(wartungInstances, auftragId){
   if(!SUPABASE_CONFIGURED) return;
   const rows = wartungInstances
     .filter(inst => (inst.meta.identNr || '').trim())
@@ -3172,7 +3172,8 @@ async function wgSpeicherProtokolleInDb(wartungInstances){
         betrieb_elektrisch: inst.betrieb.elektrisch,
         betrieb_mechanisch: inst.betrieb.mechanisch,
         extra_value: inst.extraValue || null,
-        erstellt_von: val('fTechniker') || null
+        erstellt_von: val('fTechniker') || null,
+        auftrag_id: auftragId || null
       };
     });
   if(!rows.length) return;
@@ -3382,7 +3383,11 @@ function wgExportProtokollePdf(){
   const dateiname = 'Wartungsprotokolle_' + (val('fBauvorhaben') || 'Bericht').replace(/[^\w\-]+/g, '_') + '.pdf';
   doc.save(dateiname);
 
-  wgSpeicherProtokolleInDb(wartungInstances);
+  // Wenn der aktuelle Vorgang ein Auftrag ist, Protokolle mit dessen ID verknüpfen —
+  // Grundlage für die Erledigt-Automatik im Auftragsboard bei Wartungsaufträgen.
+  const _vorgangWertJetzt = val('fVorgang') || '';
+  const _auftragIdJetzt = _vorgangWertJetzt.startsWith('auftrag:') ? _vorgangWertJetzt.slice(8) : null;
+  wgSpeicherProtokolleInDb(wartungInstances, _auftragIdJetzt);
 
   wgStatusEl.textContent = skipped
     ? `PDF erzeugt (${wartungInstances.length - skipped} Protokoll(e)). Störungs-Einträge wurden nicht mit exportiert.`
