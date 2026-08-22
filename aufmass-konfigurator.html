@@ -7,15 +7,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Türblatt Aufmaß – Aufnahmeprotokoll</title>
 <script src="config.js"></script>
-<script src="ts-warnung.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
+<link rel="stylesheet" href="ts-feedback.css">
+<script src="ts-feedback.js"></script>
 <link rel="manifest" href="data:application/json,{%22name%22:%22Aufma%C3%9Fprotokoll%22,%22short_name%22:%22Aufma%C3%9F%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23F2F4F7%22,%22theme_color%22:%22%23001B43%22}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Aufmaß">
 <style>
+  /* Eigener Umschalt-Button dieses Tools kollidiert räumlich mit der
+     bestehenden Floating-Action-Leiste unten rechts (E-Mail/PDF-Export) -
+     zentralen Button daher etwas höher setzen. */
+  #ts-theme-toggle{ bottom: 84px; }
   :root {
     --bg:            #0a0a0c;
     --surface:       #111318;
@@ -2617,8 +2624,8 @@ AUFMASS_PFLICHTFELDER.forEach(f => {
 async function exportPDF(mode = 'save') {
   const fehlendeFelder = pruefeAufmassPflichtfelder();
   if(fehlendeFelder.length){
-    if(window.zeigeWarnung){
-      zeigeWarnung('Bitte ergänzen, bevor das Protokoll exportiert wird:\n\n• ' + fehlendeFelder.map(f=>f.label).join('\n• '), {titel:'Angaben unvollständig'});
+    if(window.TSNotice){
+      TSNotice.show('Bitte ergänzen, bevor das Protokoll exportiert wird:\n\n• ' + fehlendeFelder.map(f=>f.label).join('\n• '), {title:'Angaben unvollständig'});
     } else {
       alert('Bitte ausfüllen: ' + fehlendeFelder.map(f=>f.label).join(', '));
     }
@@ -2944,8 +2951,8 @@ function addMultiDoorRow() {
 }
 
 // ── RESET ─────────────────────────────────────────────
-function resetForm() {
-  if (!confirm('Alle Eingaben zurücksetzen?')) return;
+async function resetForm() {
+  if (!(await TSConfirm.ask('Alle Eingaben zurücksetzen?', {danger:true, confirmLabel:'Zurücksetzen'}))) return;
   // Remove all extra door panels
   while (doorPanels.length > 1) {
     doorPanels[doorPanels.length - 1].remove();
@@ -3338,9 +3345,9 @@ function addNewDoor() {
   triggerAutosave();
 }
 
-function removeDoor(idx) {
+async function removeDoor(idx) {
   if (doorPanels.length <= 1) return;
-  if (!confirm('Tür ' + (idx + 1) + ' löschen?')) return;
+  if (!(await TSConfirm.ask('Tür ' + (idx + 1) + ' löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
   doorPanels[idx].remove();
   doorPanels.splice(idx, 1);
   // Re-index remaining panels

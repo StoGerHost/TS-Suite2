@@ -341,9 +341,9 @@ const KONFIG = {
     knr     : []
   },
 
-  // Artikel: gleiches Drei-Schichten-Muster wie in der TS-Suite
-  ARTIKEL_LS_KEY : 'artikelnummern',           // localStorage-Key ggf. anpassen
-  ARTIKEL_URL    : 'artikel.json',             // relativ, liegt im selben Repo
+  // Artikel: live aus Supabase-Tabelle "artikelnummern" (siehe ladeArtikel()),
+  // mit lokalem Cache-Fallback — geteilt mit den Konfiguratoren.
+  ARTIKEL_CACHE_KEY : 'ts_artikelnummern_cache',
 
   KUERZEL_LS_KEY : 'crm_kuerzel'               // eigenes Kürzel (z.B. GER)
 };
@@ -415,21 +415,29 @@ async function ladeAngebotDateiHoch(pfad, file){
   return `${KONFIG.SUPABASE_URL}/storage/v1/object/public/${TENANT.bucketAngebote}/${pfad}`;
 }
 
-/* ================= ARTIKEL (3 Schichten) ================= */
-let ARTIKEL = {};   // { key: nummer } — wie artikel.json der TS-Suite
+/* ================= ARTIKEL (Supabase, mit Offline-Cache-Fallback) ================= */
+let ARTIKEL = {};   // { key: nummer } — zentrale Tabelle "artikelnummern"
 async function ladeArtikel(){
-  try{ // 1. localStorage (Admin-Panel-Overrides)
-    const ls = localStorage.getItem(KONFIG.ARTIKEL_LS_KEY);
-    if(ls){ ARTIKEL = {...ARTIKEL, ...JSON.parse(ls)}; }
-  }catch(e){}
-  try{ // 2. zentrale artikel.json
-    const r = await fetch(KONFIG.ARTIKEL_URL, {cache:'no-store'});
-    if(r.ok){
-      const json = await r.json();
-      ARTIKEL = {...json, ...ARTIKEL}; // localStorage behält Vorrang
-    }
-  }catch(e){}
-  // 3. Fallback: leer — App funktioniert auch ohne Artikel
+  try{
+    const res = await fetch(`${KONFIG.SUPABASE_URL}/rest/v1/artikelnummern?select=key,wert`, {
+      headers: {
+        'apikey': KONFIG.SUPABASE_KEY,
+        'Authorization': 'Bearer ' + ((window.TSAuth && TSAuth.getToken()) || KONFIG.SUPABASE_KEY)
+      },
+      cache: 'no-store'
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    ARTIKEL = {};
+    rows.forEach(r => { ARTIKEL[r.key] = r.wert; });
+    try{ localStorage.setItem(KONFIG.ARTIKEL_CACHE_KEY, JSON.stringify({stand: new Date().toISOString(), daten: ARTIKEL})); }catch(e){}
+  }catch(err){
+    console.error('Artikelnummern konnten nicht geladen werden, nutze letzten Cache-Stand:', err);
+    try{
+      const cache = JSON.parse(localStorage.getItem(KONFIG.ARTIKEL_CACHE_KEY) || 'null');
+      ARTIKEL = (cache && cache.daten) || {};
+    }catch(e2){ ARTIKEL = {}; }
+  }
 }
 function artikelSuche(q){
   q = q.toLowerCase().trim();
@@ -1699,8 +1707,8 @@ async function zeigArtikel(){
   v.innerHTML = `<div class="suchzeile">
       <input id="artSuche" type="search" placeholder="Artikel suchen … (Bezeichnung oder Nummer)" autocomplete="off">
     </div>
-    ${n ? '' : `<div class="hinweis">Keine Artikel geladen. Liegt <b>artikel.json</b> im selben
-      Ordner wie diese Datei? Pfad in der KONFIG prüfen (ARTIKEL_URL).</div>`}
+    ${n ? '' : `<div class="hinweis">Keine Artikel geladen. Internetverbindung prüfen — die Artikelnummern
+      kommen live aus Supabase (Tabelle "artikelnummern").</div>`}
     <div class="panel" id="artListe"></div>`;
   setStatus(true, n + ' Artikel');
   const render = q => {
@@ -1969,9 +1977,21 @@ function modalAP(kontaktId){
       <button class="btn primaer" onclick="speichereAP(this,'${kontaktId}')">Speichern</button>
     </div>`);
 }
+// E-Mail ist überall optional, aber wenn eine eingetragen ist, muss sie
+// gültig sein — vorher wurde jede Eingabe unkontrolliert gespeichert.
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+function emailFeldGueltig(id){
+  const wert = $('#'+id).value.trim();
+  if(!wert) return true; // optional, leer ist ok
+  if(EMAIL_REGEX.test(wert)) return true;
+  toast('E-Mail-Adresse sieht ungültig aus — bitte prüfen.');
+  return false;
+}
+
 async function speichereAP(btn, kontaktId){
   const name = $('#apName').value.trim();
   if(!name){ toast('Name fehlt noch.'); return; }
+  if(!emailFeldGueltig('apMail')) return;
   TSLoading.start(btn);
   try{
     await sb(KONFIG.TAB_AP, { method:'POST', body: JSON.stringify({
@@ -2005,6 +2025,7 @@ function modalNeuerKunde(){
 async function speichereNeuerKunde(btn){
   const name = $('#nkName').value.trim();
   if(!name){ toast('Name fehlt noch.'); return; }
+  if(!emailFeldGueltig('nkMail')) return;
   TSLoading.start(btn);
   try{
     const [neu] = await sb(KONFIG.TAB_KUNDEN, { method:'POST', body: JSON.stringify({
@@ -2071,6 +2092,7 @@ async function speichereKundeLoeschen(kundeId){
 async function speichereKundeBearbeiten(btn, kundeId){
   const name = $('#keName').value.trim();
   if(!name){ toast('Name fehlt noch.'); return; }
+  if(!emailFeldGueltig('keMail')) return;
   TSLoading.start(btn);
   try{
     await sb(`${KONFIG.TAB_KUNDEN}?id=eq.${kundeId}`, { method:'PATCH', body: JSON.stringify({

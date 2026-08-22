@@ -104,6 +104,7 @@
       <tr><td>Konfiguratoren</td><td>Eingaben zur Türspezifikation (lokal im Browser, keine Übertragung)</td><td>Angebots-/Auftragsvorbereitung</td></tr>
       <tr><td>Arbeitsbericht</td><td>Name/Kürzel des Technikers, Kundendaten, Fotos, GPS-Standort, Unterschrift</td><td>Dokumentation durchgeführter Arbeiten</td></tr>
       <tr><td>CRM</td><td>Ansprechpartner, Kontaktdaten, Aktivitäten, Wiedervorlagen</td><td>Kundenverwaltung</td></tr>
+      <tr><td>Auftragsboard</td><td>Auftragsdaten, zugeordnete(r) Mitarbeiter, Datei-Anhänge (z. B. Dokumente zum Auftrag)</td><td>Interne Auftragsabwicklung</td></tr>
       <tr><td>Login-Bereich</td><td>E-Mail-Adresse, Sitzungs-Token (lokal auf dem Gerät gespeichert)</td><td>Zugriffsschutz auf interne Werkzeuge</td></tr>
     </table>
 
@@ -113,9 +114,8 @@
     <h2>4. Supabase (Datenbank &amp; Authentifizierung)</h2>
     <p>Arbeitsberichte, CRM-Daten und Login-Sitzungen werden über Supabase gespeichert und verwaltet. Serverstandort: EU (Frankfurt). <span class="fill">[AVV mit Supabase gemäß Art. 28 DSGVO — Status aktuell nicht bekannt, bitte prüfen und hier bestätigen, sobald geklärt]</span>.</p>
 
-    <h2>5. Trello (CRM-Bereich)</h2>
-    <p>Im CRM-Werkzeug kann ein Mitarbeiter einen Vorgang (Wiedervorlage bzw. Wartungsposition) per Knopfdruck als Karte an Trello übergeben, um ihn dort weiter zu bearbeiten. Dabei werden folgende Daten an Trello (Betreiber: Atlassian Corporation, USA) übertragen: Kundenname, Bauvorhaben-/Ansprechpartner-Bezeichnung, Telefonnummer und/oder E-Mail-Adresse (soweit hinterlegt), ein Freitext-Hinweis sowie ein PDF-Dokument mit den genannten Auftragsdaten. Die Übertragung erfolgt nur, wenn ein Mitarbeiter dies für einen einzelnen Vorgang aktiv auslöst.</p>
-    <p>Da Atlassian als US-Anbieter personenbezogene Daten in einem Drittland verarbeiten kann, erfolgt die Übertragung auf Grundlage von <span class="fill">[Standardvertragsklauseln (SCC) gem. Art. 46 DSGVO mit Atlassian — Status aktuell nicht bekannt, bitte prüfen/anfragen und hier ergänzen]</span>. Rechtsgrundlage der Verarbeitung ist Art. 6 Abs. 1 lit. b bzw. f DSGVO (Vertragserfüllung bzw. berechtigtes Interesse an effizienter Auftragsabwicklung).</p>
+    <h2>5. Auftragsboard</h2>
+    <p>Das interne Auftragsboard bildet die Bearbeitung von Aufträgen ab (Status, Termine, zuständige(r) Mitarbeiter). Mitarbeiter können einem Auftrag Dateien anhängen (z. B. Auftragsunterlagen); diese werden in einem nicht-öffentlichen Speicherbereich abgelegt, der ausschließlich für angemeldete Mitarbeiter zugänglich ist. Die Zuordnung eines Auftrags zu einem Mitarbeiter sowie Statusänderungen werden dokumentiert, um die Auftragsabwicklung nachvollziehbar zu machen. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung) bzw. lit. f (berechtigtes Interesse an einer nachvollziehbaren internen Auftragsabwicklung).</p>
 
     <h2>6. Kartenanzeige (OpenStreetMap)</h2>
     <p>In der Berichtsübersicht (interner Bereich für Mitarbeiter) wird der beim Absenden eines Arbeitsberichts erfasste GPS-Standort optional auf einer Kartenansicht angezeigt. Dabei lädt der Browser des Mitarbeiters Kartenkacheln direkt von Servern der OpenStreetMap Foundation nach. Hierbei werden die IP-Adresse des aufrufenden Geräts sowie der angezeigte Kartenausschnitt (der sich aus dem gespeicherten Standort ableitet) an OpenStreetMap übertragen. Es handelt sich um einen rein internen Vorgang zur Auftragsdokumentation, nicht um eine kundenseitige Funktion. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einer nachvollziehbaren Einsatzdokumentation). Weitere Informationen: <a href="https://osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">osmfoundation.org/wiki/Privacy_Policy</a>.</p>

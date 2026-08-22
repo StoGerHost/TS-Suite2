@@ -7,30 +7,33 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ZuKo Bauteil-Editor</title>
+<link rel="stylesheet" href="ts-theme.css">
+<script src="ts-theme.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    /* Blueprint-Palette (dunkel), an den Rest der Suite angeglichen */
-    --ink:#e9edf2;
-    --ink-soft:#9aa5b0;
-    --paper:#0a0a0c;
-    --card:#111318;
-    --line:rgba(58,123,213,.25);
-    --accent:#3a7bd5;
+    /* Blueprint-Palette, jetzt an den zentralen Hell/Dunkel-Umschalter
+       angeschlossen (--ts-*), Fallback ist der bisherige Dunkelwert. */
+    --ink:var(--ts-ink, #e9edf2);
+    --ink-soft:var(--ts-ink-60, #9aa5b0);
+    --paper:var(--ts-bg, #0a0a0c);
+    --card:var(--ts-surface, #111318);
+    --line:var(--ts-line-25, rgba(58,123,213,.25));
+    --accent:var(--ts-accent, #3a7bd5);
     --accent-dark:#7fb3f0;
-    --ok:#3ecf8e;
-    --warn:#e05a4e;
-    --warn-bg:rgba(224,90,78,.15);
-    --muted:#8b95a0;
-    --chip-bg:rgba(233,237,242,.08);
-    --glow:#5eead4;
+    --ok:var(--ts-ok, #3ecf8e);
+    --warn:var(--ts-danger, #e05a4e);
+    --warn-bg:color-mix(in srgb, var(--warn) 15%, var(--card));
+    --muted:var(--ts-muted, #8b95a0);
+    --chip-bg:color-mix(in srgb, var(--ink) 8%, transparent);
+    --glow:var(--ts-glow, #5eead4);
 
     /* Bestehende Blueprint-Variablennamen auf die neue Palette gemappt,
        damit der gesamte restliche CSS-/SVG-Code unverändert bleibt. */
     --bp-bg:var(--paper); --bp-grid:var(--line); --bp-line:var(--ink); --bp-line-dim:var(--line);
     --bp-power:var(--accent); --bp-data:var(--ok); --bp-safety:var(--warn); --bp-signal:var(--ink-soft);
     --bp-power-plus:#e05a4e; --bp-power-gnd:var(--ink); --bp-wire-data:#d4a92f;
-    --bp-panel:var(--card); --bp-panel2:#161a22;
+    --bp-panel:var(--card); --bp-panel2:var(--ts-surface-hover, #161a22);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -180,14 +183,14 @@
 </div>
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
-    background:#0a0a0c;color:#e9edf2;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+    background:var(--paper);color:var(--ink);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px));
     font:600 12px/1.4 ui-monospace,'JetBrains Mono','SFMono-Regular',Consolas,monospace;
-    letter-spacing:.03em;border-bottom:1px solid rgba(58,123,213,.35);}
-  .ts-backbar__link{color:#e9edf2;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    letter-spacing:.03em;border-bottom:1px solid var(--line);}
+  .ts-backbar__link{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;
     transition:color .15s ease;white-space:nowrap;}
-  @media(hover:hover){ .ts-backbar__link:hover{color:#3a7bd5;} }
-  .ts-backbar__slash{color:rgba(233,237,242,.35);}
-  .ts-backbar__current{color:#3a7bd5;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  @media(hover:hover){ .ts-backbar__link:hover{color:var(--accent);} }
+  .ts-backbar__slash{color:var(--ink-soft);}
+  .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
