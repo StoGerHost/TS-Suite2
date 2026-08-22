@@ -163,6 +163,29 @@ async function sb(path, opts){
   const txt = await res.text();
   return txt ? JSON.parse(txt) : null;
 }
+
+// Stempel "erstellt von" für neu angelegte Aufträge — egal ob Techniker,
+// Außendienst oder Innendienst/Admin, unabhängig vom Weg der Anlage.
+// Holt Name+Kürzel serverseitig über die mitarbeiter-Function (fälschungssicher,
+// da am angemeldeten Konto hängend), nicht aus einem selbst eingetragenen Feld.
+// TSAuth.getEmail() existiert nicht — frühere Versuche landeten deshalb immer
+// beim generischen Platzhaltertext statt beim echten Namen.
+async function meinStempel(){
+  try{
+    const token = window.TSAuth && TSAuth.getToken && TSAuth.getToken();
+    if(!token) return null;
+    const res = await fetch(`${TENANT.supabaseUrl}/functions/v1/mitarbeiter?me=1`, {
+      headers: { 'Authorization': 'Bearer ' + token, 'apikey': TENANT.supabaseKey }
+    });
+    const ich = await res.json().catch(() => null);
+    if(!ich) return null;
+    if(ich.name && ich.kuerzel) return `${ich.name} (${ich.kuerzel})`;
+    return ich.name || ich.kuerzel || null;
+  }catch(e){
+    console.error('Stempel "erstellt von" konnte nicht ermittelt werden:', e);
+    return null;
+  }
+}
 function modal(html){
   $('#modalRoot').innerHTML = `<div class="modalbg" onclick="if(event.target===this)modalZu()">
     <div class="modal"><div class="griff"></div>${html}</div></div>`;
@@ -316,12 +339,13 @@ async function speichereNeuerAuftrag(btn){
   if(!bezeichnung){ toast('Bezeichnung fehlt noch.'); return; }
   TSLoading.start(btn);
   try{
+    const stempel = await meinStempel();
     await sb('crm_auftrag', { method:'POST', body: JSON.stringify({
       kunde_id: $('#naKunde').value,
       bezeichnung,
       art: $('#naArt').value,
       vat_nummer: $('#naVat').value.trim() || null,
-      erstellt_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || 'Auftragsboard'
+      erstellt_von: stempel || 'Auftragsboard'
     })});
     modalZu(); toast('Auftrag angelegt ✓'); ladeAuftraege();
   }catch(e){ TSLoading.stop(btn); toast('Fehler: ' + e.message.slice(0,80)); }
@@ -481,10 +505,11 @@ async function dateiHochladen(auftragId, input){
       body: file
     });
     if(!up.ok) throw new Error('HTTP ' + up.status);
+    const stempel = await meinStempel();
     await sb('crm_auftrag_dokument', { method:'POST', body: JSON.stringify({
       auftrag_id: auftragId, dateiname: file.name, storage_pfad: pfad,
       content_type: file.type || null, groesse_bytes: file.size,
-      hochgeladen_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || null
+      hochgeladen_von: stempel || null
     })});
     toast('Datei hochgeladen ✓');
     auftragOeffnen(auftragId);

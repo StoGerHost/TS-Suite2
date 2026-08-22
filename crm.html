@@ -394,6 +394,30 @@ async function sb(pfad, opts = {}){
   }
   return r.status === 204 ? null : r.json();
 }
+
+// Stempel "erstellt von" für neu angelegte Aufträge — egal ob Techniker,
+// Außendienst oder Innendienst/Admin, unabhängig vom Weg der Anlage.
+// Holt Name+Kürzel serverseitig über die mitarbeiter-Function (fälschungssicher,
+// da am angemeldeten Konto hängend), nicht aus einem selbst eingetragenen Feld.
+// TSAuth.getEmail() existiert nicht — frühere Versuche landeten deshalb immer
+// beim generischen Platzhaltertext statt beim echten Namen.
+async function meinStempel(){
+  try{
+    const token = window.TSAuth && TSAuth.getToken && TSAuth.getToken();
+    if(!token) return null;
+    const res = await fetch(`${KONFIG.SUPABASE_URL}/functions/v1/mitarbeiter?me=1`, {
+      headers: { 'Authorization': 'Bearer ' + token, 'apikey': KONFIG.SUPABASE_KEY }
+    });
+    const ich = await res.json().catch(() => null);
+    if(!ich) return null;
+    if(ich.name && ich.kuerzel) return `${ich.name} (${ich.kuerzel})`;
+    return ich.name || ich.kuerzel || null;
+  }catch(e){
+    console.error('Stempel "erstellt von" konnte nicht ermittelt werden:', e);
+    return null;
+  }
+}
+
 function setStatus(ok, txt){
   $('#statusDot').className = 'dot ' + (ok === null ? '' : ok ? 'ok' : 'err');
   $('#statusTxt').textContent = txt;
@@ -1642,6 +1666,7 @@ async function angebotAnTrelloAusfuehren(angebotId, gewaehlteBauvorhabenId){
 async function angebotErstelleAuftragImBoard(a){
   const vorhandene = await sb(`crm_auftrag?angebot_id=eq.${a.id}&select=id&limit=1`);
   if(vorhandene && vorhandene.length) return vorhandene[0];
+  const stempel = await meinStempel();
   const [neu] = await sb('crm_auftrag', { method:'POST', body: JSON.stringify({
     kunde_id: a.kunde_id,
     art: /wartung/i.test(a.bezeichnung) ? 'wartung_ohne_vertrag' : 'montage',
@@ -1649,7 +1674,7 @@ async function angebotErstelleAuftragImBoard(a){
     vat_nummer: a.vat_nummer || null,
     angebot_id: a.id,
     trello_card_id: a.trello_card_id || null,
-    erstellt_von: (window.TSAuth && TSAuth.getEmail && TSAuth.getEmail()) || 'CRM (aus Angebot)'
+    erstellt_von: stempel || 'CRM (aus Angebot)'
   })});
   await sb(`${KONFIG.TAB_ANGEBOTE}?id=eq.${a.id}`, { method:'PATCH', body: JSON.stringify({
     auftrag_erstellt_am: new Date().toISOString()
