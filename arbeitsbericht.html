@@ -514,6 +514,7 @@
         Wird fortgesetzt
       </label>
     </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;">„Wird fortgesetzt" pausiert den Bericht automatisch beim Klick unten — kein PDF, kein Abschicken. Über ⏸ oben jederzeit fortsetzbar.</div>
 
     <label style="margin-top:14px;">Interner Bericht <span style="color:var(--muted);font-weight:normal;">(nicht für den Kunden)</span></label>
     <textarea id="fInternerBericht" placeholder="Nur für intern, z. B. Rückfragen an den Innendienst, Auffälligkeiten ..." style="min-height:70px;"></textarea>
@@ -615,7 +616,6 @@
 <div class="generate">
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">* Pflichtfeld</div>
   <button id="genBtn">Bericht als PDF erzeugen</button>
-  <button type="button" id="pausierenBtn" class="clear-link" style="width:100%;text-align:center;border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin-top:8px;">⏸ Bericht pausieren (später fortsetzen)</button>
   <div class="gen-status" id="genStatus"></div>
 </div>
 
@@ -1271,6 +1271,16 @@ PFLICHTFELDER.forEach(f => {
 });
 
 async function generateReport(){
+  // "Wird fortgesetzt" ersetzt das komplette Abschließen durch ein Pausieren —
+  // kein PDF, keine Pflichtfeld-Vollprüfung (die wäre für einen bewusst
+  // unfertigen Bericht unpassend streng), stattdessen derselbe Weg wie der
+  // frühere eigenständige Pausieren-Button.
+  const statusJetzt = document.querySelector('input[name="arbeitsstatus"]:checked')?.value;
+  if(statusJetzt === 'fortgesetzt'){
+    await pausiereBericht();
+    return;
+  }
+
   // Pflichtfelder + Arbeitszeit + Unterschrift + E-Mail-Format prüfen, BEVOR
   // irgendetwas gespeichert oder ein PDF erzeugt wird.
   const fehlend = pruefePflichtfelder();
@@ -2196,7 +2206,7 @@ async function ladeMedienHochFuerEntwurf(kennung){
 }
 
 async function pausiereBericht(){
-  const btn = document.getElementById('pausierenBtn');
+  const btn = document.getElementById('genBtn');
   const genStatus = document.getElementById('genStatus');
   if(!val('fKunde').trim() && !val('fBauvorhaben').trim()){
     await TSNotice.show('Bitte mindestens Kunde oder Bauvorhaben eintragen, damit der pausierte Bericht später wiedererkennbar ist.', {title:'Noch zu wenig zum Pausieren'});
@@ -2343,6 +2353,7 @@ async function fortsetzenBericht(id){
     const radio = document.querySelector(`input[name="arbeitsstatus"][value="${e.status}"]`);
     if(radio) radio.checked = true;
   }
+  if(typeof aktualisiereGenBtnText === 'function') aktualisiereGenBtnText();
   document.getElementById('keinAbnehmer').checked = !!e.kein_abnehmer_vor_ort;
 
   // Zeiterfassung wiederherstellen — mit frischen, eindeutigen IDs (Blöcke/Zeilen
@@ -2400,7 +2411,15 @@ async function fortsetzenBericht(id){
 
 function setVal(id, wert){ const el = document.getElementById(id); if(el) el.value = wert || ''; }
 
-document.getElementById('pausierenBtn').addEventListener('click', pausiereBericht);
+// Button-Beschriftung folgt der Status-Auswahl, damit vor dem Klick klar ist,
+// was passiert — "als PDF erzeugen" wäre bei "Wird fortgesetzt" irreführend.
+function aktualisiereGenBtnText(){
+  const fortgesetzt = document.querySelector('input[name="arbeitsstatus"]:checked')?.value === 'fortgesetzt';
+  document.getElementById('genBtn').textContent = fortgesetzt ? '⏸ Bericht pausieren (später fortsetzen)' : 'Bericht als PDF erzeugen';
+}
+document.getElementById('statusBeendet').addEventListener('change', aktualisiereGenBtnText);
+document.getElementById('statusFortgesetzt').addEventListener('change', aktualisiereGenBtnText);
+aktualisiereGenBtnText();
 document.getElementById('pausiertOeffnenBtn').addEventListener('click', async () => {
   document.getElementById('pausiertModal').style.display = 'flex';
   await renderPausiertListe();
