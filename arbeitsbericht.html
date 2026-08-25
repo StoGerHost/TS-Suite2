@@ -341,7 +341,10 @@
       <div id="standortHinweis" style="display:none; margin-top:8px; font-size:11.5px; color:var(--amber); font-family:'IBM Plex Mono',monospace;">📍 GPS-Standort wird bei Berichtserstellung erfasst und übermittelt</div>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-      <button id="adminBtn" title="Techniker-Verwaltung" style="background:transparent;border:1px solid var(--line);color:var(--muted);width:36px;height:36px;border-radius:var(--radius);cursor:pointer;font-size:15px;">⚙</button>
+      <div style="display:flex; gap:8px;">
+        <button id="pausiertOeffnenBtn" title="Pausierte Berichte" style="background:transparent;border:1px solid var(--line);color:var(--muted);width:36px;height:36px;border-radius:var(--radius);cursor:pointer;font-size:15px;position:relative;">⏸<span id="pausiertBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:700;border-radius:8px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;"></span></button>
+        <button id="adminBtn" title="Techniker-Verwaltung" style="background:transparent;border:1px solid var(--line);color:var(--muted);width:36px;height:36px;border-radius:var(--radius);cursor:pointer;font-size:15px;">⚙</button>
+      </div>
       <span class="db-status" id="dbStatus" title="Zum Neu-Prüfen antippen">
         <span class="db-dot" id="dbDot"></span>
         <span id="dbLabel">prüfe ...</span>
@@ -612,7 +615,19 @@
 <div class="generate">
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">* Pflichtfeld</div>
   <button id="genBtn">Bericht als PDF erzeugen</button>
+  <button type="button" id="pausierenBtn" class="clear-link" style="width:100%;text-align:center;border:1px solid var(--line);border-radius:8px;padding:11px 14px;margin-top:8px;">⏸ Bericht pausieren (später fortsetzen)</button>
   <div class="gen-status" id="genStatus"></div>
+</div>
+
+<!-- ─── Pausierte Berichte: geräteunabhängig, jeder angemeldete Mitarbeiter
+     sieht und kann jeden pausierten Bericht fortsetzen ─── -->
+<div id="pausiertModal" style="display:none;position:fixed;inset:0;background:rgba(10,13,16,0.88);z-index:30;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;">
+    <p class="card-title" style="margin-bottom:14px;">Pausierte Berichte</p>
+    <div id="pausiertListe"></div>
+    <p class="empty" id="pausiertEmpty" style="display:none;color:var(--muted);font-size:13px;">Keine pausierten Berichte vorhanden.</p>
+    <button type="button" class="add-btn" id="pausiertSchliessen" style="text-align:center;margin-top:14px;">Schließen</button>
+  </div>
 </div>
 
 <script>
@@ -1536,6 +1551,13 @@ async function generateReport(){
 
     if(sendResult.ok){
       genStatus.textContent = 'Bericht an Server übertragen und lokal gespeichert: ' + filename;
+      // Wurde dieser Bericht aus einem pausierten Entwurf fortgesetzt, ist er
+      // jetzt fertig abgeschickt — der Entwurf-Eintrag wird nicht mehr gebraucht.
+      if(aktuellerEntwurfId){
+        fetch(`${SUPABASE_URL}/rest/v1/berichte_pausiert?id=eq.${aktuellerEntwurfId}`, { method:'DELETE', headers: supabaseHeaders() })
+          .then(() => { aktuellerEntwurfId = null; aktualisierePausiertBadge(); })
+          .catch(err => console.error('Entwurf konnte nach Abschluss nicht gelöscht werden:', err));
+      }
       if(medien.fehler && medien.fehler.length){
         genStatus.textContent += ' — Achtung, Medien-Upload teilweise fehlgeschlagen: ' + medien.fehler.join('; ');
         genStatus.className = 'gen-status err';
@@ -2133,6 +2155,260 @@ async function ladeBildHoch(pfad, dataUrl){
   if(!res.ok) throw new Error('Upload fehlgeschlagen (' + res.status + ')');
   return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${pfad}`;
 }
+
+// Stempel "erstellt von" — gleiche zuverlässige Methode wie im Auftragsboard/CRM,
+// holt Name+Kürzel serverseitig statt aus einem selbst eingetragenen Feld.
+async function meinStempel(){
+  try{
+    const token = window.TSAuth && TSAuth.getToken && TSAuth.getToken();
+    if(!token) return null;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/mitarbeiter?me=1`, { headers: supabaseHeaders() });
+    const ich = await res.json().catch(() => null);
+    if(!ich) return null;
+    if(ich.name && ich.kuerzel) return `${ich.name} (${ich.kuerzel})`;
+    return ich.name || ich.kuerzel || null;
+  }catch(e){ return null; }
+}
+
+// ─── Pausierte Berichte: zentral in der Datenbank, geräteunabhängig ───────────
+// Für "zu viele Positionen an einem Tag" o.ä. — Formular sichern, später (auch
+// auf einem anderen Gerät) an derselben Stelle weitermachen.
+let aktuellerEntwurfId = null; // gesetzt, sobald ein Entwurf fortgesetzt wird
+
+async function ladeMedienHochFuerEntwurf(kennung){
+  // Anders als beim finalen Abschicken IMMER hochladen, unabhängig vom
+  // "Fotos im Bericht speichern"-Schalter — sonst wären pausierte Fotos beim
+  // Fortsetzen unwiederbringlich weg.
+  if(!SUPABASE_CONFIGURED) return { fotoUrls: [], unterschriftUrl: null };
+  const ordner = 'entwuerfe/' + kennung;
+  const fotoUrls = [];
+  for(let i = 0; i < photos.length; i++){
+    try{ fotoUrls.push(await ladeBildHoch(`${ordner}/foto_${i+1}.jpg`, photos[i].dataUrl)); }
+    catch(err){ console.error('Foto-Upload (Entwurf) fehlgeschlagen:', err); }
+  }
+  let unterschriftUrl = null;
+  const keinAbnehmer = document.getElementById('keinAbnehmer').checked;
+  if(!keinAbnehmer && hasSig){
+    try{ unterschriftUrl = await ladeBildHoch(`${ordner}/unterschrift.png`, canvas.toDataURL('image/png')); }
+    catch(err){ console.error('Unterschrift-Upload (Entwurf) fehlgeschlagen:', err); }
+  }
+  return { fotoUrls, unterschriftUrl };
+}
+
+async function pausiereBericht(){
+  const btn = document.getElementById('pausierenBtn');
+  const genStatus = document.getElementById('genStatus');
+  if(!val('fKunde').trim() && !val('fBauvorhaben').trim()){
+    await TSNotice.show('Bitte mindestens Kunde oder Bauvorhaben eintragen, damit der pausierte Bericht später wiedererkennbar ist.', {title:'Noch zu wenig zum Pausieren'});
+    return;
+  }
+  const notiz = prompt('Kurze Notiz für später (optional), z.B. "Rest morgen früh":', '') || null;
+
+  btn.disabled = true;
+  genStatus.className = 'gen-status';
+  genStatus.textContent = 'Bericht wird pausiert ...';
+  try{
+    const kennung = 'entwurf_' + Date.now();
+    const medien = await ladeMedienHochFuerEntwurf(kennung);
+
+    const vorgangWert = val('fVorgang') || '';
+    let vorgang_typ = null, vorgang_id = null;
+    if(vorgangWert.startsWith('wartung:')) { vorgang_typ = 'wartungsposition'; vorgang_id = vorgangWert.slice(8); }
+    else if(vorgangWert.startsWith('wv:')) { vorgang_typ = 'wiedervorlage'; vorgang_id = vorgangWert.slice(3); }
+    else if(vorgangWert.startsWith('angebot:')) { vorgang_typ = 'angebot'; vorgang_id = vorgangWert.slice(8); }
+    else if(vorgangWert.startsWith('auftrag:')) { vorgang_typ = 'auftrag'; vorgang_id = vorgangWert.slice(8); }
+
+    const zeitDaten = zeitBlocks.map(b => ({
+      techniker: b.name, primary: b.primary,
+      rows: b.rows.map(r => ({datum: r.datum, stunden: r.stunden, wegepauschale: r.wegepauschale}))
+    }));
+
+    const stempel = await meinStempel();
+    const entwurf = {
+      erstellt_von: stempel,
+      notiz,
+      kunde: val('fKunde') || null,
+      bauvorhaben: val('fBauvorhaben') || null,
+      vat_nummer: val('fVat') || null,
+      vorgang_typ, vorgang_id,
+      ansprechpartner: val('fAnsprechpartner') || null,
+      telefon: val('fTelefon') || null,
+      email: val('fEmail') || null,
+      lieferanschrift: val('fLieferanschrift') || null,
+      techniker: val('fTechniker') || null,
+      zeiterfassung: zeitDaten,
+      taetigkeit: val('fTaetigkeit') || null,
+      status: document.querySelector('input[name="arbeitsstatus"]:checked')?.value || null,
+      interner_bericht: val('fInternerBericht') || null,
+      hinweis: val('fHinweis') || null,
+      material_checkliste: materialItems.filter(i => i.checked).map(i => ({bezeichnung: i.label, menge: i.menge || 1})),
+      material_freitext: val('fMaterial') || null,
+      kein_abnehmer_vor_ort: document.getElementById('keinAbnehmer').checked,
+      kundenname: val('fKundenname') || null,
+      abnehmer_funktion: val('fAbnehmerFunktion') || null,
+      foto_urls: medien.fotoUrls,
+      unterschrift_url: medien.unterschriftUrl
+    };
+
+    if(aktuellerEntwurfId){
+      // Bereits fortgesetzter Entwurf: aktualisieren statt einen zweiten anzulegen
+      await fetch(`${SUPABASE_URL}/rest/v1/berichte_pausiert?id=eq.${aktuellerEntwurfId}`, {
+        method: 'PATCH', headers: supabaseHeaders(), body: JSON.stringify(entwurf)
+      });
+    } else {
+      await fetch(`${SUPABASE_URL}/rest/v1/berichte_pausiert`, {
+        method: 'POST', headers: supabaseHeaders(), body: JSON.stringify(entwurf)
+      });
+    }
+
+    genStatus.textContent = 'Bericht pausiert — über ⏸ oben jederzeit fortsetzbar.';
+    aktualisierePausiertBadge();
+  }catch(err){
+    console.error('Pausieren fehlgeschlagen:', err);
+    genStatus.className = 'gen-status err';
+    genStatus.textContent = 'Pausieren fehlgeschlagen: ' + err.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function ladePausierteBerichte(){
+  if(!SUPABASE_CONFIGURED) return [];
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/berichte_pausiert?select=*&order=aktualisiert_am.desc`, { headers: supabaseHeaders() });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  }catch(err){ console.error('Pausierte Berichte konnten nicht geladen werden:', err); return []; }
+}
+
+async function aktualisierePausiertBadge(){
+  const liste = await ladePausierteBerichte();
+  const badge = document.getElementById('pausiertBadge');
+  if(liste.length){ badge.textContent = liste.length; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
+}
+
+async function renderPausiertListe(){
+  const liste = await ladePausierteBerichte();
+  const container = document.getElementById('pausiertListe');
+  const empty = document.getElementById('pausiertEmpty');
+  empty.style.display = liste.length ? 'none' : 'block';
+  container.innerHTML = liste.map(e => {
+    const datum = new Date(e.aktualisiert_am);
+    const wann = datum.toLocaleDateString('de-DE') + ' ' + datum.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    return `<div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-weight:600;">${esc(e.kunde || '–')} ${e.bauvorhaben ? '· ' + esc(e.bauvorhaben) : ''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">${wann} · ${esc(e.erstellt_von || 'unbekannt')}</div>
+      ${e.notiz ? `<div style="font-size:12.5px;color:var(--muted);margin-top:6px;font-style:italic;">„${esc(e.notiz)}"</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="button" class="add-btn" style="flex:1;text-align:center;" onclick="fortsetzenBericht('${e.id}')">Fortsetzen</button>
+        <button type="button" class="clear-link" style="border:1px solid var(--line);border-radius:8px;padding:9px 14px;" onclick="loescheEntwurf('${e.id}')">Löschen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+async function loescheEntwurf(id){
+  if(!(await TSConfirm.ask('Diesen pausierten Bericht endgültig löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/berichte_pausiert?id=eq.${id}`, { method:'DELETE', headers: supabaseHeaders() });
+  if(aktuellerEntwurfId === id) aktuellerEntwurfId = null;
+  await renderPausiertListe();
+  await aktualisierePausiertBadge();
+}
+
+async function fortsetzenBericht(id){
+  const liste = await ladePausierteBerichte();
+  const e = liste.find(x => x.id === id);
+  if(!e) return;
+
+  document.getElementById('pausiertModal').style.display = 'none';
+  aktuellerEntwurfId = e.id;
+
+  setVal('fKunde', e.kunde);
+  setVal('fBauvorhaben', e.bauvorhaben);
+  setVal('fVat', e.vat_nummer);
+  setVal('fAnsprechpartner', e.ansprechpartner);
+  setVal('fTelefon', e.telefon);
+  setVal('fEmail', e.email);
+  setVal('fLieferanschrift', e.lieferanschrift);
+  setVal('fTaetigkeit', e.taetigkeit);
+  setVal('fInternerBericht', e.interner_bericht);
+  setVal('fHinweis', e.hinweis);
+  setVal('fMaterial', e.material_freitext);
+  setVal('fKundenname', e.kundenname);
+  setVal('fAbnehmerFunktion', e.abnehmer_funktion);
+  if(e.status){
+    const radio = document.querySelector(`input[name="arbeitsstatus"][value="${e.status}"]`);
+    if(radio) radio.checked = true;
+  }
+  document.getElementById('keinAbnehmer').checked = !!e.kein_abnehmer_vor_ort;
+
+  // Zeiterfassung wiederherstellen — mit frischen, eindeutigen IDs (Blöcke/Zeilen
+  // brauchen die für Lösch-Buttons und Wegepauschale-Checkboxen zwingend).
+  if(Array.isArray(e.zeiterfassung) && e.zeiterfassung.length){
+    zeitBlocks = e.zeiterfassung.map(b => ({
+      id: zeitBlockSeq++, name: b.techniker, primary: !!b.primary,
+      rows: (b.rows || []).map(r => ({ id: zeitRowSeq++, datum: r.datum, stunden: r.stunden, wegepauschale: !!r.wegepauschale }))
+    }));
+    if(typeof renderZeitBlocks === 'function') renderZeitBlocks();
+  }
+
+  // Material-Checkliste wiederherstellen. Ist gerade keine Liste geladen
+  // (materialItems kommt sonst erst durch CRM-/PDF-Import zustande), die
+  // gespeicherten Positionen direkt als eigene Liste anzeigen, statt sie
+  // stillschweigend zu verlieren.
+  if(Array.isArray(e.material_checkliste) && e.material_checkliste.length){
+    if(materialItems.length){
+      e.material_checkliste.forEach(m => {
+        const item = materialItems.find(i => i.label === m.bezeichnung);
+        if(item){ item.checked = true; item.menge = m.menge || 1; }
+      });
+    } else {
+      materialItems = e.material_checkliste.map((m, i) => ({ id: 'mat_' + i, label: m.bezeichnung, menge: m.menge || 1, checked: true }));
+    }
+    if(typeof renderMaterialChecklist === 'function') renderMaterialChecklist();
+  }
+
+  // Fotos wiederherstellen (bereits hochgeladen, direkt als URL nutzbar)
+  if(Array.isArray(e.foto_urls) && e.foto_urls.length){
+    photos = e.foto_urls.map(url => ({ id: Date.now() + Math.random(), dataUrl: url }));
+    renderThumbs();
+  }
+
+  // Unterschrift wiederherstellen (falls vorhanden) direkt ins Canvas zeichnen
+  if(e.unterschrift_url){
+    try{
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height); hasSig = true; };
+      img.src = e.unterschrift_url;
+    }catch(err){ console.error('Unterschrift konnte nicht wiederhergestellt werden:', err); }
+  }
+
+  // Vorgang-Verknüpfung: erst nachdem Kunde/Bauvorhaben stehen, damit die
+  // Dropdown-Befüllung sie nicht überschreibt (gleicher Mechanismus wie beim
+  // direkten Auftrag-Link).
+  if(e.vorgang_typ === 'auftrag' && e.vorgang_id){
+    await ladeVorgaengeFuerKunde(null, 'auftrag', e.vorgang_id);
+  }
+
+  await TSNotice.show('Entwurf geladen — wo du aufgehört hattest.', {title:'Bericht fortgesetzt', icon:'▶️'});
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function setVal(id, wert){ const el = document.getElementById(id); if(el) el.value = wert || ''; }
+
+document.getElementById('pausierenBtn').addEventListener('click', pausiereBericht);
+document.getElementById('pausiertOeffnenBtn').addEventListener('click', async () => {
+  document.getElementById('pausiertModal').style.display = 'flex';
+  await renderPausiertListe();
+});
+document.getElementById('pausiertSchliessen').addEventListener('click', () => {
+  document.getElementById('pausiertModal').style.display = 'none';
+});
+aktualisierePausiertBadge();
 
 async function ladeMedienHoch(angebotsnr){
   const bilderSpeichern = localStorage.getItem('ts_bilder_speichern') === '1';
