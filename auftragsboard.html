@@ -34,6 +34,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 @media(hover:hover){ .ts-backbar__link:hover{color:var(--blau);} }
 .ts-backbar__slash{color:var(--dim);}
 .ts-backbar__current{color:var(--blau);font-weight:700;}
+  .ts-backbar__logo{height:22px;width:auto;flex-shrink:0;border-radius:3px;}
 
 header{padding:16px 16px 10px;}
 header h1{font-size:1.3rem;}
@@ -102,10 +103,21 @@ label{display:block;font-size:.75rem;color:var(--dim);margin:12px 0 5px;text-tra
 <body>
 
 <div class="ts-backbar">
+  <img id="brandLogo" class="ts-backbar__logo" src="" alt="" style="display:none;">
   <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
   <span class="ts-backbar__slash" aria-hidden="true">/</span>
   <span class="ts-backbar__current">Auftragsboard</span>
 </div>
+<script>
+(function(){
+  var logo = document.getElementById('brandLogo');
+  if(logo && typeof TENANT !== 'undefined' && TENANT.logoDataUrl){
+    logo.src = TENANT.logoDataUrl; logo.alt = TENANT.name || '';
+    logo.style.display = 'inline-block';
+  }
+})();
+</script>
+
 
 <header>
   <h1>Auftragsboard</h1>

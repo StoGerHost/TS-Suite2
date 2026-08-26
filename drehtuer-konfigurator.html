@@ -297,10 +297,21 @@
 </head>
 <body>
 <div class="ts-backbar">
+  <img id="brandLogo" class="ts-backbar__logo" src="" alt="" style="display:none;">
   <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
   <span class="ts-backbar__slash" aria-hidden="true">/</span>
   <span class="ts-backbar__current">Drehtür-Konfigurator</span>
 </div>
+<script>
+(function(){
+  var logo = document.getElementById('brandLogo');
+  if(logo && typeof TENANT !== 'undefined' && TENANT.logoDataUrl){
+    logo.src = TENANT.logoDataUrl; logo.alt = TENANT.name || '';
+    logo.style.display = 'inline-block';
+  }
+})();
+</script>
+
 <style>
   .ts-backbar{position:sticky;top:0;z-index:99999;display:flex;align-items:center;gap:10px;
     background:var(--bg);color:var(--primary);padding:10px 16px;
@@ -311,6 +322,7 @@
   .ts-backbar__link:hover{color:var(--accent);}
   .ts-backbar__slash{color:var(--muted);}
   .ts-backbar__current{color:var(--accent);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ts-backbar__logo{height:22px;width:auto;flex-shrink:0;border-radius:3px;}
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 

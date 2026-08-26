@@ -22,6 +22,7 @@
 @media(hover:hover){ .ts-backbar__link:hover{color:var(--ts-accent, #3a7bd5);} }
 .ts-backbar__slash{color:var(--ts-ink-45, rgba(233,237,242,.4));}
 .ts-backbar__current{color:var(--ts-accent, #3a7bd5);font-weight:700;}
+  .ts-backbar__logo{height:22px;width:auto;flex-shrink:0;border-radius:3px;}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -327,10 +328,21 @@
 </head>
 <body>
 <div class="ts-backbar">
+  <img id="brandLogo" class="ts-backbar__logo" src="" alt="" style="display:none;">
   <a href="indexpro.html" class="ts-backbar__link">&larr; TS Suite Werkzeuge</a>
   <span class="ts-backbar__slash" aria-hidden="true">/</span>
   <span class="ts-backbar__current">Arbeitsbericht</span>
 </div>
+<script>
+(function(){
+  var logo = document.getElementById('brandLogo');
+  if(logo && typeof TENANT !== 'undefined' && TENANT.logoDataUrl){
+    logo.src = TENANT.logoDataUrl; logo.alt = TENANT.name || '';
+    logo.style.display = 'inline-block';
+  }
+})();
+</script>
+
 
 <header>
   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
