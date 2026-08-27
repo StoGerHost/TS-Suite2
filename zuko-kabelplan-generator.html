@@ -1653,13 +1653,18 @@ function renderSchema(){
   html += `<path class="wire power${vCls}" d="M${x1},${y1} L${x2},${y2}"></path>`;
   html += `<text class="wlabel${vCls}" x="${(x1+x2)/2}" y="${y1-8}" text-anchor="middle">Strom</text>`;
 
-  // ZuKo/Steuerung -> jede Komponente als eigener Zweig
+  // ZuKo/Steuerung -> jede Komponente als eigener Zweig. Die Beschriftung wird
+  // NICHT sofort gezeichnet (Fund 4: wurde von den weiter unten gezeichneten
+  // Bauteil-Kästen überdeckt, da SVG spätere Elemente über frühere malt) —
+  // stattdessen gesammelt und erst nach allen Kästen gezeichnet, mit eigenem
+  // Hintergrund für Lesbarkeit auch über der Verbindungslinie selbst.
+  var steuerLabels = [];
   komponenten.forEach(k=>{
     const x3 = steuerung.x + steuerung.w, y3 = steuerung.y;
     const x4 = k.x, y4 = k.y;
     html += `<path class="wire ${k.steuerTyp}${vCls}" d="M${x3},${y3} L${x4},${y4}"></path>`;
     const midY = (y3+y4)/2 + (y4<y3 ? -8 : (y4>y3 ? 14 : -8));
-    html += `<text class="wlabel${vCls}" x="${(x3+x4)/2}" y="${midY}" text-anchor="middle">${k.steuerLabel}</text>`;
+    steuerLabels.push({ x:(x3+x4)/2, y:midY, text:k.steuerLabel, vCls });
   });
 
   html += `<g class="node quelle"><rect x="${quelle.x}" y="${quelle.y-quelle.h/2}" width="${quelle.w}" height="${quelle.h}"></rect>
@@ -1679,6 +1684,16 @@ function renderSchema(){
       html += `<text class="wlabel" x="${k.x+k.w+10}" y="${k.y-k.h/2+10}" text-anchor="start" style="fill:var(--bp-power);font-style:italic;">← Angesteuert · Checkbox</text>`;
     });
   }
+
+  // Beschriftung der ZuKo→Komponente-Leitungen erst jetzt zeichnen (nach allen
+  // Kästen, siehe Sammlung oben) — mit Hintergrund-Rechteck, damit sie auch
+  // über der Verbindungslinie oder nahe an einem Kastenrand lesbar bleibt.
+  // Breite grob aus der Zeichenanzahl geschätzt (Mono-Schrift, ~5px/Zeichen).
+  steuerLabels.forEach(l=>{
+    const w = l.text.length * 5 + 8;
+    html += `<rect class="wlabel-bg" x="${l.x - w/2}" y="${l.y - 9}" width="${w}" height="12" rx="2"></rect>`;
+    html += `<text class="wlabel${l.vCls}" x="${l.x}" y="${l.y}" text-anchor="middle">${l.text}</text>`;
+  });
 
   svg.innerHTML = html;
 }

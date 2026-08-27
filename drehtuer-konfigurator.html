@@ -942,10 +942,27 @@ function betriebsartAnzeige(){
 
 // ─── Derived ───────────────────────────────────────────────────────────────────
 function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+// Fund 2: "RAL individuell" allein sagt nichts über den tatsächlich
+// gewünschten Farbton — hängt den eingetragenen Code an, wo vorhanden.
+function farbAnzeige(wert, ral, labelMap){
+  if(!wert) return "–";
+  var txt = labelMap[wert];
+  if(wert === 'individuell' && ral) txt += ' (' + ral + ')';
+  return txt;
+}
 function zubehoerQtyText(){
-  var zl=(S.zubehoer||[]).filter(function(z){return S['qty_'+z];});
+  // Die Zahl "1" im Stückzahl-Feld ist nur ein Platzhalter, kein echter
+  // Wert — bis der Nutzer wirklich reinklickt, steht in S['qty_'+z] noch
+  // nichts. Ein Filter auf "S['qty_'+z] ist wahr" hat deshalb jedes
+  // ausgewählte Zubehörteil rausgeworfen, dessen Menge niemand angefasst
+  // hat, obwohl es ganz normal ausgewählt war (S.zubehoer entscheidet über
+  // die Auswahl, nicht die Menge). Jetzt: alle ausgewählten Teile anzeigen,
+  // mit demselben Default (1), den auch die echte Stückliste weiter unten
+  // in dieser Datei verwendet — sonst würden Bildschirm/PDF etwas anderes
+  // zeigen als tatsächlich bestellt wird.
+  var zl=(S.zubehoer||[]);
   if(!zl.length) return "–";
-  return zl.map(function(z){return ZL[z]+": "+S['qty_'+z]+" Stk.";}).join(", ");
+  return zl.map(function(z){return ZL[z]+": "+(S['qty_'+z]||1)+" Stk.";}).join(", ");
 }
 function getEmpD(){
   var b=parseInt(S.tuerbreite),g=parseInt(S.tuergewicht);
@@ -1014,10 +1031,10 @@ function chkboxQty(label,hint,field,options){
   }
   return html+'</div>';
 }
-function numInput(label,hint,field,unit,ph){
+function numInput(label,hint,field,unit,ph,max){
   return '<div class="field"><div class="field-label">'+label+'</div>'+
     (hint?'<p class="field-hint">'+hint+'</p>':'')+
-    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric" min="0">'+
+    '<div class="num-row"><input type="number" class="num-input" data-field="'+field+'" value="'+esc(S[field])+'" placeholder="'+ph+'" inputmode="numeric" min="0"'+(max!=null?' max="'+max+'"':'')+'>'+
     (unit?'<span class="num-unit">'+unit+'</span>':'')+
     '</div></div>';
 }
@@ -1123,7 +1140,7 @@ function buildVerriegelung(){
     html+=radio('Spannung E-Öffner',null,'eoeffnerSpannung',[
       {value:'12vdc',label:'12 V DC'},{value:'24vdc',label:'24 V DC'},
       {value:'12vac',label:'12 V AC'},{value:'24vac',label:'24 V AC'}])+
-    numInput('Einschaltdauer E-Öffner','Dauerstrom = 100 % ED, sonst reduzierte Einschaltdauer angeben','eoeffnerEinschaltdauer','% ED','z. B. 100');
+    numInput('Einschaltdauer E-Öffner','Dauerstrom = 100 % ED, sonst reduzierte Einschaltdauer angeben','eoeffnerEinschaltdauer','% ED','z. B. 100',100);
   }
   html+=radio('Motorschloss vorhanden?','Alternative zur Verriegelung per E-Öffner','motorschloss',[
     {value:'ja',label:'Ja',icon:'🔐'},{value:'nein',label:'Nein'}]);
@@ -1168,7 +1185,8 @@ function buildDormakaba(){
       {value:'bg-gleit',label:'BGS drückend',sub:'Gleitschiene'},{value:'bg-gestänge',label:'BGS drückend',sub:'Normalgestänge'},{value:'bs-gleit',label:'BS ziehend',sub:'Gleitschiene'}],true)+
     radio('Öffnungswinkel',null,'oeffnungswinkel',[{value:'80',label:'80°'},{value:'90',label:'90°'},{value:'110',label:'110°',sub:'max.'}])+
     radio('Verkleidung',(varioZusatzPflicht()?'Zweiflüglige dormakaba-Anlagen benötigen zusätzlich '+LM.verkleidung[varioZusatzTyp()]+'-Verkleidung – wird automatisch in Artikelliste &amp; Zusammenfassung ergänzt':null),'verkleidung',[{value:'basic',label:'BASIC'},{value:'basic_rm',label:'BASIC RM'},{value:'vario',label:'VARIO'},{value:'vario_rm',label:'VARIO RM'},{value:'professionell',label:'PROFESSIONAL'}])+
-    radio('Farbgebung',null,'farbgebung',[{value:'silber',label:'Silber'},{value:'weiss',label:'Weiß',sub:'RAL 9016'},{value:'bronze',label:'Bronze'},{value:'individuell',label:'RAL indiv.'}])
+    radio('Farbgebung',null,'farbgebung',[{value:'silber',label:'Silber'},{value:'weiss',label:'Weiß',sub:'RAL 9016'},{value:'bronze',label:'Bronze'},{value:'individuell',label:'RAL indiv.'}])+
+    (S.farbgebung==='individuell'?txtInput('RAL-Code','farbgebung_ral','z. B. RAL 7016'):'')
   );
   html+=sec('Verriegelung &amp; Schließtechnik','🔐',buildVerriegelung());
   html+=sec('Absicherungssensorik (BEA)','🛡️',
@@ -1251,7 +1269,8 @@ function buildGeze(){
     ])+
     radio('Farbgebung',null,'g_farbgebung',[
       {value:'silber',label:'Silber'},{value:'weiss',label:'Weiß',sub:'RAL 9016'},{value:'bronze',label:'Bronze'},{value:'individuell',label:'RAL indiv.'},
-    ])
+    ])+
+    (S.g_farbgebung==='individuell'?txtInput('RAL-Code','g_farbgebung_ral','z. B. RAL 7016'):'')
   );
   html+=sec('Verriegelung &amp; Schließtechnik','🔐',buildVerriegelung());
   html+=sec('Absicherungssensorik (BEA)','🛡️',
@@ -1306,7 +1325,8 @@ function buildRecord(){
     ])+
     radio('Farbgebung',null,'r_farbgebung',[
       {value:'silber',label:'Silber'},{value:'weiss',label:'Weiß',sub:'RAL 9016'},{value:'bronze',label:'Bronze'},{value:'individuell',label:'RAL indiv.'},
-    ])
+    ])+
+    (S.r_farbgebung==='individuell'?txtInput('RAL-Code','r_farbgebung_ral','z. B. RAL 7016'):'')
   );
   html+=sec('Verriegelung &amp; Schließtechnik','🔐',buildVerriegelung());
   html+=sec('Absicherungssensorik (BEA)','🛡️',
@@ -1361,7 +1381,8 @@ function buildGilgen(){
     ])+
     radio('Farbgebung',null,'gi_farbgebung',[
       {value:'silber',label:'Silber'},{value:'weiss',label:'Weiß',sub:'RAL 9016'},{value:'bronze',label:'Bronze'},{value:'individuell',label:'RAL indiv.'},
-    ])
+    ])+
+    (S.gi_farbgebung==='individuell'?txtInput('RAL-Code','gi_farbgebung_ral','z. B. RAL 7016'):'')
   );
   html+=sec('Verriegelung &amp; Schließtechnik','🔐',buildVerriegelung());
   html+=sec('Absicherungssensorik (BEA)','🛡️',
@@ -1410,7 +1431,7 @@ function buildSummary(){
       ["Betriebsart",betriebsartAnzeige()],["Betriebsmodus",LM.betriebsmodus[S.betriebsmodus]||"–"],
       ["MotionIQ",S.motioniq==="ja"?"Aktiv – Radarsensor M A01 + Anschlussplatine CAN":S.motioniq==="nein"?"Nicht verbaut":"–"],
       ["Montageart",LM.montageart[S.montageart]||"–"],["Öffnungswinkel",S.oeffnungswinkel?LM.oeffnungswinkel[S.oeffnungswinkel]:"–"],
-      ["Verkleidung",verkleidungAnzeige()],["Farbgebung",S.farbgebung?LM.farbgebung[S.farbgebung]:"–"],
+      ["Verkleidung",verkleidungAnzeige()],["Farbgebung",farbAnzeige(S.farbgebung,S.farbgebung_ral,LM.farbgebung)],
       ["Windlast",S.windlast?LM.windlast[S.windlast]:"–"],["Notstrom",S.notfunktion?LM.notfunktion[S.notfunktion]:"–"],
       ["Zubehör",S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(", "):"Keines"],
     ];
@@ -1424,7 +1445,7 @@ function buildSummary(){
       ["Türart",LM_R.tuerart[S.r_tuerart]||"–"],["Betriebsart",LM_R.betriebsart[S.r_betriebsart]||"–"],
       ["Sonderfunktionen",(S.r_optionen||[]).length?(S.r_optionen||[]).map(function(o){return orl[o];}).join(", "):"–"],
       ["Montageart",LM_R.montageart[S.r_montageart]||"–"],["Öffnungswinkel",S.r_oeffnungswinkel?LM_R.oeffnungswinkel[S.r_oeffnungswinkel]:"–"],
-      ["Farbgebung",S.r_farbgebung?LM_R.farbgebung[S.r_farbgebung]:"–"],["Notstrom",S.r_notfunktion?LM_R.notfunktion[S.r_notfunktion]:"–"],
+      ["Farbgebung",farbAnzeige(S.r_farbgebung,S.r_farbgebung_ral,LM_R.farbgebung)],["Notstrom",S.r_notfunktion?LM_R.notfunktion[S.r_notfunktion]:"–"],
       ["Zubehör",S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(", "):"Keines"],
     ];
     normen=["EN 1154","EN 16005","DIN 18650","230V AC"];
@@ -1437,7 +1458,7 @@ function buildSummary(){
       ["Türart",LM_GI.tuerart[S.gi_tuerart]||"–"],["Betriebsart",LM_GI.betriebsart[S.gi_betriebsart]||"–"],
       ["Sonderfunktionen",(S.gi_optionen||[]).length?(S.gi_optionen||[]).map(function(o){return gil[o];}).join(", "):"–"],
       ["Montageart",LM_GI.montageart[S.gi_montageart]||"–"],["Öffnungswinkel",S.gi_oeffnungswinkel?LM_GI.oeffnungswinkel[S.gi_oeffnungswinkel]:"–"],
-      ["Farbgebung",S.gi_farbgebung?LM_GI.farbgebung[S.gi_farbgebung]:"–"],["Notstrom",S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:"–"],
+      ["Farbgebung",farbAnzeige(S.gi_farbgebung,S.gi_farbgebung_ral,LM_GI.farbgebung)],["Notstrom",S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:"–"],
       ["Zubehör",S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(", "):"Keines"],
     ];
     normen=["EN 1154","EN 16005","DIN 18650","230V AC"];
@@ -1450,7 +1471,7 @@ function buildSummary(){
       ["Türart",LM_G.tuerart[S.g_tuerart]||"–"],["Betriebsart",LM_G.betriebsart[S.g_betriebsart]||"–"],
       ["Sonderfunktionen",(S.g_optionen||[]).length?(S.g_optionen||[]).map(function(o){return ol[o];}).join(", "):"–"],
       ["Montageart",LM_G.montageart[S.g_montageart]||"–"],["Öffnungswinkel",S.g_oeffnungswinkel?LM_G.oeffnungswinkel[S.g_oeffnungswinkel]:"–"],
-      ["Farbgebung",S.g_farbgebung?LM_G.farbgebung[S.g_farbgebung]:"–"],["Notstrom",S.g_notfunktion?LM_G.notfunktion[S.g_notfunktion]:"–"],
+      ["Farbgebung",farbAnzeige(S.g_farbgebung,S.g_farbgebung_ral,LM_G.farbgebung)],["Notstrom",S.g_notfunktion?LM_G.notfunktion[S.g_notfunktion]:"–"],
       ["Zubehör",S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(", "):"Keines"],
     ];
     normen=["EN 1154","EN 16005","DIN 18650","230V AC","TÜV P-4061/14"];
@@ -1772,7 +1793,7 @@ async function exportPDF(){
       ['MotionIQ',S.motioniq==='ja'?'Aktiv – Radarsensor M A01 + Anschlussplatine CAN':S.motioniq==='nein'?'Nicht verbaut':'–'],
       ['Montageart',LM.montageart[S.montageart]||'–'],
       ['Öffnungswinkel',S.oeffnungswinkel?LM.oeffnungswinkel[S.oeffnungswinkel]:'–'],
-      ['Verkleidung',verkleidungAnzeige()],['Farbgebung',S.farbgebung?LM.farbgebung[S.farbgebung]:'–'],
+      ['Verkleidung',verkleidungAnzeige()],['Farbgebung',farbAnzeige(S.farbgebung,S.farbgebung_ral,LM.farbgebung)],
       ['Windlastregelung',S.windlast?LM.windlast[S.windlast]:'–'],['Notstrom',S.notfunktion?LM.notfunktion[S.notfunktion]:'–'],
       ['Zubehör',S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(', '):'Keines'],
     ];
@@ -1785,7 +1806,7 @@ async function exportPDF(){
       ['Betriebsart',LM_R.betriebsart[S.r_betriebsart]||'–'],
       ['Sonderfunktionen',(S.r_optionen||[]).length?(S.r_optionen||[]).map(function(o){return orl2[o];}).join(', '):'–'],
       ['Montageart',LM_R.montageart[S.r_montageart]||'–'],['Öffnungswinkel',S.r_oeffnungswinkel?LM_R.oeffnungswinkel[S.r_oeffnungswinkel]:'–'],
-      ['Farbgebung',S.r_farbgebung?LM_R.farbgebung[S.r_farbgebung]:'–'],['Notstrom',S.r_notfunktion?LM_R.notfunktion[S.r_notfunktion]:'–'],
+      ['Farbgebung',farbAnzeige(S.r_farbgebung,S.r_farbgebung_ral,LM_R.farbgebung)],['Notstrom',S.r_notfunktion?LM_R.notfunktion[S.r_notfunktion]:'–'],
       ['Zubehör',S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(', '):'Keines'],
     ];
   } else if(isGi()){
@@ -1797,7 +1818,7 @@ async function exportPDF(){
       ['Betriebsart',LM_GI.betriebsart[S.gi_betriebsart]||'–'],
       ['Sonderfunktionen',(S.gi_optionen||[]).length?(S.gi_optionen||[]).map(function(o){return gil2[o];}).join(', '):'–'],
       ['Montageart',LM_GI.montageart[S.gi_montageart]||'–'],['Öffnungswinkel',S.gi_oeffnungswinkel?LM_GI.oeffnungswinkel[S.gi_oeffnungswinkel]:'–'],
-      ['Farbgebung',S.gi_farbgebung?LM_GI.farbgebung[S.gi_farbgebung]:'–'],['Notstrom',S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:'–'],
+      ['Farbgebung',farbAnzeige(S.gi_farbgebung,S.gi_farbgebung_ral,LM_GI.farbgebung)],['Notstrom',S.gi_notfunktion?LM_GI.notfunktion[S.gi_notfunktion]:'–'],
       ['Zubehör',S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(', '):'Keines'],
     ];
   } else {
@@ -1809,7 +1830,7 @@ async function exportPDF(){
       ['Betriebsart',LM_G.betriebsart[S.g_betriebsart]||'–'],
       ['Sonderfunktionen',(S.g_optionen||[]).length?(S.g_optionen||[]).map(function(o){return ol[o];}).join(', '):'–'],
       ['Montageart',LM_G.montageart[S.g_montageart]||'–'],['Öffnungswinkel',S.g_oeffnungswinkel?LM_G.oeffnungswinkel[S.g_oeffnungswinkel]:'–'],
-      ['Farbgebung',S.g_farbgebung?LM_G.farbgebung[S.g_farbgebung]:'–'],['Notstrom',S.g_notfunktion?LM_G.notfunktion[S.g_notfunktion]:'–'],
+      ['Farbgebung',farbAnzeige(S.g_farbgebung,S.g_farbgebung_ral,LM_G.farbgebung)],['Notstrom',S.g_notfunktion?LM_G.notfunktion[S.g_notfunktion]:'–'],
       ['Zubehör',S.zubehoer.length?S.zubehoer.map(function(z){return ZL[z];}).join(', '):'Keines'],
     ];
   }
@@ -2065,8 +2086,11 @@ function loadVorlage(idx){
   S.gpsLoading=false; S.gpsError=''; S.showSummary=false;
   autosave(); render(); closeVorlagenModal();
 }
-function deleteVorlage(idx){
-  var vl=getVorlagen(); vl.splice(idx,1);
+async function deleteVorlage(idx){
+  var vl=getVorlagen();
+  if(!vl[idx]) return;
+  if(!(await TSConfirm.ask('Vorlage "'+vl[idx].name+'" wirklich löschen?', {danger:true, confirmLabel:'Löschen'}))) return;
+  vl.splice(idx,1);
   localStorage.setItem(VORLAGEN_KEY,JSON.stringify(vl)); renderVorlagenModal();
 }
 
@@ -2129,6 +2153,14 @@ function pruefeNumEingabe(el){
   if(!isNaN(n) && n < 0){
     el.value = '';
     if(window.TSNotice) TSNotice.show('Maße und Gewichte können nicht negativ sein — bitte erneut eingeben.', {title:'Ungültiger Wert'});
+    return '';
+  }
+  // Fund 6: das HTML-Attribut max="…" verhindert nur die Formular-Abgabe,
+  // nicht die Eingabe selbst — Browser lassen z.B. 150 in einem max="100"-Feld
+  // klaglos zu. Deshalb hier zusätzlich aktiv prüfen und zurücksetzen.
+  if(el.max !== '' && !isNaN(n) && n > parseFloat(el.max)){
+    el.value = '';
+    if(window.TSNotice) TSNotice.show('Maximal '+el.max+' erlaubt — bitte erneut eingeben.', {title:'Ungültiger Wert'});
     return '';
   }
   return wert;

@@ -177,6 +177,215 @@
   @media(max-width:480px){.ts-backbar{font-size:10.5px;padding:8px 12px;gap:8px;}}
 </style>
 
+<style>
+  /* PayPal Payment Modal — identisch zu den Türkonfiguratoren, für einheitlichen PDF-Export */
+  #paywall-overlay{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+    z-index:9999;align-items:center;justify-content:center;padding:20px;
+  }
+  #paywall-overlay.visible{display:flex;}
+  #paywall-box{
+    background:var(--card);border-radius:16px;max-width:360px;width:100%;
+    box-shadow:0 8px 40px rgba(0,0,0,.25);overflow:hidden;
+  }
+  #paywall-header{
+    background:linear-gradient(135deg,#0d1420 0%,#1e3a5f 100%);
+    padding:20px;text-align:center;
+  }
+  #paywall-header h2{color:#fff;font-size:17px;font-weight:800;margin-bottom:4px;}
+  #paywall-header p{color:rgba(255,255,255,.7);font-size:12px;}
+  #paywall-body{padding:20px;}
+  #paywall-price{
+    text-align:center;padding:14px;background:var(--paper);
+    border-radius:10px;margin-bottom:16px;
+  }
+  #paywall-price .amount{font-size:32px;font-weight:900;color:var(--accent);}
+  #paywall-price .label{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .paywall-step{
+    display:flex;align-items:flex-start;gap:10px;
+    margin-bottom:12px;font-size:13px;color:var(--ink-soft);
+  }
+  .paywall-step .step-num{
+    width:22px;height:22px;border-radius:50%;background:var(--accent);
+    color:#fff;font-weight:700;font-size:11px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  #btn-paypal{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:14px;border-radius:10px;border:none;
+    background:var(--accent);color:#fff;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;margin-bottom:10px;
+    text-decoration:none;
+  }
+  #btn-paypal .pp-yellow{color:#FFD700;font-weight:900;}
+  #btn-paid{
+    display:none;width:100%;padding:14px;border-radius:10px;border:none;
+    background:#2ecc71;color:#0a0a0c;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:inherit;margin-bottom:10px;
+  }
+  #btn-cancel-pay{
+    width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--paper);color:var(--ink-soft);font-size:13px;cursor:pointer;font-family:inherit;
+  }
+</style>
+
+<!-- PayPal Paywall Modal — identisch zu den Türkonfiguratoren -->
+<div id="paywall-overlay">
+  <div id="paywall-box">
+    <div id="paywall-header">
+      <h2>📄 PDF-Export</h2>
+      <p>Einmaliger Beitrag für den Export</p>
+    </div>
+    <div id="paywall-body">
+      <div id="paywall-price">
+        <div class="amount">0,09 €</div>
+        <div class="label">einmalig pro PDF-Export</div>
+      </div>
+      <div class="paywall-step">
+        <span class="step-num">1</span>
+        <span>Klicke auf „Jetzt zahlen" – du wirst zu PayPal weitergeleitet.</span>
+      </div>
+      <div class="paywall-step">
+        <span class="step-num">2</span>
+        <span>Nach erfolgreicher Zahlung kehre zurück und klicke „Zahlung abgeschlossen".</span>
+      </div>
+      <div class="paywall-step">
+        <span class="step-num">3</span>
+        <span>Dein PDF wird sofort generiert.</span>
+      </div>
+      <a id="btn-paypal" href="https://www.paypal.me/Marko436/0.09EUR" target="_blank" onclick="document.getElementById('btn-paid').style.display='block';this.style.opacity='.5';">
+        <span>Pay</span><span class="pp-yellow">Pal</span>&nbsp; Jetzt 0,09 € zahlen
+      </a>
+      <button id="btn-paid" onclick="window._paywallConfirmed=true;document.getElementById('paywall-overlay').classList.remove('visible');vollziehePDFExport();">
+        ✅ Zahlung abgeschlossen – PDF erstellen
+      </button>
+      <button id="btn-cancel-pay" onclick="document.getElementById('paywall-overlay').classList.remove('visible');">
+        Abbrechen
+      </button>
+
+      <!-- Mitarbeitercode -->
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:8px;text-align:center">
+          🔑 Mitarbeiter? Code eingeben:
+        </div>
+        <div style="display:flex;gap:8px">
+          <input id="ma-code-input" type="password" placeholder="Mitarbeitercode"
+            style="flex:1;padding:10px 12px;border-radius:8px;border:2px solid var(--line);
+                   background:var(--paper);color:var(--ink);
+                   font-size:15px;font-family:inherit;outline:none;letter-spacing:.2em"
+            onkeydown="if(event.key==='Enter') checkMaCode()">
+          <button onclick="checkMaCode()"
+            style="padding:10px 16px;border-radius:8px;border:none;
+                   background:var(--accent);color:#fff;font-weight:700;font-size:13px;
+                   cursor:pointer;font-family:inherit;white-space:nowrap">
+            ✓ OK
+          </button>
+        </div>
+        <div id="ma-code-error"
+          style="display:none;margin-top:6px;font-size:12px;color:var(--warn);text-align:center">
+          ❌ Ungültiger Code. Bitte erneut versuchen.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── PayPal-Paywall & Mitarbeitercode — identisch zu den Türkonfiguratoren,
+// bewusst außerhalb der Haupt-IIFE, da per onclick-Attribut aus dem Modal
+// aufgerufen (braucht globalen Geltungsbereich). ─────────────────────────────
+var MA_CODES = [];
+var MA_CODE_NAMES = {};
+var MA_CODES_LOADED = false;
+// Fallback nur falls ma-codes.json nicht erreichbar ist (z.B. offline/Netzwerkfehler)
+var MA_CODES_FALLBACK = {
+  '78080':'Marko Gerdau',
+  '78081':'Norbert Clour',
+  '78082':'Techniker',
+  '78084':'Bernd Nikolaus',
+  '78085':'Armin Bolz',
+  '78086':'Ausendienst1',
+  '78087':'Ausendienst2',
+  '78088':'Außendienst 3',
+};
+var MA_CODES_LOCAL_KEY = 'stober_ma_codes_local';
+
+function loadMAcodes(){
+  /* Kaskade: 1. Datenbank (Edge Function, öffentliche Nur-Lese-Route)
+              2. letzter erfolgreicher DB-Stand aus dem Gerätecache
+              3. ma-codes.json aus dem Repo
+              4. eingebauter Fallback */
+  var FN_URL = (typeof TENANT !== 'undefined' && TENANT.supabaseUrl)
+    ? TENANT.supabaseUrl + '/functions/v1/mitarbeiter?public=1' : null;
+  var CACHE_KEY = 'stober_ma_codes_db_cache';
+  var lade = FN_URL
+    ? fetch(FN_URL, {cache:'no-store'})
+        .then(function(r){ if(!r.ok) throw new Error('fn failed'); return r.json(); })
+        .then(function(json){
+          if(!json || typeof json !== 'object' || Array.isArray(json)) throw new Error('bad shape');
+          try{ localStorage.setItem(CACHE_KEY, JSON.stringify(json)); }catch(e){}
+          return json;
+        })
+    : Promise.reject(new Error('kein TENANT'));
+  return lade
+    .catch(function(){
+      try{
+        var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+        if(c && typeof c === 'object') return c;
+      }catch(e){}
+      return fetch('ma-codes.json',{cache:'no-store'})
+        .then(function(r){ if(!r.ok) throw new Error('fetch failed'); return r.json(); });
+    })
+    .then(function(json){ applyCodes(json); })
+    .catch(function(){ applyCodes(MA_CODES_FALLBACK); })
+    .then(function(){ MA_CODES_LOADED=true; });
+}
+function applyCodes(baseCodes){
+  var merged=Object.assign({},baseCodes);
+  try{
+    var local=JSON.parse(localStorage.getItem(MA_CODES_LOCAL_KEY)||'{}');
+    Object.assign(merged,local);
+  }catch(e){}
+  MA_CODE_NAMES=merged;
+  MA_CODES=Object.keys(MA_CODE_NAMES);
+}
+function logMaCode(code) {
+  try {
+    var logs = JSON.parse(localStorage.getItem('stober_ma_logs')) || [];
+    var now = new Date();
+    logs.push({
+      code: code, timestamp: now.toISOString(), date: now.toLocaleDateString('de-DE'),
+      time: now.toLocaleTimeString('de-DE'), url: window.location.pathname,
+      userAgent: navigator.userAgent.substring(0, 80)
+    });
+    localStorage.setItem('stober_ma_logs', JSON.stringify(logs));
+  } catch(e) {}
+}
+window.showPaywall = function(){
+  window._paywallConfirmed = false;
+  document.getElementById('btn-paid').style.display = 'none';
+  document.getElementById('btn-paypal').style.opacity = '1';
+  document.getElementById('paywall-overlay').classList.add('visible');
+};
+window.checkMaCode = function(){
+  var input = document.getElementById('ma-code-input');
+  var errEl = document.getElementById('ma-code-error');
+  var code = input.value.trim();
+  if(MA_CODES.indexOf(code) > -1){
+    logMaCode(code);
+    window._paywallConfirmed = true;
+    document.getElementById('paywall-overlay').classList.remove('visible');
+    input.value = '';
+    window.vollziehePDFExport();
+  } else {
+    errEl.style.display = 'block';
+    input.value = '';
+    input.focus();
+    setTimeout(function(){ errEl.style.display='none'; }, 3000);
+  }
+};
+loadMAcodes();
+</script>
 
 <header class="top">
   <div class="wrap">
@@ -687,10 +896,13 @@
     return lines.join("\n");
   }
 
-  $("#printBtn").addEventListener("click", function(){
+  window.vollziehePDFExport = function(){
     $$(".door-body").forEach(function(b){ b.hidden = false; });
     $$('.door-toggle').forEach(function(t){ t.setAttribute("aria-expanded","true"); });
     window.print();
+  };
+  $("#printBtn").addEventListener("click", function(){
+    window.showPaywall();
   });
 
   $("#shareBtn").addEventListener("click", function(){
